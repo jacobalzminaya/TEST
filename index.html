@@ -285,6 +285,48 @@
     .priority-explanation.active { display: block; }
     .priority-title { color: var(--orange); font-weight: bold; margin-bottom: 5px; }
     .priority-item { color: #ccc; margin: 3px 0; }
+    
+    /* NUEVO: Indicador de momentum */
+    .momentum-indicator {
+      width: 100%;
+      max-width: 500px;
+      background: var(--panel);
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-size: 0.8em;
+      border: 1px solid #333;
+    }
+    .momentum-title { color: var(--blue); margin-bottom: 5px; font-weight: bold; }
+    .momentum-bar {
+      height: 20px;
+      background: #333;
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+    }
+    .momentum-fill {
+      height: 100%;
+      transition: all 0.3s;
+      position: relative;
+    }
+    .momentum-fill.bullish { background: linear-gradient(90deg, var(--green), #00aa55); }
+    .momentum-fill.bearish { background: linear-gradient(90deg, var(--red), #aa0000); }
+    .momentum-marker {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: #fff;
+      box-shadow: 0 0 4px #000;
+    }
+    .momentum-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 5px;
+      font-size: 0.7em;
+      color: #666;
+    }
   </style>
 </head>
 <body>
@@ -317,6 +359,21 @@
       <span id="cross-type" class="cross-type-golden">GOLDEN CROSS</span>
     </div>
     <div class="ma-grid" id="ma-grid"></div>
+  </div>
+
+  <!-- NUEVO: Indicador de momentum -->
+  <div class="momentum-indicator" id="momentum-box" style="display: none;">
+    <div class="momentum-title">📈 Momentum de Tendencia (MA20 Ponderada)</div>
+    <div class="momentum-bar">
+      <div class="momentum-fill" id="momentum-fill"></div>
+      <div class="momentum-marker" id="momentum-marker" style="left: 50%;"></div>
+    </div>
+    <div class="momentum-labels">
+      <span>Bajista</span>
+      <span>Neutral</span>
+      <span>Alcista</span>
+    </div>
+    <div style="text-align: center; margin-top: 5px; font-size: 0.75em; color: #888;" id="momentum-detail"></div>
   </div>
 
   <div class="trend-box neutral" id="trend-box">
@@ -406,6 +463,31 @@ const MA_CONFIG = {
   trend: { period: 20, name: 'MA20' }
 };
 
+// NUEVO: Calcular MA con ponderación exponencial hacia velas recientes
+function calcMAWeighted(period, useOriginal = false) {
+  if (history.length < period) return null;
+  
+  let data = history;
+  if (!useOriginal && manualTrapIndex !== null && manualTrapIndex < history.length) {
+    data = history.filter((_, idx) => idx !== manualTrapIndex);
+    if (data.length < period) return null;
+  }
+  
+  const slice = data.slice(-period);
+  let weightedSum = 0;
+  let weightSum = 0;
+  
+  // Ponderación: velas más recientes tienen más peso
+  slice.forEach((candle, idx) => {
+    const weight = idx + 1; // Peso incremental: 1, 2, 3... period
+    weightedSum += (candle === 'G' ? 1 : 0) * weight;
+    weightSum += weight;
+  });
+  
+  return (weightedSum / weightSum) * 100;
+}
+
+// MA simple tradicional (para cruces específicos)
 function calcMA(period, useOriginal = false) {
   if (history.length < period) return null;
   let data = history;
@@ -427,16 +509,27 @@ function calcPrevMA(period, useOriginal = false) {
   return (slice.filter(h => h === 'G').length / period) * 100;
 }
 
-function isTrap(crossType, trendMA) {
+// CORREGIDO: Lógica de trampa más inteligente
+function isTrap(crossType, trendMA, crossStrength = 0) {
   if (trendMA === null) return false;
-  if (crossType === 'golden' && trendMA < 45) return true;
-  if (crossType === 'death' && trendMA > 55) return true;
+  
+  // Si hay un cruce fuerte (>5% diferencia), no es trampa aunque la tendencia diga lo contrario
+  if (Math.abs(crossStrength) > 8) return false;
+  
+  // Umbral adaptativo: si el cruce contradice fuertemente la tendencia, es trampa
+  if (crossType === 'golden' && trendMA < 40) return true;
+  if (crossType === 'death' && trendMA > 60) return true;
+  
+  // Caso intermedio: tendencia neutral no invalida cruces
+  if (trendMA >= 40 && trendMA <= 60) return false;
+  
   return false;
 }
 
 function detectCrosses(useOriginal = false) {
   const results = [];
-  const trendMA = calcMA(MA_CONFIG.trend.period, useOriginal);
+  // Usar MA ponderada para tendencia (más sensible a recientes)
+  const trendMA = calcMAWeighted(MA_CONFIG.trend.period, useOriginal);
   
   for (let cfg of MA_CONFIG.crosses) {
     const maFast = calcMA(cfg.fast, useOriginal);
@@ -453,6 +546,8 @@ function detectCrosses(useOriginal = false) {
       data = history.filter((_, idx) => idx !== manualTrapIndex);
     }
     
+    const crossStrength = maFast - maSlow;
+    
     if (data.length > cfg.slow) {
       const prevFast = calcPrevMA(cfg.fast, useOriginal);
       const prevSlow = calcPrevMA(cfg.slow, useOriginal);
@@ -460,10 +555,10 @@ function detectCrosses(useOriginal = false) {
       if (prevFast !== null && prevSlow !== null) {
         if (prevFast <= prevSlow && maFast > maSlow) {
           crossed = true; crossType = 'golden';
-          trap = isTrap('golden', trendMA);
+          trap = isTrap('golden', trendMA, crossStrength);
         } else if (prevFast >= prevSlow && maFast < maSlow) {
           crossed = true; crossType = 'death';
-          trap = isTrap('death', trendMA);
+          trap = isTrap('death', trendMA, crossStrength);
         }
       }
     }
@@ -473,11 +568,11 @@ function detectCrosses(useOriginal = false) {
       type: cfg.type,
       maFast,
       maSlow,
-      diff: maFast - maSlow,
+      diff: crossStrength,
       crossed,
       crossType,
       trap,
-      active: Math.abs(maFast - maSlow) < 5
+      active: Math.abs(crossStrength) < 5
     });
   }
   
@@ -533,6 +628,26 @@ function update() {
   
   if (manualTrapIndex !== null && originalTrend !== null) {
     originalTrendMA = originalTrend;
+  }
+  
+  // NUEVO: Actualizar indicador de momentum
+  const momentumBox = document.getElementById('momentum-box');
+  if (trendMA !== null) {
+    momentumBox.style.display = 'block';
+    const fill = document.getElementById('momentum-fill');
+    const marker = document.getElementById('momentum-marker');
+    const detail = document.getElementById('momentum-detail');
+    
+    // La barra va de 0 a 100, centro en 50
+    fill.style.width = trendMA + '%';
+    fill.className = 'momentum-fill ' + (trendMA > 55 ? 'bullish' : trendMA < 45 ? 'bearish' : 'neutral');
+    marker.style.left = '50%';
+    
+    // Calcular MA simple para comparación
+    const simpleMA = calcMA(20, false);
+    detail.textContent = `Ponderada: ${trendMA.toFixed(1)}% | Simple: ${simpleMA ? simpleMA.toFixed(1) : '--'}% | Diferencia: ${simpleMA ? (trendMA - simpleMA).toFixed(1) : '--'}%`;
+  } else {
+    momentumBox.style.display = 'none';
   }
   
   // Banner de trampa
@@ -609,7 +724,7 @@ function update() {
   const mainSignal = document.getElementById('main-signal');
   const priorityExplanation = document.getElementById('priority-explanation');
   
-  // Preparar datos para análisis de patrón (sin importar si hay cruce)
+  // Preparar datos para análisis de patrón
   let effectiveHistory = history;
   if (manualTrapIndex !== null) {
     effectiveHistory = history.filter((_, idx) => idx !== manualTrapIndex);
@@ -621,7 +736,6 @@ function update() {
   // Verificar si hay conflicto entre cruce y proyección
   let hasConflict = false;
   if (activeCross && proj) {
-    // Conflicto: Cruce dice VENTA pero proyección VERDE dice COMPRA (o viceversa)
     if (activeCross.crossType === 'death' && proj.ifG.sig === 'COMPRA') hasConflict = true;
     if (activeCross.crossType === 'golden' && proj.ifR.sig === 'VENTA') hasConflict = true;
   }
@@ -648,7 +762,6 @@ function update() {
       mainSignal.innerHTML = `${activeCross.crossType === 'golden' ? 'COMPRA?' : 'VENTA?'}<div class="manual-trap-badge">TRAMPA</div>`;
       priorityExplanation.classList.remove('active');
     } else if (hasConflict) {
-      // ¡NUEVO! Mostrar conflicto claramente
       mainSignal.className = 'main-signal signal-conflict';
       mainSignal.innerHTML = `
         ${activeCross.crossType === 'golden' ? 'COMPRA' : 'VENTA'}<br>
