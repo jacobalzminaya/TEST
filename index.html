@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Detector MA - Prioridad Inteligente</title>
+  <title>Detector MA - Tendencia Rápida</title>
   <style>
     :root {
       --green: #00ff88;
@@ -286,7 +286,44 @@
     .priority-title { color: var(--orange); font-weight: bold; margin-bottom: 5px; }
     .priority-item { color: #ccc; margin: 3px 0; }
     
-    /* NUEVO: Indicador de momentum */
+    /* NUEVO: Detector de secuencias recientes */
+    .recent-trend {
+      width: 100%;
+      max-width: 500px;
+      background: var(--panel);
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      border: 2px solid #333;
+    }
+    .recent-title { color: var(--blue); font-size: 0.8em; margin-bottom: 8px; font-weight: bold; }
+    .recent-sequence {
+      display: flex;
+      gap: 4px;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+    .recent-candle {
+      width: 24px; height: 24px;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: bold;
+    }
+    .recent-candle-g { background: var(--green); color: #000; }
+    .recent-candle-r { background: var(--red); color: #fff; }
+    .recent-analysis {
+      text-align: center;
+      font-size: 0.9em;
+      padding: 5px;
+      border-radius: 4px;
+    }
+    .recent-bullish { background: rgba(0,255,136,0.1); color: var(--green); }
+    .recent-bearish { background: rgba(255,68,68,0.1); color: var(--red); }
+    .recent-neutral { background: rgba(255,215,0,0.1); color: var(--gold); }
+    
     .momentum-indicator {
       width: 100%;
       max-width: 500px;
@@ -337,7 +374,7 @@
       <div class="trap-modal-text">
         ¿La vela <strong id="trap-candle-color">--</strong> en posición <strong id="trap-candle-pos">--</strong> fue una trampa?
         <br><br>
-        Esto recalculará <strong>TODAS</strong> las MA incluyendo la tendencia global MA20.
+        Esto recalculará <strong>TODAS</strong> las MA incluyendo la tendencia global.
       </div>
       <div class="trap-modal-buttons">
         <button class="trap-btn trap-btn-confirm" onclick="confirmTrap()">Sí, recalcular</button>
@@ -361,12 +398,18 @@
     <div class="ma-grid" id="ma-grid"></div>
   </div>
 
-  <!-- NUEVO: Indicador de momentum -->
+  <!-- NUEVO: Detector de tendencia reciente -->
+  <div class="recent-trend" id="recent-box">
+    <div class="recent-title">📊 TENDENCIA RECIENTE (Últimas 5 velas)</div>
+    <div class="recent-sequence" id="recent-sequence"></div>
+    <div class="recent-analysis" id="recent-analysis">Analizando...</div>
+  </div>
+
   <div class="momentum-indicator" id="momentum-box" style="display: none;">
-    <div class="momentum-title">📈 Momentum de Tendencia (MA20 Ponderada)</div>
+    <div class="momentum-title">📈 Tendencia MA10 (Rápida)</div>
     <div class="momentum-bar">
       <div class="momentum-fill" id="momentum-fill"></div>
-      <div class="momentum-marker" id="momentum-marker" style="left: 50%;"></div>
+      <div class="momentum-marker" style="left: 50%;"></div>
     </div>
     <div class="momentum-labels">
       <span>Bajista</span>
@@ -378,7 +421,7 @@
 
   <div class="trend-box neutral" id="trend-box">
     <div class="trend-badge">AJUSTADA</div>
-    <div class="trend-label">TENDENCIA GLOBAL (MA20)</div>
+    <div class="trend-label">TENDENCIA GLOBAL (MA10)</div>
     <div class="trend-value" id="trend-value">NEUTRAL</div>
     <div class="trend-original" id="trend-original"></div>
   </div>
@@ -405,7 +448,7 @@
   <div class="priority-explanation" id="priority-explanation">
     <div class="priority-title">⚡ Prioridad de Señales:</div>
     <div class="priority-item">1. Cruce MA activo (Golden/Death Cross)</div>
-    <div class="priority-item">2. Patrón de 2 velas + Tendencia MA20</div>
+    <div class="priority-item">2. Patrón de 2 velas + Tendencia MA10</div>
     <div class="priority-item" style="color: var(--orange); margin-top: 5px;">
       ⚠️ Hay conflicto: Cruce dice VENTA pero proyección dice posible COMPRA si viene VERDE
     </div>
@@ -460,34 +503,10 @@ const MA_CONFIG = {
     { fast: 6, slow: 20, name: 'MA6/MA20', type: 'estandar' },
     { fast: 10, slow: 20, name: 'MA10/MA20', type: 'confirmado' }
   ],
-  trend: { period: 20, name: 'MA20' }
+  trend: { period: 10, name: 'MA10' } // CAMBIO: MA10 en lugar de MA20 para más reactividad
 };
 
-// NUEVO: Calcular MA con ponderación exponencial hacia velas recientes
-function calcMAWeighted(period, useOriginal = false) {
-  if (history.length < period) return null;
-  
-  let data = history;
-  if (!useOriginal && manualTrapIndex !== null && manualTrapIndex < history.length) {
-    data = history.filter((_, idx) => idx !== manualTrapIndex);
-    if (data.length < period) return null;
-  }
-  
-  const slice = data.slice(-period);
-  let weightedSum = 0;
-  let weightSum = 0;
-  
-  // Ponderación: velas más recientes tienen más peso
-  slice.forEach((candle, idx) => {
-    const weight = idx + 1; // Peso incremental: 1, 2, 3... period
-    weightedSum += (candle === 'G' ? 1 : 0) * weight;
-    weightSum += weight;
-  });
-  
-  return (weightedSum / weightSum) * 100;
-}
-
-// MA simple tradicional (para cruces específicos)
+// Calcular MA simple
 function calcMA(period, useOriginal = false) {
   if (history.length < period) return null;
   let data = history;
@@ -509,27 +528,69 @@ function calcPrevMA(period, useOriginal = false) {
   return (slice.filter(h => h === 'G').length / period) * 100;
 }
 
-// CORREGIDO: Lógica de trampa más inteligente
-function isTrap(crossType, trendMA, crossStrength = 0) {
+// NUEVO: Analizar secuencia reciente de 5 velas
+function analyzeRecentTrend() {
+  let data = history;
+  if (manualTrapIndex !== null) {
+    data = history.filter((_, idx) => idx !== manualTrapIndex);
+  }
+  
+  const recent = data.slice(-5);
+  if (recent.length < 3) return { trend: 'neutral', sequence: recent, strength: 0 };
+  
+  const greens = recent.filter(h => h === 'G').length;
+  const reds = recent.filter(h => h === 'R').length;
+  const lastThree = recent.slice(-3);
+  
+  // Detectar momentum
+  let momentum = 0;
+  let consecutiveGreens = 0;
+  let consecutiveReds = 0;
+  
+  // Contar consecutivas desde el final
+  for (let i = recent.length - 1; i >= 0; i--) {
+    if (recent[i] === 'G') {
+      if (consecutiveReds === 0) consecutiveGreens++;
+      else break;
+    } else {
+      if (consecutiveGreens === 0) consecutiveReds++;
+      else break;
+    }
+  }
+  
+  // Determinar tendencia basada en consecutivas recientes
+  if (consecutiveReds >= 3) return { trend: 'bearish', sequence: recent, strength: consecutiveReds, reason: `${consecutiveReds} rojas seguidas` };
+  if (consecutiveGreens >= 3) return { trend: 'bullish', sequence: recent, strength: consecutiveGreens, reason: `${consecutiveGreens} verdes seguidas` };
+  
+  // Si no hay consecutivas fuertes, usar mayoría simple
+  if (reds > greens) return { trend: 'bearish', sequence: recent, strength: reds, reason: `Mayoría roja (${reds}/5)` };
+  if (greens > reds) return { trend: 'bullish', sequence: recent, strength: greens, reason: `Mayoría verde (${greens}/5)` };
+  
+  return { trend: 'neutral', sequence: recent, strength: 0, reason: 'Equilibrio' };
+}
+
+// CORREGIDO: Lógica de trampa más estricta
+function isTrap(crossType, trendMA, recentTrend) {
   if (trendMA === null) return false;
   
-  // Si hay un cruce fuerte (>5% diferencia), no es trampa aunque la tendencia diga lo contrario
-  if (Math.abs(crossStrength) > 8) return false;
+  // Si la tendencia reciente contradice fuertemente el cruce, es trampa
+  if (crossType === 'golden' && recentTrend.trend === 'bearish' && recentTrend.strength >= 3) return true;
+  if (crossType === 'death' && recentTrend.trend === 'bullish' && recentTrend.strength >= 3) return true;
   
-  // Umbral adaptativo: si el cruce contradice fuertemente la tendencia, es trampa
-  if (crossType === 'golden' && trendMA < 40) return true;
-  if (crossType === 'death' && trendMA > 60) return true;
+  // Si la MA10 está en zona neutral (45-55), no es trampa
+  if (trendMA >= 45 && trendMA <= 55) return false;
   
-  // Caso intermedio: tendencia neutral no invalida cruces
-  if (trendMA >= 40 && trendMA <= 60) return false;
+  // Solo marcar como trampa si hay contradicción extrema
+  if (crossType === 'golden' && trendMA < 35) return true;
+  if (crossType === 'death' && trendMA > 65) return true;
   
   return false;
 }
 
 function detectCrosses(useOriginal = false) {
   const results = [];
-  // Usar MA ponderada para tendencia (más sensible a recientes)
-  const trendMA = calcMAWeighted(MA_CONFIG.trend.period, useOriginal);
+  const trendMA = calcMA(MA_CONFIG.trend.period, useOriginal);
+  const recentTrend = analyzeRecentTrend();
   
   for (let cfg of MA_CONFIG.crosses) {
     const maFast = calcMA(cfg.fast, useOriginal);
@@ -546,8 +607,6 @@ function detectCrosses(useOriginal = false) {
       data = history.filter((_, idx) => idx !== manualTrapIndex);
     }
     
-    const crossStrength = maFast - maSlow;
-    
     if (data.length > cfg.slow) {
       const prevFast = calcPrevMA(cfg.fast, useOriginal);
       const prevSlow = calcPrevMA(cfg.slow, useOriginal);
@@ -555,10 +614,10 @@ function detectCrosses(useOriginal = false) {
       if (prevFast !== null && prevSlow !== null) {
         if (prevFast <= prevSlow && maFast > maSlow) {
           crossed = true; crossType = 'golden';
-          trap = isTrap('golden', trendMA, crossStrength);
+          trap = isTrap('golden', trendMA, recentTrend);
         } else if (prevFast >= prevSlow && maFast < maSlow) {
           crossed = true; crossType = 'death';
-          trap = isTrap('death', trendMA, crossStrength);
+          trap = isTrap('death', trendMA, recentTrend);
         }
       }
     }
@@ -568,15 +627,15 @@ function detectCrosses(useOriginal = false) {
       type: cfg.type,
       maFast,
       maSlow,
-      diff: crossStrength,
+      diff: maFast - maSlow,
       crossed,
       crossType,
       trap,
-      active: Math.abs(crossStrength) < 5
+      active: Math.abs(maFast - maSlow) < 5
     });
   }
   
-  return { crosses: results, trendMA };
+  return { crosses: results, trendMA, recentTrend };
 }
 
 function analyzePattern(lastTwo, originalTwo = null) {
@@ -624,28 +683,39 @@ function update() {
   const originalResult = detectCrosses(true);
   
   const trendMA = adjustedResult.trendMA;
+  const recentTrend = adjustedResult.recentTrend;
   const originalTrend = originalResult.trendMA;
   
   if (manualTrapIndex !== null && originalTrend !== null) {
     originalTrendMA = originalTrend;
   }
   
-  // NUEVO: Actualizar indicador de momentum
+  // NUEVO: Actualizar detector de tendencia reciente
+  const recentBox = document.getElementById('recent-box');
+  const recentSequence = document.getElementById('recent-sequence');
+  const recentAnalysis = document.getElementById('recent-analysis');
+  
+  if (recentTrend.sequence.length > 0) {
+    recentSequence.innerHTML = recentTrend.sequence.map((c, i) => {
+      const isLast = i === recentTrend.sequence.length - 1;
+      return `<div class="recent-candle recent-candle-${c.toLowerCase()} ${isLast ? 'candle-new' : ''}">${c}</div>`;
+    }).join('');
+    
+    recentAnalysis.className = 'recent-analysis recent-' + recentTrend.trend;
+    recentAnalysis.innerHTML = `<strong>${recentTrend.reason}</strong><br><small style="font-size:0.8em;">Fuerza: ${recentTrend.strength}/5</small>`;
+  }
+  
+  // Actualizar indicador de momentum
   const momentumBox = document.getElementById('momentum-box');
   if (trendMA !== null) {
     momentumBox.style.display = 'block';
     const fill = document.getElementById('momentum-fill');
-    const marker = document.getElementById('momentum-marker');
     const detail = document.getElementById('momentum-detail');
     
-    // La barra va de 0 a 100, centro en 50
     fill.style.width = trendMA + '%';
     fill.className = 'momentum-fill ' + (trendMA > 55 ? 'bullish' : trendMA < 45 ? 'bearish' : 'neutral');
-    marker.style.left = '50%';
     
-    // Calcular MA simple para comparación
-    const simpleMA = calcMA(20, false);
-    detail.textContent = `Ponderada: ${trendMA.toFixed(1)}% | Simple: ${simpleMA ? simpleMA.toFixed(1) : '--'}% | Diferencia: ${simpleMA ? (trendMA - simpleMA).toFixed(1) : '--'}%`;
+    detail.textContent = `MA10: ${trendMA.toFixed(1)}% | Tendencia reciente: ${recentTrend.trend.toUpperCase()}`;
   } else {
     momentumBox.style.display = 'none';
   }
@@ -740,6 +810,30 @@ function update() {
     if (activeCross.crossType === 'golden' && proj.ifR.sig === 'VENTA') hasConflict = true;
   }
   
+  // CORREGIDO: Prioridad a la tendencia RECIENTE sobre la MA
+  let finalSignal = 'wait';
+  let signalReason = '';
+  
+  if (activeCross && !activeCross.trap) {
+    // Si hay cruce válido, usarlo PERO verificar coherencia con tendencia reciente
+    if (activeCross.crossType === 'golden' && recentTrend.trend === 'bearish' && recentTrend.strength >= 3) {
+      finalSignal = 'wait';
+      signalReason = 'Cruce alcista pero 3+ velas rojas recientes';
+    } else if (activeCross.crossType === 'death' && recentTrend.trend === 'bullish' && recentTrend.strength >= 3) {
+      finalSignal = 'wait';
+      signalReason = 'Cruce bajista pero 3+ velas verdes recientes';
+    } else {
+      finalSignal = activeCross.crossType === 'golden' ? 'buy' : 'sell';
+    }
+  } else if (proj && recentTrend.trend !== 'neutral') {
+    // Sin cruce: usar patrón + tendencia reciente
+    if (recentTrend.trend === 'bullish' && proj.ifG.sig === 'COMPRA') {
+      finalSignal = 'buy';
+    } else if (recentTrend.trend === 'bearish' && proj.ifR.sig === 'VENTA') {
+      finalSignal = 'sell';
+    }
+  }
+  
   if (activeCross) {
     crossAlert.classList.add('show');
     document.getElementById('cross-pair').textContent = activeCross.pair;
@@ -761,11 +855,11 @@ function update() {
       mainSignal.className = 'main-signal signal-trap';
       mainSignal.innerHTML = `${activeCross.crossType === 'golden' ? 'COMPRA?' : 'VENTA?'}<div class="manual-trap-badge">TRAMPA</div>`;
       priorityExplanation.classList.remove('active');
-    } else if (hasConflict) {
+    } else if (hasConflict || finalSignal === 'wait') {
       mainSignal.className = 'main-signal signal-conflict';
       mainSignal.innerHTML = `
         ${activeCross.crossType === 'golden' ? 'COMPRA' : 'VENTA'}<br>
-        <small style="font-size:0.4em;">${activeCross.pair} | ⚠️ REVISAR PROYECCIÓN</small>
+        <small style="font-size:0.35em;">${signalReason || '⚠️ REVISAR TENDENCIA RECIENTE'}</small>
         <div class="conflict-badge">⚠️ CONFLICTO</div>
       `;
       priorityExplanation.classList.add('active');
@@ -775,31 +869,23 @@ function update() {
       priorityExplanation.classList.remove('active');
     }
   } else {
-    // Sin cruce activo - usar patrón de 2 velas + tendencia
+    // Sin cruce activo
     crossAlert.classList.remove('show');
     priorityExplanation.classList.remove('active');
     
-    if (proj && trendMA !== null) {
-      const trendUp = trendMA > 55;
-      const trendDown = trendMA < 45;
-      
-      if (trendUp && proj.ifG.sig === 'COMPRA') {
-        mainSignal.className = 'main-signal signal-buy';
-        mainSignal.textContent = 'COMPRAR';
-      } else if (trendDown && proj.ifR.sig === 'VENTA') {
-        mainSignal.className = 'main-signal signal-sell';
-        mainSignal.textContent = 'VENDER';
-      } else {
-        mainSignal.className = 'main-signal signal-wait';
-        mainSignal.textContent = 'ESPERAR';
-      }
+    if (finalSignal === 'buy') {
+      mainSignal.className = 'main-signal signal-buy';
+      mainSignal.textContent = 'COMPRAR';
+    } else if (finalSignal === 'sell') {
+      mainSignal.className = 'main-signal signal-sell';
+      mainSignal.textContent = 'VENDER';
     } else {
       mainSignal.className = 'main-signal signal-wait';
       mainSignal.textContent = 'ESPERAR';
     }
   }
   
-  updateProjections(trendMA, activeCross, hasConflict);
+  updateProjections(trendMA, activeCross, hasConflict, recentTrend);
   
   // Historial visual
   document.getElementById('history').innerHTML = history.map((h, i) => {
@@ -810,7 +896,7 @@ function update() {
   }).join('');
 }
 
-function updateProjections(trendMA, activeCross, hasConflict) {
+function updateProjections(trendMA, activeCross, hasConflict, recentTrend) {
   let effectiveHistory = history;
   if (manualTrapIndex !== null) {
     effectiveHistory = history.filter((_, idx) => idx !== manualTrapIndex);
@@ -834,7 +920,7 @@ function updateProjections(trendMA, activeCross, hasConflict) {
     const hasChanged = proj.changed && proj.originalPattern;
     
     // Proyección VERDE
-    const gIsTrap = trendMA !== null && trendMA < 45;
+    const gConflictsWithRecent = recentTrend.trend === 'bearish' && recentTrend.strength >= 3;
     const gConflictsWithCross = activeCross && activeCross.crossType === 'death' && proj.ifG.sig === 'COMPRA';
     
     document.getElementById('proj-g-orig').textContent = hasChanged ? proj.originalPattern + 'G →' : '';
@@ -845,16 +931,16 @@ function updateProjections(trendMA, activeCross, hasConflict) {
     
     let gReason = '';
     if (hasChanged) gReason = '🎭 Recalculado por trampa';
-    else if (gIsTrap) gReason = '⚠️ Contra tendencia';
+    else if (gConflictsWithRecent) gReason = '⚠️ Contra tendencia reciente';
     else if (gConflictsWithCross) gReason = '⚠️ CONFLICTO con cruce activo';
     document.getElementById('proj-g-reason').textContent = gReason;
     
     document.getElementById('proj-g-conflict').textContent = gConflictsWithCross ? 'Cruce activo: DEATH CROSS' : '';
     
-    gBox.className = 'proj-box proj-green ' + (hasChanged ? 'proj-adjusted ' : '') + (gConflictsWithCross ? 'proj-conflict' : '');
+    gBox.className = 'proj-box proj-green ' + (hasChanged ? 'proj-adjusted ' : '') + ((gConflictsWithCross || gConflictsWithRecent) ? 'proj-conflict' : '');
     
     // Proyección ROJO
-    const rIsTrap = trendMA !== null && trendMA > 55;
+    const rConflictsWithRecent = recentTrend.trend === 'bullish' && recentTrend.strength >= 3;
     const rConflictsWithCross = activeCross && activeCross.crossType === 'golden' && proj.ifR.sig === 'VENTA';
     
     document.getElementById('proj-r-orig').textContent = hasChanged ? proj.originalPattern + 'R →' : '';
@@ -865,13 +951,13 @@ function updateProjections(trendMA, activeCross, hasConflict) {
     
     let rReason = '';
     if (hasChanged) rReason = '🎭 Recalculado por trampa';
-    else if (rIsTrap) rReason = '⚠️ Contra tendencia';
+    else if (rConflictsWithRecent) rReason = '⚠️ Contra tendencia reciente';
     else if (rConflictsWithCross) rReason = '⚠️ CONFLICTO con cruce activo';
     document.getElementById('proj-r-reason').textContent = rReason;
     
     document.getElementById('proj-r-conflict').textContent = rConflictsWithCross ? 'Cruce activo: GOLDEN CROSS' : '';
     
-    rBox.className = 'proj-box proj-red ' + (hasChanged ? 'proj-adjusted ' : '') + (rConflictsWithCross ? 'proj-conflict' : '');
+    rBox.className = 'proj-box proj-red ' + (hasChanged ? 'proj-adjusted ' : '') + ((rConflictsWithCross || rConflictsWithRecent) ? 'proj-conflict' : '');
   }
 }
 
