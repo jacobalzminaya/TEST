@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Detector MA + Fuerza de Vela</title>
+  <title>Detector MA + Fuerza de Vela - CORREGIDO</title>
   <style>
     :root {
       --green: #00ff88;
@@ -66,6 +66,21 @@
     .active-trap-banner.active { display: block; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
     
+    .extreme-alert {
+      width: 100%;
+      max-width: 500px;
+      background: linear-gradient(90deg, var(--red), transparent);
+      border-left: 4px solid var(--red);
+      padding: 15px;
+      margin-bottom: 15px;
+      display: none;
+      animation: pulse-red 1.5s infinite;
+    }
+    .extreme-alert.active { display: block; }
+    @keyframes pulse-red { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+    .extreme-title { font-size: 1.1em; font-weight: bold; margin-bottom: 5px; }
+    .extreme-text { font-size: 0.85em; color: #ccc; }
+    
     .cross-detector {
       width: 100%;
       max-width: 500px;
@@ -93,12 +108,14 @@
     .ma-item { background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; text-align: center; font-size: 0.8em; }
     .ma-item.active { border: 1px solid var(--gold); background: rgba(255,215,0,0.1); }
     .ma-item.trap { border: 1px solid var(--purple); opacity: 0.7; }
+    .ma-item.extreme { border: 2px solid var(--red); background: rgba(255,68,68,0.2); }
     .ma-name { color: #888; font-size: 0.75em; }
     .ma-val { font-weight: bold; font-size: 1.1em; }
     .ma-up { color: var(--green); }
     .ma-down { color: var(--red); }
+    .ma-extreme { color: var(--red); animation: blink 1s infinite; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
     
-    /* NUEVO: Análisis de vela actual */
     .current-candle-analysis {
       width: 100%;
       max-width: 500px;
@@ -149,7 +166,20 @@
     .trend-box.bullish { border-color: var(--green); }
     .trend-box.bearish { border-color: var(--red); }
     .trend-box.neutral { border-color: var(--gold); }
-    .trend-box.adjusted { background: linear-gradient(135deg, var(--panel), rgba(255,0,255,0.1)); }
+    .trend-box.extreme-bullish { 
+      border-color: var(--red); 
+      background: linear-gradient(135deg, var(--panel), rgba(255,0,0,0.1));
+      animation: pulse-border 2s infinite;
+    }
+    .trend-box.extreme-bearish { 
+      border-color: var(--green); 
+      background: linear-gradient(135deg, var(--panel), rgba(0,255,0,0.1));
+      animation: pulse-border 2s infinite;
+    }
+    @keyframes pulse-border { 
+      0%, 100% { box-shadow: 0 0 5px currentColor; } 
+      50% { box-shadow: 0 0 20px currentColor; } 
+    }
     .trend-label { color: #888; font-size: 0.8em; margin-bottom: 5px; }
     .trend-value { font-size: 1.2em; font-weight: bold; }
     .trend-original { font-size: 0.75em; color: #666; text-decoration: line-through; margin-top: 5px; }
@@ -164,6 +194,18 @@
       display: none;
     }
     .trend-box.adjusted .trend-badge { display: block; }
+    .extreme-badge {
+      position: absolute;
+      top: 5px; left: 10px;
+      font-size: 0.6em;
+      background: var(--red);
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 4px;
+      display: none;
+    }
+    .trend-box.extreme-bullish .extreme-badge,
+    .trend-box.extreme-bearish .extreme-badge { display: block; }
     
     .main-signal {
       width: 100%;
@@ -195,6 +237,16 @@
       border-color: var(--cyan);
       color: var(--cyan);
       animation: pulse-cyan 1.5s infinite;
+    }
+    .signal-extreme {
+      background: linear-gradient(135deg, rgba(255,68,68,0.2), rgba(255,215,0,0.1));
+      border-color: var(--red);
+      color: var(--red);
+      animation: pulse-extreme 1s infinite;
+    }
+    @keyframes pulse-extreme { 
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255,68,68,0.6); } 
+      50% { box-shadow: 0 0 30px 10px rgba(255,68,68,0.3); } 
     }
     @keyframes pulse-cyan { 
       0%, 100% { box-shadow: 0 0 0 0 rgba(0,255,255,0.4); } 
@@ -237,6 +289,18 @@
     }
     .signal-strong-reversal .reversal-badge { display: block; }
     
+    .extreme-signal-badge {
+      position: absolute;
+      top: 5px; left: 10px;
+      font-size: 0.35em;
+      background: var(--red);
+      color: #fff;
+      padding: 3px 10px;
+      border-radius: 4px;
+      display: none;
+    }
+    .signal-extreme .extreme-signal-badge { display: block; }
+    
     .projections {
       width: 100%;
       max-width: 500px;
@@ -260,6 +324,15 @@
     .proj-adjusted { background: linear-gradient(135deg, var(--panel), rgba(255,0,255,0.1)); border-style: dashed; }
     .proj-conflict { border-color: var(--orange); background: rgba(255,136,0,0.1); }
     .proj-reversal { border-color: var(--cyan); background: rgba(0,255,255,0.1); }
+    .proj-extreme { 
+      border-color: var(--red); 
+      background: rgba(255,68,68,0.15); 
+      animation: pulse-proj 2s infinite;
+    }
+    @keyframes pulse-proj { 
+      0%, 100% { opacity: 1; } 
+      50% { opacity: 0.8; } 
+    }
     
     .proj-label { font-size: 0.8em; color: #888; margin-bottom: 8px; }
     .proj-sequence { font-size: 1.5em; letter-spacing: 4px; margin-bottom: 8px; }
@@ -268,10 +341,20 @@
     .proj-signal-buy { color: var(--green); }
     .proj-signal-sell { color: var(--red); }
     .proj-signal-hold { color: var(--gold); }
+    .proj-signal-extreme { color: var(--red); animation: blink 1s infinite; }
     .proj-confidence { font-size: 0.75em; color: #666; margin-top: 5px; }
     .proj-reason { font-size: 0.7em; color: var(--purple); margin-top: 5px; font-style: italic; }
     .proj-conflict-note { font-size: 0.7em; color: var(--orange); margin-top: 5px; font-weight: bold; }
     .proj-reversal-note { font-size: 0.7em; color: var(--cyan); margin-top: 5px; font-weight: bold; }
+    .proj-extreme-note { 
+      font-size: 0.7em; 
+      color: var(--red); 
+      margin-top: 5px; 
+      font-weight: bold;
+      background: rgba(255,68,68,0.2);
+      padding: 3px;
+      border-radius: 3px;
+    }
     
     .controls { display: flex; gap: 10px; margin-bottom: 15px; }
     button { padding: 18px 35px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.1em; }
@@ -352,6 +435,12 @@
     .recent-bullish { background: rgba(0,255,136,0.1); color: var(--green); }
     .recent-bearish { background: rgba(255,68,68,0.1); color: var(--red); }
     .recent-neutral { background: rgba(255,215,0,0.1); color: var(--gold); }
+    .recent-extreme { 
+      background: rgba(255,68,68,0.2); 
+      color: var(--red); 
+      border: 1px solid var(--red);
+      animation: blink 1s infinite;
+    }
     
     .momentum-indicator {
       width: 100%;
@@ -378,6 +467,18 @@
     }
     .momentum-fill.bullish { background: linear-gradient(90deg, var(--green), #00aa55); }
     .momentum-fill.bearish { background: linear-gradient(90deg, var(--red), #aa0000); }
+    .momentum-fill.extreme-bullish { 
+      background: linear-gradient(90deg, var(--green), var(--red)); 
+      animation: shake 0.5s infinite;
+    }
+    .momentum-fill.extreme-bearish { 
+      background: linear-gradient(90deg, var(--red), var(--green)); 
+    }
+    @keyframes shake { 
+      0%, 100% { transform: translateX(0); } 
+      25% { transform: translateX(-2px); } 
+      75% { transform: translateX(2px); } 
+    }
     .momentum-marker {
       position: absolute;
       top: 0;
@@ -408,6 +509,22 @@
     .priority-explanation.active { display: block; }
     .priority-title { color: var(--orange); font-weight: bold; margin-bottom: 5px; }
     .priority-item { color: #ccc; margin: 3px 0; }
+    .priority-item.extreme { color: var(--red); font-weight: bold; }
+    
+    .logic-explanation {
+      width: 100%;
+      max-width: 500px;
+      background: rgba(0,255,136,0.05);
+      border: 1px solid var(--green);
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 15px;
+      font-size: 0.75em;
+      display: none;
+    }
+    .logic-explanation.active { display: block; }
+    .logic-title { color: var(--green); font-weight: bold; margin-bottom: 5px; }
+    .logic-item { color: #ccc; margin: 3px 0; }
   </style>
 </head>
 <body>
@@ -433,6 +550,13 @@
     Tendencia global recalculada
   </div>
 
+  <div class="extreme-alert" id="extreme-alert">
+    <div class="extreme-title">⚠️ EXTREMO DETECTADO</div>
+    <div class="extreme-text" id="extreme-text">
+      Mercado en sobrecompra/sobreventa extrema. Alta probabilidad de reversión.
+    </div>
+  </div>
+
   <div class="cross-detector">
     <div class="cross-title">⚔️ DETECTOR MULTI-CRUCE MA</div>
     <div class="cross-active" id="cross-alert">
@@ -442,7 +566,6 @@
     <div class="ma-grid" id="ma-grid"></div>
   </div>
 
-  <!-- NUEVO: Análisis de vela actual -->
   <div class="current-candle-analysis" id="current-analysis">
     <div class="current-title">🎯 ANÁLISIS VELA ACTUAL</div>
     <div class="current-stats">
@@ -480,6 +603,7 @@
 
   <div class="trend-box neutral" id="trend-box">
     <div class="trend-badge">AJUSTADA</div>
+    <div class="extreme-badge">EXTREMO</div>
     <div class="trend-label">TENDENCIA GLOBAL (MA10)</div>
     <div class="trend-value" id="trend-value">NEUTRAL</div>
     <div class="trend-original" id="trend-original"></div>
@@ -490,13 +614,20 @@
     <div class="manual-trap-badge">TRAMPA ACTIVA</div>
     <div class="conflict-badge">⚠️ CONFLICTO</div>
     <div class="reversal-badge">🔄 REVERSIÓN</div>
+    <div class="extreme-signal-badge">⚠️ EXTREMO</div>
   </div>
 
   <div class="priority-explanation" id="priority-explanation">
     <div class="priority-title">⚡ Prioridad de Señales:</div>
-    <div class="priority-item">1. Vela fuerte de reversión (ignora tendencia previa)</div>
-    <div class="priority-item">2. Cruce MA activo válido</div>
-    <div class="priority-item">3. Patrón de velas + contexto</div>
+    <div class="priority-item extreme">1. EXTREMO (>90% o <10%) - Esperar reversión</div>
+    <div class="priority-item">2. Vela fuerte de reversión (ignora tendencia previa)</div>
+    <div class="priority-item">3. Cruce MA activo válido</div>
+    <div class="priority-item">4. Patrón de velas + contexto</div>
+  </div>
+
+  <div class="logic-explanation" id="logic-explanation">
+    <div class="logic-title">🧠 Lógica Actual:</div>
+    <div class="logic-item" id="logic-text">Analizando condiciones de mercado...</div>
   </div>
 
   <div class="projections" id="projections">
@@ -509,6 +640,7 @@
       <div class="proj-reason" id="proj-g-reason"></div>
       <div class="proj-conflict-note" id="proj-g-conflict"></div>
       <div class="proj-reversal-note" id="proj-g-reversal"></div>
+      <div class="proj-extreme-note" id="proj-g-extreme"></div>
     </div>
     <div class="proj-box proj-red" id="proj-r-box" onclick="add('R')">
       <div class="proj-label">Si ROJO →</div>
@@ -519,6 +651,7 @@
       <div class="proj-reason" id="proj-r-reason"></div>
       <div class="proj-conflict-note" id="proj-r-conflict"></div>
       <div class="proj-reversal-note" id="proj-r-reversal"></div>
+      <div class="proj-extreme-note" id="proj-r-extreme"></div>
     </div>
   </div>
 
@@ -543,7 +676,7 @@ let crosses = [];
 let manualTrapIndex = null;
 let pendingTrapIndex = null;
 let originalTrendMA = null;
-let lastCandleStrength = 0; // NUEVO: Fuerza de la última vela
+let lastCandleStrength = 0;
 
 const MA_CONFIG = {
   crosses: [
@@ -552,6 +685,16 @@ const MA_CONFIG = {
     { fast: 10, slow: 20, name: 'MA10/MA20', type: 'confirmado' }
   ],
   trend: { period: 10, name: 'MA10' }
+};
+
+// NUEVO: Umbrales de extremos
+const EXTREME_THRESHOLDS = {
+  overbought: 90,    // Sobrecompra extrema
+  bullish: 70,       // Alcista fuerte
+  neutralHigh: 55,   // Neutral alto
+  neutralLow: 45,    // Neutral bajo
+  bearish: 30,       // Bajista fuerte
+  oversold: 10       // Sobreventa extrema
 };
 
 function calcMA(period, useOriginal = false) {
@@ -575,7 +718,57 @@ function calcPrevMA(period, useOriginal = false) {
   return (slice.filter(h => h === 'G').length / period) * 100;
 }
 
-// NUEVO: Calcular fuerza de la vela actual basada en contexto
+// NUEVO: Detectar condición extrema
+function detectExtreme(trendMA, recentTrend) {
+  if (trendMA === null) return null;
+  
+  // Extremo alcista: MA10 > 90% y 4+ velas verdes seguidas
+  if (trendMA >= EXTREME_THRESHOLDS.overbought && recentTrend.strength >= 4 && recentTrend.trend === 'bullish') {
+    return {
+      type: 'extreme_bullish',
+      level: trendMA,
+      message: `SOBRECOMPRA EXTREMA: MA10 al ${trendMA.toFixed(0)}% con ${recentTrend.strength} velas verdes. Reversión bajista inminente.`,
+      action: 'wait_sell',
+      confidence: 0.85
+    };
+  }
+  
+  // Extremo bajista: MA10 < 10% y 4+ velas rojas seguidas
+  if (trendMA <= EXTREME_THRESHOLDS.oversold && recentTrend.strength >= 4 && recentTrend.trend === 'bearish') {
+    return {
+      type: 'extreme_bearish',
+      level: trendMA,
+      message: `SOBREVENTA EXTREMA: MA10 al ${trendMA.toFixed(0)}% con ${recentTrend.strength} velas rojas. Reversión alcista inminente.`,
+      action: 'wait_buy',
+      confidence: 0.85
+    };
+  }
+  
+  // Alerta de sobrecompra moderada (80-90%)
+  if (trendMA >= 80 && recentTrend.trend === 'bullish' && recentTrend.strength >= 3) {
+    return {
+      type: 'warning_bullish',
+      level: trendMA,
+      message: `Sobrecompra: MA10 al ${trendMA.toFixed(0)}%. Precaución con compras.`,
+      action: 'caution',
+      confidence: 0.60
+    };
+  }
+  
+  // Alerta de sobreventa moderada (10-20%)
+  if (trendMA <= 20 && recentTrend.trend === 'bearish' && recentTrend.strength >= 3) {
+    return {
+      type: 'warning_bearish',
+      level: trendMA,
+      message: `Sobreventa: MA10 al ${trendMA.toFixed(0)}%. Oportunidad de compra cercana.`,
+      action: 'caution',
+      confidence: 0.60
+    };
+  }
+  
+  return null;
+}
+
 function analyzeCurrentCandle() {
   if (history.length < 3) return { strength: 0, type: 'neutral', isReversal: false };
   
@@ -583,7 +776,6 @@ function analyzeCurrentCandle() {
   const prev = history[history.length - 2];
   const prev2 = history[history.length - 3];
   
-  // Detectar si es vela de reversión
   const wasBearish = prev === 'R' && prev2 === 'R';
   const wasBullish = prev === 'G' && prev2 === 'G';
   
@@ -593,21 +785,18 @@ function analyzeCurrentCandle() {
   
   if (current === 'G') {
     if (wasBearish) {
-      // Vela verde después de 2 rojas = posible reversión alcista
       strength = 3;
       type = 'reversal-green';
       isReversal = true;
     } else if (prev === 'G') {
-      // Continuación alcista
       strength = 2;
       type = 'continuation-green';
     } else {
       strength = 1;
       type = 'weak-green';
     }
-  } else { // current === 'R'
+  } else {
     if (wasBullish) {
-      // Vela roja después de 2 verdes = posible reversión bajista
       strength = 3;
       type = 'reversal-red';
       isReversal = true;
@@ -648,6 +837,8 @@ function analyzeRecentTrend() {
     }
   }
   
+  if (consecutiveReds >= 4) return { trend: 'bearish', sequence: recent, strength: consecutiveReds, reason: `${consecutiveReds} rojas seguidas (EXTREMO)` };
+  if (consecutiveGreens >= 4) return { trend: 'bullish', sequence: recent, strength: consecutiveGreens, reason: `${consecutiveGreens} verdes seguidas (EXTREMO)` };
   if (consecutiveReds >= 3) return { trend: 'bearish', sequence: recent, strength: consecutiveReds, reason: `${consecutiveReds} rojas seguidas` };
   if (consecutiveGreens >= 3) return { trend: 'bullish', sequence: recent, strength: consecutiveGreens, reason: `${consecutiveGreens} verdes seguidas` };
   
@@ -657,10 +848,15 @@ function analyzeRecentTrend() {
   return { trend: 'neutral', sequence: recent, strength: 0, reason: 'Equilibrio' };
 }
 
-function isTrap(crossType, trendMA, recentTrend, currentCandle) {
+function isTrap(crossType, trendMA, recentTrend, currentCandle, extremeCondition) {
   if (trendMA === null) return false;
   
-  // Si hay una vela de reversión fuerte, no es trampa
+  // Si hay condición extrema, cualquier cruce en dirección del extremo es trampa
+  if (extremeCondition) {
+    if (extremeCondition.type === 'extreme_bullish' && crossType === 'golden') return true;
+    if (extremeCondition.type === 'extreme_bearish' && crossType === 'death') return true;
+  }
+  
   if (currentCandle.isReversal && currentCandle.strength >= 3) return false;
   
   if (crossType === 'golden' && recentTrend.trend === 'bearish' && recentTrend.strength >= 3) return true;
@@ -679,6 +875,7 @@ function detectCrosses(useOriginal = false) {
   const trendMA = calcMA(MA_CONFIG.trend.period, useOriginal);
   const recentTrend = analyzeRecentTrend();
   const currentCandle = analyzeCurrentCandle();
+  const extremeCondition = detectExtreme(trendMA, recentTrend);
   
   for (let cfg of MA_CONFIG.crosses) {
     const maFast = calcMA(cfg.fast, useOriginal);
@@ -702,10 +899,10 @@ function detectCrosses(useOriginal = false) {
       if (prevFast !== null && prevSlow !== null) {
         if (prevFast <= prevSlow && maFast > maSlow) {
           crossed = true; crossType = 'golden';
-          trap = isTrap('golden', trendMA, recentTrend, currentCandle);
+          trap = isTrap('golden', trendMA, recentTrend, currentCandle, extremeCondition);
         } else if (prevFast >= prevSlow && maFast < maSlow) {
           crossed = true; crossType = 'death';
-          trap = isTrap('death', trendMA, recentTrend, currentCandle);
+          trap = isTrap('death', trendMA, recentTrend, currentCandle, extremeCondition);
         }
       }
     }
@@ -719,36 +916,44 @@ function detectCrosses(useOriginal = false) {
       crossed,
       crossType,
       trap,
-      active: Math.abs(maFast - maSlow) < 5
+      active: Math.abs(maFast - maSlow) < 5,
+      isExtreme: maFast >= 90 || maSlow >= 90 || maFast <= 10 || maSlow <= 10
     });
   }
   
-  return { crosses: results, trendMA, recentTrend, currentCandle };
+  return { crosses: results, trendMA, recentTrend, currentCandle, extremeCondition };
 }
 
-function analyzePattern(lastTwo, originalTwo = null) {
+function analyzePattern(lastTwo, originalTwo = null, extremeCondition = null) {
   if (lastTwo.length < 2) return null;
   
   const [prev, curr] = lastTwo;
   const pattern = prev + curr;
   const origPattern = originalTwo ? originalTwo[0] + originalTwo[1] : null;
   
+  // Ajustar confianzas basado en condición extrema
+  let extremeMultiplier = 1;
+  if (extremeCondition) {
+    if (extremeCondition.type === 'extreme_bullish') extremeMultiplier = 0.3; // Reducir confianza alcista
+    if (extremeCondition.type === 'extreme_bearish') extremeMultiplier = 0.3; // Reducir confianza bajista
+  }
+  
   const scenarios = {
     'GG': { 
-      ifG: { pat: 'GGG', sig: 'COMPRA', conf: 0.75, desc: 'Continuación alcista' },
-      ifR: { pat: 'GGR', sig: 'VENTA', conf: 0.60, desc: 'Reversión bajista' }
+      ifG: { pat: 'GGG', sig: 'COMPRA', conf: 0.75 * extremeMultiplier, desc: 'Continuación alcista' },
+      ifR: { pat: 'GGR', sig: 'VENTA', conf: 0.85, desc: 'Reversión bajista FUERTE (después de extremo)' }
     },
     'RR': {
-      ifG: { pat: 'RRG', sig: 'COMPRA', conf: 0.70, desc: 'Reversión alcista FUERTE' }, // Aumentada confianza
-      ifR: { pat: 'RRR', sig: 'VENTA', conf: 0.75, desc: 'Continuación bajista' }
+      ifG: { pat: 'RRG', sig: 'COMPRA', conf: 0.85, desc: 'Reversión alcista FUERTE (después de extremo)' },
+      ifR: { pat: 'RRR', sig: 'VENTA', conf: 0.75 * extremeMultiplier, desc: 'Continuación bajista' }
     },
     'GR': {
-      ifG: { pat: 'GRG', sig: 'COMPRA', conf: 0.55, desc: 'Reversión alcista' },
+      ifG: { pat: 'GRG', sig: 'COMPRA', conf: 0.55 * extremeMultiplier, desc: 'Reversión alcista' },
       ifR: { pat: 'GRR', sig: 'VENTA', conf: 0.65, desc: 'Confirmación bajista' }
     },
     'RG': {
       ifG: { pat: 'RGG', sig: 'COMPRA', conf: 0.65, desc: 'Confirmación alcista' },
-      ifR: { pat: 'RGR', sig: 'VENTA', conf: 0.55, desc: 'Reversión bajista' }
+      ifR: { pat: 'RGR', sig: 'VENTA', conf: 0.55 * extremeMultiplier, desc: 'Reversión bajista' }
     }
   };
   
@@ -760,10 +965,16 @@ function analyzePattern(lastTwo, originalTwo = null) {
   return result;
 }
 
-function getTrendLabel(value) {
-  if (value > 55) return { text: 'ALCISTA ↑', class: 'bullish', color: 'var(--green)' };
-  if (value < 45) return { text: 'BAJISTA ↓', class: 'bearish', color: 'var(--red)' };
-  return { text: 'NEUTRAL →', class: 'neutral', color: 'var(--gold)' };
+function getTrendLabel(value, extremeCondition = null) {
+  if (extremeCondition && extremeCondition.type === 'extreme_bullish') {
+    return { text: '⚠️ EXTREMO ALCISTA', class: 'extreme-bullish', color: 'var(--red)', isExtreme: true };
+  }
+  if (extremeCondition && extremeCondition.type === 'extreme_bearish') {
+    return { text: '⚠️ EXTREMO BAJISTA', class: 'extreme-bearish', color: 'var(--green)', isExtreme: true };
+  }
+  if (value > 55) return { text: 'ALCISTA ↑', class: 'bullish', color: 'var(--green)', isExtreme: false };
+  if (value < 45) return { text: 'BAJISTA ↓', class: 'bearish', color: 'var(--red)', isExtreme: false };
+  return { text: 'NEUTRAL →', class: 'neutral', color: 'var(--gold)', isExtreme: false };
 }
 
 function update() {
@@ -773,12 +984,22 @@ function update() {
   const trendMA = adjustedResult.trendMA;
   const recentTrend = adjustedResult.recentTrend;
   const currentCandle = adjustedResult.currentCandle;
+  const extremeCondition = adjustedResult.extremeCondition;
   
   if (manualTrapIndex !== null && originalResult.trendMA !== null) {
     originalTrendMA = originalResult.trendMA;
   }
   
-  // NUEVO: Actualizar análisis de vela actual
+  // NUEVO: Actualizar alerta de extremo
+  const extremeAlert = document.getElementById('extreme-alert');
+  if (extremeCondition && (extremeCondition.type === 'extreme_bullish' || extremeCondition.type === 'extreme_bearish')) {
+    extremeAlert.classList.add('active');
+    document.getElementById('extreme-text').textContent = extremeCondition.message;
+  } else {
+    extremeAlert.classList.remove('active');
+  }
+  
+  // Actualizar análisis de vela actual
   const currentAnalysis = document.getElementById('current-analysis');
   if (currentCandle.strength > 0) {
     currentAnalysis.classList.add('active');
@@ -817,7 +1038,8 @@ function update() {
       return `<div class="recent-candle recent-candle-${c.toLowerCase()} ${isLast ? 'candle-new' : ''}">${c}</div>`;
     }).join('');
     
-    recentAnalysis.className = 'recent-analysis recent-' + recentTrend.trend;
+    const isExtremeRecent = recentTrend.strength >= 4;
+    recentAnalysis.className = 'recent-analysis recent-' + recentTrend.trend + (isExtremeRecent ? ' recent-extreme' : '');
     recentAnalysis.innerHTML = `<strong>${recentTrend.reason}</strong>`;
   }
   
@@ -828,7 +1050,14 @@ function update() {
     const fill = document.getElementById('momentum-fill');
     document.getElementById('momentum-detail').textContent = `MA10: ${trendMA.toFixed(1)}% | Vela: ${currentCandle.type}`;
     fill.style.width = trendMA + '%';
-    fill.className = 'momentum-fill ' + (trendMA > 55 ? 'bullish' : trendMA < 45 ? 'bearish' : 'neutral');
+    
+    if (extremeCondition && extremeCondition.type === 'extreme_bullish') {
+      fill.className = 'momentum-fill extreme-bullish';
+    } else if (extremeCondition && extremeCondition.type === 'extreme_bearish') {
+      fill.className = 'momentum-fill extreme-bearish';
+    } else {
+      fill.className = 'momentum-fill ' + (trendMA > 55 ? 'bullish' : trendMA < 45 ? 'bearish' : 'neutral');
+    }
   } else {
     momentumBox.style.display = 'none';
   }
@@ -852,7 +1081,7 @@ function update() {
   const trendValue = document.getElementById('trend-value');
   
   if (trendMA !== null) {
-    const trend = getTrendLabel(trendMA);
+    const trend = getTrendLabel(trendMA, extremeCondition);
     trendBox.className = 'trend-box ' + trend.class + (manualTrapIndex !== null ? ' adjusted' : '');
     trendValue.textContent = trend.text;
     trendValue.style.color = trend.color;
@@ -863,84 +1092,134 @@ function update() {
   
   // Grid de MA
   const maResults = adjustedResult.crosses;
-  document.getElementById('ma-grid').innerHTML = maResults.map(r => `
-    <div class="ma-item ${r.crossed ? 'active' : ''} ${r.trap ? 'trap' : ''}">
+  document.getElementById('ma-grid').innerHTML = maResults.map(r => {
+    const isExtreme = r.maFast >= 90 || r.maSlow >= 90 || r.maFast <= 10 || r.maSlow <= 10;
+    return `
+    <div class="ma-item ${r.crossed ? 'active' : ''} ${r.trap ? 'trap' : ''} ${isExtreme ? 'extreme' : ''}">
       <div class="ma-name">${r.pair}</div>
-      <div class="ma-val ${r.diff > 0 ? 'ma-up' : 'ma-down'}">
+      <div class="ma-val ${r.diff > 0 ? 'ma-up' : 'ma-down'} ${isExtreme ? 'ma-extreme' : ''}">
         ${r.maFast.toFixed(0)}|${r.maSlow.toFixed(0)}
       </div>
-      <div style="font-size:0.7em;color:${r.trap ? 'var(--purple)' : r.crossed ? 'var(--gold)' : '#666'}">
-        ${r.trap ? 'TRAMPA' : r.crossed ? '✓ CRUCE' : ''}
+      <div style="font-size:0.7em;color:${r.trap ? 'var(--purple)' : r.crossed ? 'var(--gold)' : isExtreme ? 'var(--red)' : '#666'}">
+        ${r.trap ? 'TRAMPA' : r.crossed ? '✓ CRUCE' : isExtreme ? 'EXTREMO' : ''}
       </div>
     </div>
-  `).join('');
+  `}).join('');
   
   // ========== LÓGICA DE SEÑAL PRINCIPAL CORREGIDA ==========
   const activeCross = maResults.find(r => r.crossed && !r.trap) || maResults.find(r => r.crossed);
   const mainSignal = document.getElementById('main-signal');
   const priorityExplanation = document.getElementById('priority-explanation');
+  const logicExplanation = document.getElementById('logic-explanation');
   
   let effectiveHistory = history;
   if (manualTrapIndex !== null) {
     effectiveHistory = history.filter((_, idx) => idx !== manualTrapIndex);
   }
   const lastTwo = effectiveHistory.slice(-2);
-  const proj = lastTwo.length >= 2 ? analyzePattern(lastTwo) : null;
+  const proj = lastTwo.length >= 2 ? analyzePattern(lastTwo, null, extremeCondition) : null;
   
-  // CORREGIDO: Prioridad 1 - Vela de reversión fuerte
+  // ========== NUEVA LÓGICA DE PRIORIDADES ==========
   let finalSignal = 'wait';
   let signalClass = 'signal-wait';
   let signalText = 'ESPERAR';
   let showReversal = false;
+  let showExtreme = false;
+  let logicText = '';
   
-  if (currentCandle.isReversal && currentCandle.strength >= 3) {
-    // Vela de reversión fuerte tiene máxima prioridad
+  // PRIORIDAD 0: Condición extrema (máxima prioridad)
+  if (extremeCondition && (extremeCondition.type === 'extreme_bullish' || extremeCondition.type === 'extreme_bearish')) {
+    showExtreme = true;
+    if (extremeCondition.type === 'extreme_bullish') {
+      // En sobrecompra extrema, solo recomendar venta si hay señal de reversión
+      if (currentCandle.current === 'R' && currentCandle.strength >= 2) {
+        finalSignal = 'sell';
+        signalClass = 'signal-extreme';
+        signalText = 'VENDER EXTREMO';
+        logicText = `MA10 al ${trendMA.toFixed(0)}% (extremo) + vela roja de fuerza ${currentCandle.strength}/3. Reversión bajista confirmada.`;
+      } else {
+        finalSignal = 'wait';
+        signalClass = 'signal-extreme';
+        signalText = '⚠️ ESPERAR';
+        logicText = `MA10 al ${trendMA.toFixed(0)}% - Sobrecompra extrema. NO comprar. Esperar reversión.`;
+      }
+    } else if (extremeCondition.type === 'extreme_bearish') {
+      // En sobreventa extrema, solo recomendar compra si hay señal de reversión
+      if (currentCandle.current === 'G' && currentCandle.strength >= 2) {
+        finalSignal = 'buy';
+        signalClass = 'signal-extreme';
+        signalText = 'COMPRAR EXTREMO';
+        logicText = `MA10 al ${trendMA.toFixed(0)}% (extremo) + vela verde de fuerza ${currentCandle.strength}/3. Reversión alcista confirmada.`;
+      } else {
+        finalSignal = 'wait';
+        signalClass = 'signal-extreme';
+        signalText = '⚠️ ESPERAR';
+        logicText = `MA10 al ${trendMA.toFixed(0)}% - Sobreventa extrema. NO vender. Esperar reversión.`;
+      }
+    }
+  }
+  // PRIORIDAD 1: Vela de reversión fuerte (solo si no hay extremo o la reversión coincide)
+  else if (currentCandle.isReversal && currentCandle.strength >= 3) {
     showReversal = true;
     if (currentCandle.current === 'G') {
       finalSignal = 'buy';
       signalClass = 'signal-strong-reversal';
       signalText = 'COMPRAR';
+      logicText = `Reversión alcista fuerte detectada. Fuerza: ${currentCandle.strength}/3. Ignorando tendencia previa.`;
     } else {
       finalSignal = 'sell';
       signalClass = 'signal-strong-reversal';
       signalText = 'VENDER';
+      logicText = `Reversión bajista fuerte detectada. Fuerza: ${currentCandle.strength}/3. Ignorando tendencia previa.`;
     }
-  } else if (activeCross && !activeCross.trap) {
-    // Prioridad 2 - Cruce válido
+  }
+  // PRIORIDAD 2: Cruce válido
+  else if (activeCross && !activeCross.trap) {
     if (activeCross.crossType === 'golden') {
       finalSignal = 'buy';
       signalClass = 'signal-buy';
       signalText = 'COMPRAR';
+      logicText = `Golden Cross válido en ${activeCross.pair}. Tendencia alcista confirmada.`;
     } else {
       finalSignal = 'sell';
       signalClass = 'signal-sell';
       signalText = 'VENDER';
+      logicText = `Death Cross válido en ${activeCross.pair}. Tendencia bajista confirmada.`;
     }
-  } else if (proj && recentTrend.trend !== 'neutral') {
-    // Prioridad 3 - Patrón + contexto
+  }
+  // PRIORIDAD 3: Patrón + contexto (con ajuste por extremo)
+  else if (proj && recentTrend.trend !== 'neutral') {
     if (recentTrend.trend === 'bullish' && proj.ifG.sig === 'COMPRA') {
       finalSignal = 'buy';
       signalClass = 'signal-buy';
       signalText = 'COMPRAR';
+      logicText = `Patrón ${proj.ifG.pat} en contexto alcista. Confianza: ${Math.round(proj.ifG.conf * 100)}%`;
     } else if (recentTrend.trend === 'bearish' && proj.ifR.sig === 'VENTA') {
       finalSignal = 'sell';
       signalClass = 'signal-sell';
       signalText = 'VENDER';
+      logicText = `Patrón ${proj.ifR.pat} en contexto bajista. Confianza: ${Math.round(proj.ifR.conf * 100)}%`;
+    } else {
+      logicText = `Patrón detectado pero en conflicto con tendencia. Esperando confirmación.`;
     }
+  } else {
+    logicText = `Sin señales claras. Esperando próxima vela. MA10: ${trendMA ? trendMA.toFixed(0) + '%' : 'N/A'}`;
+  }
+  
+  // Si hay cruce pero es trampa, mostrar advertencia
+  if (activeCross && activeCross.trap && !showExtreme) {
+    signalClass = 'signal-trap';
+    signalText = activeCross.crossType === 'golden' ? '¿COMPRA?' : '¿VENTA?';
+    logicText = `⚠️ ${activeCross.pair} detectó cruce ${activeCross.crossType} pero es TRAMPA. Tendencia en contra.`;
   }
   
   // Actualizar señal principal
-  if (activeCross) {
+  if (activeCross && !showExtreme) {
     document.getElementById('cross-alert').classList.add('show');
     document.getElementById('cross-pair').textContent = activeCross.pair;
     const typeEl = document.getElementById('cross-type');
     typeEl.textContent = activeCross.crossType === 'golden' ? 'GOLDEN CROSS' : 'DEATH CROSS';
     typeEl.className = activeCross.crossType === 'golden' ? 'cross-type-golden' : 'cross-type-death';
-    
-    if (activeCross.trap) {
-      signalClass = 'signal-trap';
-      signalText = activeCross.crossType === 'golden' ? 'COMPRA?' : 'VENTA?';
-    }
   } else {
     document.getElementById('cross-alert').classList.remove('show');
   }
@@ -949,12 +1228,15 @@ function update() {
   mainSignal.innerHTML = signalText + 
     '<div class="manual-trap-badge">TRAMPA ACTIVA</div>' +
     '<div class="conflict-badge">⚠️ CONFLICTO</div>' +
-    '<div class="reversal-badge">🔄 REVERSIÓN FUERTE</div>';
+    '<div class="reversal-badge">🔄 REVERSIÓN FUERTE</div>' +
+    '<div class="extreme-signal-badge">⚠️ EXTREMO</div>';
   
-  priorityExplanation.classList.toggle('active', showReversal);
+  priorityExplanation.classList.toggle('active', showReversal || showExtreme);
+  logicExplanation.classList.toggle('active', true);
+  document.getElementById('logic-text').textContent = logicText;
   
   // Actualizar proyecciones
-  updateProjections(trendMA, activeCross, recentTrend, currentCandle);
+  updateProjections(trendMA, activeCross, recentTrend, currentCandle, extremeCondition);
   
   // Historial visual
   document.getElementById('history').innerHTML = history.map((h, i) => {
@@ -965,7 +1247,7 @@ function update() {
   }).join('');
 }
 
-function updateProjections(trendMA, activeCross, recentTrend, currentCandle) {
+function updateProjections(trendMA, activeCross, recentTrend, currentCandle, extremeCondition) {
   let effectiveHistory = history;
   if (manualTrapIndex !== null) {
     effectiveHistory = history.filter((_, idx) => idx !== manualTrapIndex);
@@ -979,28 +1261,64 @@ function updateProjections(trendMA, activeCross, recentTrend, currentCandle) {
     return;
   }
   
-  const proj = analyzePattern(lastTwo);
+  const proj = analyzePattern(lastTwo, null, extremeCondition);
   
   if (proj) {
     // Proyección VERDE
     const gIsReversal = currentCandle.isReversal && currentCandle.current === 'G';
+    const gIsExtremeBuy = extremeCondition && extremeCondition.type === 'extreme_bearish' && currentCandle.current === 'G';
+    
     document.getElementById('proj-g-seq').textContent = proj.ifG.pat;
-    document.getElementById('proj-g-sig').textContent = proj.ifG.sig;
-    document.getElementById('proj-g-sig').className = `proj-signal ${proj.ifG.sig === 'COMPRA' ? 'proj-signal-buy' : 'proj-signal-hold'}`;
-    document.getElementById('proj-g-conf').textContent = Math.round(proj.ifG.conf * 100) + '%';
+    
+    // Ajustar señal si hay extremo
+    let gSignal = proj.ifG.sig;
+    let gClass = proj.ifG.sig === 'COMPRA' ? 'proj-signal-buy' : 'proj-signal-hold';
+    let gBoxClass = 'proj-box proj-green';
+    let gConfidence = Math.round(proj.ifG.conf * 100) + '%';
+    
+    if (extremeCondition && extremeCondition.type === 'extreme_bullish') {
+      gSignal = 'ESPERAR';
+      gClass = 'proj-signal-extreme';
+      gBoxClass = 'proj-box proj-green proj-extreme';
+      gConfidence = '0% - EXTREMO';
+    }
+    
+    document.getElementById('proj-g-sig').textContent = gSignal;
+    document.getElementById('proj-g-sig').className = `proj-signal ${gClass}`;
+    document.getElementById('proj-g-conf').textContent = gConfidence;
     document.getElementById('proj-g-reason').textContent = gIsReversal ? '🔄 Vela de reversión' : '';
     document.getElementById('proj-g-reversal').textContent = gIsReversal ? 'Prioridad máxima por reversión' : '';
-    document.getElementById('proj-g-box').className = 'proj-box proj-green ' + (gIsReversal ? 'proj-reversal' : '');
+    document.getElementById('proj-g-extreme').textContent = (extremeCondition && extremeCondition.type === 'extreme_bullish') ? 
+      '⚠️ NO COMPRAR: Sobrecompra extrema' : '';
+    document.getElementById('proj-g-box').className = gBoxClass;
     
     // Proyección ROJO
     const rIsReversal = currentCandle.isReversal && currentCandle.current === 'R';
+    const rIsExtremeSell = extremeCondition && extremeCondition.type === 'extreme_bearish' && currentCandle.current === 'R';
+    
     document.getElementById('proj-r-seq').textContent = proj.ifR.pat;
-    document.getElementById('proj-r-sig').textContent = proj.ifR.sig;
-    document.getElementById('proj-r-sig').className = `proj-signal ${proj.ifR.sig === 'VENTA' ? 'proj-signal-sell' : 'proj-signal-hold'}`;
-    document.getElementById('proj-r-conf').textContent = Math.round(proj.ifR.conf * 100) + '%';
+    
+    // Ajustar señal si hay extremo
+    let rSignal = proj.ifR.sig;
+    let rClass = proj.ifR.sig === 'VENTA' ? 'proj-signal-sell' : 'proj-signal-hold';
+    let rBoxClass = 'proj-box proj-red';
+    let rConfidence = Math.round(proj.ifR.conf * 100) + '%';
+    
+    if (extremeCondition && extremeCondition.type === 'extreme_bearish') {
+      rSignal = 'ESPERAR';
+      rClass = 'proj-signal-extreme';
+      rBoxClass = 'proj-box proj-red proj-extreme';
+      rConfidence = '0% - EXTREMO';
+    }
+    
+    document.getElementById('proj-r-sig').textContent = rSignal;
+    document.getElementById('proj-r-sig').className = `proj-signal ${rClass}`;
+    document.getElementById('proj-r-conf').textContent = rConfidence;
     document.getElementById('proj-r-reason').textContent = rIsReversal ? '🔄 Vela de reversión' : '';
     document.getElementById('proj-r-reversal').textContent = rIsReversal ? 'Prioridad máxima por reversión' : '';
-    document.getElementById('proj-r-box').className = 'proj-box proj-red ' + (rIsReversal ? 'proj-reversal' : '');
+    document.getElementById('proj-r-extreme').textContent = (extremeCondition && extremeCondition.type === 'extreme_bearish') ? 
+      '⚠️ NO VENDER: Sobreventa extrema' : '';
+    document.getElementById('proj-r-box').className = rBoxClass;
   }
 }
 
@@ -1054,8 +1372,10 @@ function reset() {
   originalTrendMA = null;
   document.getElementById('cross-alert').classList.remove('show');
   document.getElementById('trap-banner').classList.remove('active');
+  document.getElementById('extreme-alert').classList.remove('active');
   document.getElementById('btn-clear-trap').style.display = 'none';
   document.getElementById('priority-explanation').classList.remove('active');
+  document.getElementById('logic-explanation').classList.remove('active');
   closeModal();
   update();
 }
