@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Detector MA + Fuerza de Vela - CORREGIDO</title>
+  <title>Detector MA + Fuerza de Vela - CORREGIDO v2</title>
   <style>
     :root {
       --green: #00ff88;
@@ -166,6 +166,8 @@
     .trend-box.bullish { border-color: var(--green); }
     .trend-box.bearish { border-color: var(--red); }
     .trend-box.neutral { border-color: var(--gold); }
+    .trend-box.weakening-bullish { border-color: var(--orange); }
+    .trend-box.strengthening-bearish { border-color: var(--cyan); }
     .trend-box.extreme-bullish { 
       border-color: var(--red); 
       background: linear-gradient(135deg, var(--panel), rgba(255,0,0,0.1));
@@ -206,6 +208,13 @@
     }
     .trend-box.extreme-bullish .extreme-badge,
     .trend-box.extreme-bearish .extreme-badge { display: block; }
+    
+    .momentum-note {
+      font-size: 0.7em;
+      color: var(--orange);
+      margin-top: 5px;
+      font-style: italic;
+    }
     
     .main-signal {
       width: 100%;
@@ -435,6 +444,11 @@
     .recent-bullish { background: rgba(0,255,136,0.1); color: var(--green); }
     .recent-bearish { background: rgba(255,68,68,0.1); color: var(--red); }
     .recent-neutral { background: rgba(255,215,0,0.1); color: var(--gold); }
+    .recent-conflict { 
+      background: rgba(255,136,0,0.15); 
+      color: var(--orange); 
+      border: 1px solid var(--orange);
+    }
     .recent-extreme { 
       background: rgba(255,68,68,0.2); 
       color: var(--red); 
@@ -582,13 +596,13 @@
   </div>
 
   <div class="recent-trend" id="recent-box">
-    <div class="recent-title">📊 CONTEXTO RECIENTE (Últimas 5 velas)</div>
+    <div class="recent-title">📊 CONTEXTO RECIENTE (Últimas 5 velas - Ponderado)</div>
     <div class="recent-sequence" id="recent-sequence"></div>
     <div class="recent-analysis" id="recent-analysis">Analizando...</div>
   </div>
 
   <div class="momentum-indicator" id="momentum-box" style="display: none;">
-    <div class="momentum-title">📈 Tendencia MA10</div>
+    <div class="momentum-title">📈 Tendencia MA10 (con Dirección)</div>
     <div class="momentum-bar">
       <div class="momentum-fill" id="momentum-fill"></div>
       <div class="momentum-marker" style="left: 50%;"></div>
@@ -604,9 +618,10 @@
   <div class="trend-box neutral" id="trend-box">
     <div class="trend-badge">AJUSTADA</div>
     <div class="extreme-badge">EXTREMO</div>
-    <div class="trend-label">TENDENCIA GLOBAL (MA10)</div>
+    <div class="trend-label">TENDENCIA GLOBAL (MA10 + Momentum)</div>
     <div class="trend-value" id="trend-value">NEUTRAL</div>
     <div class="trend-original" id="trend-original"></div>
+    <div class="momentum-note" id="momentum-note"></div>
   </div>
 
   <div class="main-signal signal-wait" id="main-signal">
@@ -622,7 +637,7 @@
     <div class="priority-item extreme">1. EXTREMO (>90% o <10%) - Esperar reversión</div>
     <div class="priority-item">2. Vela fuerte de reversión (ignora tendencia previa)</div>
     <div class="priority-item">3. Cruce MA activo válido</div>
-    <div class="priority-item">4. Patrón de velas + contexto</div>
+    <div class="priority-item">4. Patrón de velas + contexto (con ponderación)</div>
   </div>
 
   <div class="logic-explanation" id="logic-explanation">
@@ -812,6 +827,7 @@ function analyzeCurrentCandle() {
   return { strength, type, isReversal, current, prev, prev2 };
 }
 
+// CORREGIDO: Ponderar velas recientes más fuertemente
 function analyzeRecentTrend() {
   let data = history;
   if (manualTrapIndex !== null) {
@@ -819,14 +835,26 @@ function analyzeRecentTrend() {
   }
   
   const recent = data.slice(-5);
-  if (recent.length < 3) return { trend: 'neutral', sequence: recent, strength: 0 };
+  if (recent.length < 3) return { trend: 'neutral', sequence: recent, strength: 0, weightedScore: 0 };
   
-  const greens = recent.filter(h => h === 'G').length;
-  const reds = recent.filter(h => h === 'R').length;
+  // NUEVO: Ponderar velas recientes más fuertemente
+  // Vela más reciente = peso 3, segunda = peso 2, resto = peso 1
+  let weightedScore = 0;
+  const weights = [3, 2, 1, 1, 1]; // Del más reciente al más antiguo
   
+  for (let i = 0; i < recent.length; i++) {
+    const weight = weights[i] || 1;
+    const idx = recent.length - 1 - i; // De atrás hacia adelante
+    if (recent[idx] === 'G') {
+      weightedScore += weight;
+    } else {
+      weightedScore -= weight;
+    }
+  }
+  
+  // Calcular consecutivas (sin cambios)
   let consecutiveGreens = 0;
   let consecutiveReds = 0;
-  
   for (let i = recent.length - 1; i >= 0; i--) {
     if (recent[i] === 'G') {
       if (consecutiveReds === 0) consecutiveGreens++;
@@ -837,15 +865,96 @@ function analyzeRecentTrend() {
     }
   }
   
-  if (consecutiveReds >= 4) return { trend: 'bearish', sequence: recent, strength: consecutiveReds, reason: `${consecutiveReds} rojas seguidas (EXTREMO)` };
-  if (consecutiveGreens >= 4) return { trend: 'bullish', sequence: recent, strength: consecutiveGreens, reason: `${consecutiveGreens} verdes seguidas (EXTREMO)` };
-  if (consecutiveReds >= 3) return { trend: 'bearish', sequence: recent, strength: consecutiveReds, reason: `${consecutiveReds} rojas seguidas` };
-  if (consecutiveGreens >= 3) return { trend: 'bullish', sequence: recent, strength: consecutiveGreens, reason: `${consecutiveGreens} verdes seguidas` };
+  // NUEVA LÓGICA: Detectar conflicto de momentum
+  const lastTwo = recent.slice(-2);
+  const lastTwoRed = lastTwo[0] === 'R' && lastTwo[1] === 'R';
+  const lastTwoGreen = lastTwo[0] === 'G' && lastTwo[1] === 'G';
   
-  if (reds > greens) return { trend: 'bearish', sequence: recent, strength: reds, reason: `Mayoría roja (${reds}/5)` };
-  if (greens > reds) return { trend: 'bullish', sequence: recent, strength: greens, reason: `Mayoría verde (${greens}/5)` };
+  // Calcular mayoría simple para comparación
+  const simpleGreens = recent.filter(h => h === 'G').length;
+  const simpleReds = recent.filter(h => h === 'R').length;
   
-  return { trend: 'neutral', sequence: recent, strength: 0, reason: 'Equilibrio' };
+  // Extremos primero
+  if (consecutiveReds >= 4) return { 
+    trend: 'bearish', 
+    sequence: recent, 
+    strength: consecutiveReds, 
+    reason: `${consecutiveReds} rojas seguidas (EXTREMO)`,
+    weightedScore,
+    isExtreme: true
+  };
+  if (consecutiveGreens >= 4) return { 
+    trend: 'bullish', 
+    sequence: recent, 
+    strength: consecutiveGreens, 
+    reason: `${consecutiveGreens} verdes seguidas (EXTREMO)`,
+    weightedScore,
+    isExtreme: true
+  };
+  
+  // Si hay 3+ consecutivas recientes, eso domina
+  if (consecutiveReds >= 3) return { 
+    trend: 'bearish', 
+    sequence: recent, 
+    strength: consecutiveReds, 
+    reason: `${consecutiveReds} rojas seguidas recientes`,
+    weightedScore
+  };
+  if (consecutiveGreens >= 3) return { 
+    trend: 'bullish', 
+    sequence: recent, 
+    strength: consecutiveGreens, 
+    reason: `${consecutiveGreens} verdes seguidas recientes`,
+    weightedScore
+  };
+  
+  // CONFLICTO: Si las últimas 2 son del color opuesto a la mayoría ponderada
+  if (lastTwoRed && weightedScore > 0) {
+    return { 
+      trend: 'neutral', 
+      sequence: recent, 
+      strength: consecutiveReds, 
+      reason: `⚠️ Conflicto: Score +${weightedScore} pero últimas 2 rojas`,
+      weightedScore,
+      warning: 'momentum_change',
+      detail: 'Momentum alcista pero cambiando recientemente'
+    };
+  }
+  if (lastTwoGreen && weightedScore < 0) {
+    return { 
+      trend: 'neutral', 
+      sequence: recent, 
+      strength: consecutiveGreens, 
+      reason: `⚠️ Conflicto: Score ${weightedScore} pero últimas 2 verdes`,
+      weightedScore,
+      warning: 'momentum_change',
+      detail: 'Momentum bajista pero cambiando recientemente'
+    };
+  }
+  
+  // Usar score ponderado
+  if (weightedScore < -2) return { 
+    trend: 'bearish', 
+    sequence: recent, 
+    strength: Math.abs(weightedScore), 
+    reason: `Mayoría roja ponderada (score: ${weightedScore})`,
+    weightedScore
+  };
+  if (weightedScore > 2) return { 
+    trend: 'bullish', 
+    sequence: recent, 
+    strength: weightedScore, 
+    reason: `Mayoría verde ponderada (score: +${weightedScore})`,
+    weightedScore
+  };
+  
+  return { 
+    trend: 'neutral', 
+    sequence: recent, 
+    strength: 0, 
+    reason: 'Equilibrio o conflicto',
+    weightedScore
+  };
 }
 
 function isTrap(crossType, trendMA, recentTrend, currentCandle, extremeCondition) {
@@ -873,6 +982,7 @@ function isTrap(crossType, trendMA, recentTrend, currentCandle, extremeCondition
 function detectCrosses(useOriginal = false) {
   const results = [];
   const trendMA = calcMA(MA_CONFIG.trend.period, useOriginal);
+  const prevTrendMA = calcPrevMA(MA_CONFIG.trend.period, useOriginal);
   const recentTrend = analyzeRecentTrend();
   const currentCandle = analyzeCurrentCandle();
   const extremeCondition = detectExtreme(trendMA, recentTrend);
@@ -921,7 +1031,7 @@ function detectCrosses(useOriginal = false) {
     });
   }
   
-  return { crosses: results, trendMA, recentTrend, currentCandle, extremeCondition };
+  return { crosses: results, trendMA, prevTrendMA, recentTrend, currentCandle, extremeCondition };
 }
 
 function analyzePattern(lastTwo, originalTwo = null, extremeCondition = null) {
@@ -965,16 +1075,110 @@ function analyzePattern(lastTwo, originalTwo = null, extremeCondition = null) {
   return result;
 }
 
-function getTrendLabel(value, extremeCondition = null) {
+// CORREGIDO: Considerar dirección del momentum
+function getTrendLabel(currentValue, prevValue, extremeCondition = null) {
+  // Prioridad: condiciones extremas
   if (extremeCondition && extremeCondition.type === 'extreme_bullish') {
-    return { text: '⚠️ EXTREMO ALCISTA', class: 'extreme-bullish', color: 'var(--red)', isExtreme: true };
+    return { 
+      text: '⚠️ EXTREMO ALCISTA', 
+      class: 'extreme-bullish', 
+      color: 'var(--red)', 
+      isExtreme: true,
+      note: 'Reversión bajista inminente'
+    };
   }
   if (extremeCondition && extremeCondition.type === 'extreme_bearish') {
-    return { text: '⚠️ EXTREMO BAJISTA', class: 'extreme-bearish', color: 'var(--green)', isExtreme: true };
+    return { 
+      text: '⚠️ EXTREMO BAJISTA', 
+      class: 'extreme-bearish', 
+      color: 'var(--green)', 
+      isExtreme: true,
+      note: 'Reversión alcista inminente'
+    };
   }
-  if (value > 55) return { text: 'ALCISTA ↑', class: 'bullish', color: 'var(--green)', isExtreme: false };
-  if (value < 45) return { text: 'BAJISTA ↓', class: 'bearish', color: 'var(--red)', isExtreme: false };
-  return { text: 'NEUTRAL →', class: 'neutral', color: 'var(--gold)', isExtreme: false };
+  
+  // Si no hay valor anterior, usar solo el umbral
+  if (prevValue === null || currentValue === null) {
+    if (currentValue > 55) return { text: 'ALCISTA ↑', class: 'bullish', color: 'var(--green)', isExtreme: false };
+    if (currentValue < 45) return { text: 'BAJISTA ↓', class: 'bearish', color: 'var(--red)', isExtreme: false };
+    return { text: 'NEUTRAL →', class: 'neutral', color: 'var(--gold)', isExtreme: false };
+  }
+  
+  // Calcular dirección del momentum
+  const diff = currentValue - prevValue;
+  const trendDirection = diff > 0 ? 'rising' : diff < 0 ? 'falling' : 'flat';
+  
+  // Si la MA está cayendo fuertemente (más de 10% de diferencia), priorizar la dirección
+  if (trendDirection === 'falling' && diff < -10) {
+    return { 
+      text: 'BAJISTA ↓↓', 
+      class: 'bearish', 
+      color: 'var(--red)', 
+      isExtreme: false, 
+      note: `Cayendo fuerte (${diff.toFixed(1)}%)` 
+    };
+  }
+  if (trendDirection === 'rising' && diff > 10) {
+    return { 
+      text: 'ALCISTA ↑↑', 
+      class: 'bullish', 
+      color: 'var(--green)', 
+      isExtreme: false, 
+      note: `Subiendo fuerte (+${diff.toFixed(1)}%)` 
+    };
+  }
+  
+  // Si la MA está cayendo pero sigue por encima de 55, mostrar "Alcista debilitándose"
+  if (currentValue > 55 && trendDirection === 'falling') {
+    return { 
+      text: 'ALCISTA ↓', 
+      class: 'weakening-bullish', 
+      color: 'var(--orange)', 
+      isExtreme: false, 
+      note: `Perdiendo fuerza (${diff.toFixed(1)}%)` 
+    };
+  }
+  
+  // Si la MA está subiendo pero sigue por debajo de 45, mostrar "Bajista fortaleciéndose"
+  if (currentValue < 45 && trendDirection === 'rising') {
+    return { 
+      text: 'BAJISTA ↑', 
+      class: 'strengthening-bearish', 
+      color: 'var(--cyan)', 
+      isExtreme: false, 
+      note: `Ganando fuerza (+${diff.toFixed(1)}%)` 
+    };
+  }
+  
+  // Caso normal: usar umbrales con indicador de dirección
+  if (currentValue > 55) {
+    const arrow = trendDirection === 'rising' ? '↑' : trendDirection === 'falling' ? '↗' : '→';
+    return { 
+      text: `ALCISTA ${arrow}`, 
+      class: 'bullish', 
+      color: 'var(--green)', 
+      isExtreme: false,
+      note: trendDirection !== 'flat' ? `Momentum: ${diff > 0 ? '+' : ''}${diff.toFixed(1)}%` : 'Estable'
+    };
+  }
+  if (currentValue < 45) {
+    const arrow = trendDirection === 'falling' ? '↓' : trendDirection === 'rising' ? '↘' : '→';
+    return { 
+      text: `BAJISTA ${arrow}`, 
+      class: 'bearish', 
+      color: 'var(--red)', 
+      isExtreme: false,
+      note: trendDirection !== 'flat' ? `Momentum: ${diff > 0 ? '+' : ''}${diff.toFixed(1)}%` : 'Estable'
+    };
+  }
+  
+  return { 
+    text: 'NEUTRAL →', 
+    class: 'neutral', 
+    color: 'var(--gold)', 
+    isExtreme: false,
+    note: diff !== 0 ? `Cambiando: ${diff > 0 ? '+' : ''}${diff.toFixed(1)}%` : 'Sin dirección clara'
+  };
 }
 
 function update() {
@@ -982,6 +1186,7 @@ function update() {
   const originalResult = detectCrosses(true);
   
   const trendMA = adjustedResult.trendMA;
+  const prevTrendMA = adjustedResult.prevTrendMA;
   const recentTrend = adjustedResult.recentTrend;
   const currentCandle = adjustedResult.currentCandle;
   const extremeCondition = adjustedResult.extremeCondition;
@@ -990,7 +1195,7 @@ function update() {
     originalTrendMA = originalResult.trendMA;
   }
   
-  // NUEVO: Actualizar alerta de extremo
+  // Actualizar alerta de extremo
   const extremeAlert = document.getElementById('extreme-alert');
   if (extremeCondition && (extremeCondition.type === 'extreme_bullish' || extremeCondition.type === 'extreme_bearish')) {
     extremeAlert.classList.add('active');
@@ -1035,12 +1240,18 @@ function update() {
   if (recentTrend.sequence.length > 0) {
     recentSequence.innerHTML = recentTrend.sequence.map((c, i) => {
       const isLast = i === recentTrend.sequence.length - 1;
-      return `<div class="recent-candle recent-candle-${c.toLowerCase()} ${isLast ? 'candle-new' : ''}">${c}</div>`;
+      const weight = i === recentTrend.sequence.length - 1 ? 3 : i === recentTrend.sequence.length - 2 ? 2 : 1;
+      return `<div class="recent-candle recent-candle-${c.toLowerCase()} ${isLast ? 'candle-new' : ''}" 
+                  title="Peso: ${weight}x">${c}</div>`;
     }).join('');
     
-    const isExtremeRecent = recentTrend.strength >= 4;
-    recentAnalysis.className = 'recent-analysis recent-' + recentTrend.trend + (isExtremeRecent ? ' recent-extreme' : '');
-    recentAnalysis.innerHTML = `<strong>${recentTrend.reason}</strong>`;
+    // Determinar clase CSS basada en el estado
+    let analysisClass = 'recent-' + recentTrend.trend;
+    if (recentTrend.isExtreme) analysisClass = 'recent-extreme';
+    else if (recentTrend.warning === 'momentum_change') analysisClass = 'recent-conflict';
+    
+    recentAnalysis.className = 'recent-analysis ' + analysisClass;
+    recentAnalysis.innerHTML = `<strong>${recentTrend.reason}</strong>${recentTrend.detail ? '<br><small>' + recentTrend.detail + '</small>' : ''}`;
   }
   
   // Actualizar momentum
@@ -1048,7 +1259,8 @@ function update() {
   if (trendMA !== null) {
     momentumBox.style.display = 'block';
     const fill = document.getElementById('momentum-fill');
-    document.getElementById('momentum-detail').textContent = `MA10: ${trendMA.toFixed(1)}% | Vela: ${currentCandle.type}`;
+    const diff = prevTrendMA !== null ? (trendMA - prevTrendMA).toFixed(1) : '0.0';
+    document.getElementById('momentum-detail').textContent = `MA10: ${trendMA.toFixed(1)}% (${diff > 0 ? '+' : ''}${diff}%) | Vela: ${currentCandle.type}`;
     fill.style.width = trendMA + '%';
     
     if (extremeCondition && extremeCondition.type === 'extreme_bullish') {
@@ -1076,18 +1288,28 @@ function update() {
     originalTrendMA = null;
   }
   
-  // Tendencia Global
+  // Tendencia Global CORREGIDA
   const trendBox = document.getElementById('trend-box');
   const trendValue = document.getElementById('trend-value');
   
   if (trendMA !== null) {
-    const trend = getTrendLabel(trendMA, extremeCondition);
+    const trend = getTrendLabel(trendMA, prevTrendMA, extremeCondition);
     trendBox.className = 'trend-box ' + trend.class + (manualTrapIndex !== null ? ' adjusted' : '');
     trendValue.textContent = trend.text;
     trendValue.style.color = trend.color;
+    
+    // Mostrar nota de momentum si existe
+    const noteEl = document.getElementById('momentum-note');
+    if (trend.note) {
+      noteEl.textContent = trend.note;
+      noteEl.style.display = 'block';
+    } else {
+      noteEl.style.display = 'none';
+    }
   } else {
     trendBox.className = 'trend-box neutral' + (manualTrapIndex !== null ? ' adjusted' : '');
     trendValue.textContent = 'SIN DATOS';
+    document.getElementById('momentum-note').style.display = 'none';
   }
   
   // Grid de MA
@@ -1131,7 +1353,6 @@ function update() {
   if (extremeCondition && (extremeCondition.type === 'extreme_bullish' || extremeCondition.type === 'extreme_bearish')) {
     showExtreme = true;
     if (extremeCondition.type === 'extreme_bullish') {
-      // En sobrecompra extrema, solo recomendar venta si hay señal de reversión
       if (currentCandle.current === 'R' && currentCandle.strength >= 2) {
         finalSignal = 'sell';
         signalClass = 'signal-extreme';
@@ -1144,7 +1365,6 @@ function update() {
         logicText = `MA10 al ${trendMA.toFixed(0)}% - Sobrecompra extrema. NO comprar. Esperar reversión.`;
       }
     } else if (extremeCondition.type === 'extreme_bearish') {
-      // En sobreventa extrema, solo recomendar compra si hay señal de reversión
       if (currentCandle.current === 'G' && currentCandle.strength >= 2) {
         finalSignal = 'buy';
         signalClass = 'signal-extreme';
@@ -1173,6 +1393,13 @@ function update() {
       logicText = `Reversión bajista fuerte detectada. Fuerza: ${currentCandle.strength}/3. Ignorando tendencia previa.`;
     }
   }
+  // NUEVO: Si hay conflicto de momentum, esperar
+  else if (recentTrend.warning === 'momentum_change') {
+    finalSignal = 'wait';
+    signalClass = 'signal-conflict';
+    signalText = 'ESPERAR';
+    logicText = `Conflicto de momentum: ${recentTrend.reason}. Esperar confirmación.`;
+  }
   // PRIORIDAD 2: Cruce válido
   else if (activeCross && !activeCross.trap) {
     if (activeCross.crossType === 'golden') {
@@ -1187,200 +1414,224 @@ function update() {
       logicText = `Death Cross válido en ${activeCross.pair}. Tendencia bajista confirmada.`;
     }
   }
-  // PRIORIDAD 3: Patrón + contexto (con ajuste por extremo)
-  else if (proj && recentTrend.trend !== 'neutral') {
-    if (recentTrend.trend === 'bullish' && proj.ifG.sig === 'COMPRA') {
-      finalSignal = 'buy';
-      signalClass = 'signal-buy';
-      signalText = 'COMPRAR';
-      logicText = `Patrón ${proj.ifG.pat} en contexto alcista. Confianza: ${Math.round(proj.ifG.conf * 100)}%`;
-    } else if (recentTrend.trend === 'bearish' && proj.ifR.sig === 'VENTA') {
-      finalSignal = 'sell';
-      signalClass = 'signal-sell';
-      signalText = 'VENDER';
-      logicText = `Patrón ${proj.ifR.pat} en contexto bajista. Confianza: ${Math.round(proj.ifR.conf * 100)}%`;
+      // PRIORIDAD 3: Patrón + contexto (con ajuste por extremo y verificación de consistencia)
+    else if (proj && recentTrend.trend !== 'neutral') {
+      // Verificar que el patrón coincida con la dirección del momentum
+      const momentumConsistent = (recentTrend.trend === 'bullish' && trendMA > prevTrendMA) || 
+                                 (recentTrend.trend === 'bearish' && trendMA < prevTrendMA) ||
+                                 Math.abs(trendMA - prevTrendMA) < 5; // Si el cambio es pequeño, permitir
+      
+      if (!momentumConsistent && Math.abs(trendMA - prevTrendMA) > 10) {
+        finalSignal = 'wait';
+        signalClass = 'signal-conflict';
+        signalText = 'ESPERAR';
+        logicText = `Patrón detectado pero momentum en contra (MA cambió ${(trendMA - prevTrendMA).toFixed(1)}%). Esperar.`;
+      } else if (recentTrend.trend === 'bullish' && proj.ifG.sig === 'COMPRA') {
+        finalSignal = 'buy';
+        signalClass = 'signal-buy';
+        signalText = 'COMPRAR';
+        logicText = `Patrón ${proj.ifG.pat} en contexto alcista. Confianza: ${Math.round(proj.ifG.conf * 100)}%`;
+      } else if (recentTrend.trend === 'bearish' && proj.ifR.sig === 'VENTA') {
+        finalSignal = 'sell';
+        signalClass = 'signal-sell';
+        signalText = 'VENDER';
+        logicText = `Patrón ${proj.ifR.pat} en contexto bajista. Confianza: ${Math.round(proj.ifR.conf * 100)}%`;
+      } else {
+        logicText = `Patrón detectado pero en conflicto con tendencia ponderada. Esperando confirmación.`;
+      }
     } else {
-      logicText = `Patrón detectado pero en conflicto con tendencia. Esperando confirmación.`;
+      logicText = `Sin señales claras. MA10: ${trendMA ? trendMA.toFixed(0) + '%' : 'N/A'} (cambio: ${prevTrendMA ? (trendMA - prevTrendMA).toFixed(1) : '0'}%)`;
     }
-  } else {
-    logicText = `Sin señales claras. Esperando próxima vela. MA10: ${trendMA ? trendMA.toFixed(0) + '%' : 'N/A'}`;
+    
+    // Si hay cruce pero es trampa, mostrar advertencia (solo si no hay conflicto de momentum ya detectado)
+    if (activeCross && activeCross.trap && !showExtreme && recentTrend.warning !== 'momentum_change') {
+      signalClass = 'signal-trap';
+      signalText = activeCross.crossType === 'golden' ? '¿COMPRA?' : '¿VENTA?';
+      logicText = `⚠️ ${activeCross.pair} detectó cruce ${activeCross.crossType} pero es TRAMPA. Tendencia en contra.`;
+    }
+    
+    // Actualizar cruce visible
+    if (activeCross && !showExtreme) {
+      document.getElementById('cross-alert').classList.add('show');
+      document.getElementById('cross-pair').textContent = activeCross.pair;
+      const typeEl = document.getElementById('cross-type');
+      typeEl.textContent = activeCross.crossType === 'golden' ? 'GOLDEN CROSS' : 'DEATH CROSS';
+      typeEl.className = activeCross.crossType === 'golden' ? 'cross-type-golden' : 'cross-type-death';
+    } else {
+      document.getElementById('cross-alert').classList.remove('show');
+    }
+    
+    mainSignal.className = 'main-signal ' + signalClass;
+    mainSignal.innerHTML = signalText + 
+      '<div class="manual-trap-badge">TRAMPA ACTIVA</div>' +
+      '<div class="conflict-badge">⚠️ CONFLICTO</div>' +
+      '<div class="reversal-badge">🔄 REVERSIÓN FUERTE</div>' +
+      '<div class="extreme-signal-badge">⚠️ EXTREMO</div>';
+    
+    priorityExplanation.classList.toggle('active', showReversal || showExtreme || recentTrend.warning === 'momentum_change');
+    logicExplanation.classList.toggle('active', true);
+    document.getElementById('logic-text').textContent = logicText;
+    
+    // Actualizar proyecciones
+    updateProjections(trendMA, prevTrendMA, activeCross, recentTrend, currentCandle, extremeCondition);
+    
+    // Historial visual
+    document.getElementById('history').innerHTML = history.map((h, i) => {
+      const isTrap = i === manualTrapIndex;
+      const isNew = i === history.length - 1;
+      return `<div class="candle candle-${h.toLowerCase()} ${isTrap ? 'candle-trap' : ''} ${isNew && !isTrap ? 'candle-new' : ''}" 
+                  onclick="openTrapModal(${i})" title="${isTrap ? 'TRAMPA' : 'Marcar trampa'}">${h}</div>`;
+    }).join('');
   }
-  
-  // Si hay cruce pero es trampa, mostrar advertencia
-  if (activeCross && activeCross.trap && !showExtreme) {
-    signalClass = 'signal-trap';
-    signalText = activeCross.crossType === 'golden' ? '¿COMPRA?' : '¿VENTA?';
-    logicText = `⚠️ ${activeCross.pair} detectó cruce ${activeCross.crossType} pero es TRAMPA. Tendencia en contra.`;
+
+  function updateProjections(trendMA, prevTrendMA, activeCross, recentTrend, currentCandle, extremeCondition) {
+    let effectiveHistory = history;
+    if (manualTrapIndex !== null) {
+      effectiveHistory = history.filter((_, idx) => idx !== manualTrapIndex);
+    }
+    
+    const lastTwo = effectiveHistory.slice(-2);
+    
+    if (lastTwo.length < 2) {
+      document.getElementById('proj-g-seq').textContent = '--';
+      document.getElementById('proj-r-seq').textContent = '--';
+      return;
+    }
+    
+    const proj = analyzePattern(lastTwo, null, extremeCondition);
+    
+    if (proj) {
+      // Proyección VERDE
+      const gIsReversal = currentCandle.isReversal && currentCandle.current === 'G';
+      const gIsExtremeBuy = extremeCondition && extremeCondition.type === 'extreme_bearish' && currentCandle.current === 'G';
+      
+      document.getElementById('proj-g-seq').textContent = proj.ifG.pat;
+      
+      // Ajustar señal si hay extremo o conflicto
+      let gSignal = proj.ifG.sig;
+      let gClass = proj.ifG.sig === 'COMPRA' ? 'proj-signal-buy' : 'proj-signal-hold';
+      let gBoxClass = 'proj-box proj-green';
+      let gConfidence = Math.round(proj.ifG.conf * 100) + '%';
+      
+      if (extremeCondition && extremeCondition.type === 'extreme_bullish') {
+        gSignal = 'ESPERAR';
+        gClass = 'proj-signal-extreme';
+        gBoxClass = 'proj-box proj-green proj-extreme';
+        gConfidence = '0% - EXTREMO';
+      } else if (recentTrend.warning === 'momentum_change' && recentTrend.weightedScore < 0) {
+        gSignal = 'ESPERAR';
+        gClass = 'proj-signal-hold';
+        gBoxClass = 'proj-box proj-green proj-conflict';
+        gConfidence = 'Conflicto momentum';
+      }
+      
+      document.getElementById('proj-g-sig').textContent = gSignal;
+      document.getElementById('proj-g-sig').className = `proj-signal ${gClass}`;
+      document.getElementById('proj-g-conf').textContent = gConfidence;
+      document.getElementById('proj-g-reason').textContent = gIsReversal ? '🔄 Vela de reversión' : '';
+      document.getElementById('proj-g-reversal').textContent = gIsReversal ? 'Prioridad máxima por reversión' : '';
+      document.getElementById('proj-g-extreme').textContent = (extremeCondition && extremeCondition.type === 'extreme_bullish') ? 
+        '⚠️ NO COMPRAR: Sobrecompra extrema' : '';
+      document.getElementById('proj-g-conflict').textContent = (recentTrend.warning === 'momentum_change') ?
+        '⚠️ Conflicto: Momentum cambiando' : '';
+      document.getElementById('proj-g-box').className = gBoxClass;
+      
+      // Proyección ROJO
+      const rIsReversal = currentCandle.isReversal && currentCandle.current === 'R';
+      const rIsExtremeSell = extremeCondition && extremeCondition.type === 'extreme_bearish' && currentCandle.current === 'R';
+      
+      document.getElementById('proj-r-seq').textContent = proj.ifR.pat;
+      
+      // Ajustar señal si hay extremo o conflicto
+      let rSignal = proj.ifR.sig;
+      let rClass = proj.ifR.sig === 'VENTA' ? 'proj-signal-sell' : 'proj-signal-hold';
+      let rBoxClass = 'proj-box proj-red';
+      let rConfidence = Math.round(proj.ifR.conf * 100) + '%';
+      
+      if (extremeCondition && extremeCondition.type === 'extreme_bearish') {
+        rSignal = 'ESPERAR';
+        rClass = 'proj-signal-extreme';
+        rBoxClass = 'proj-box proj-red proj-extreme';
+        rConfidence = '0% - EXTREMO';
+      } else if (recentTrend.warning === 'momentum_change' && recentTrend.weightedScore > 0) {
+        rSignal = 'ESPERAR';
+        rClass = 'proj-signal-hold';
+        rBoxClass = 'proj-box proj-red proj-conflict';
+        rConfidence = 'Conflicto momentum';
+      }
+      
+      document.getElementById('proj-r-sig').textContent = rSignal;
+      document.getElementById('proj-r-sig').className = `proj-signal ${rClass}`;
+      document.getElementById('proj-r-conf').textContent = rConfidence;
+      document.getElementById('proj-r-reason').textContent = rIsReversal ? '🔄 Vela de reversión' : '';
+      document.getElementById('proj-r-reversal').textContent = rIsReversal ? 'Prioridad máxima por reversión' : '';
+      document.getElementById('proj-r-extreme').textContent = (extremeCondition && extremeCondition.type === 'extreme_bearish') ? 
+        '⚠️ NO VENDER: Sobreventa extrema' : '';
+      document.getElementById('proj-r-conflict').textContent = (recentTrend.warning === 'momentum_change') ?
+        '⚠️ Conflicto: Momentum cambiando' : '';
+      document.getElementById('proj-r-box').className = rBoxClass;
+    }
   }
-  
-  // Actualizar señal principal
-  if (activeCross && !showExtreme) {
-    document.getElementById('cross-alert').classList.add('show');
-    document.getElementById('cross-pair').textContent = activeCross.pair;
-    const typeEl = document.getElementById('cross-type');
-    typeEl.textContent = activeCross.crossType === 'golden' ? 'GOLDEN CROSS' : 'DEATH CROSS';
-    typeEl.className = activeCross.crossType === 'golden' ? 'cross-type-golden' : 'cross-type-death';
-  } else {
+
+  function openTrapModal(index) {
+    if (manualTrapIndex === index) {
+      clearTrap();
+      return;
+    }
+    pendingTrapIndex = index;
+    document.getElementById('trap-candle-color').textContent = history[index];
+    document.getElementById('trap-candle-pos').textContent = '#' + (index + 1);
+    document.getElementById('trap-modal').classList.add('active');
+  }
+
+  function closeModal() {
+    document.getElementById('trap-modal').classList.remove('active');
+    pendingTrapIndex = null;
+  }
+
+  function confirmTrap() {
+    if (pendingTrapIndex !== null) {
+      manualTrapIndex = pendingTrapIndex;
+      closeModal();
+      update();
+    }
+  }
+
+  function clearTrap() {
+    manualTrapIndex = null;
+    originalTrendMA = null;
+    update();
+  }
+
+  function add(color) {
+    history.push(color);
+    if (history.length > 30) {
+      if (manualTrapIndex !== null) {
+        if (manualTrapIndex === 0) manualTrapIndex = null;
+        else manualTrapIndex--;
+      }
+      history.shift();
+    }
+    update();
+  }
+
+  function reset() {
+    history = [];
+    crosses = [];
+    manualTrapIndex = null;
+    pendingTrapIndex = null;
+    originalTrendMA = null;
     document.getElementById('cross-alert').classList.remove('show');
-  }
-  
-  mainSignal.className = 'main-signal ' + signalClass;
-  mainSignal.innerHTML = signalText + 
-    '<div class="manual-trap-badge">TRAMPA ACTIVA</div>' +
-    '<div class="conflict-badge">⚠️ CONFLICTO</div>' +
-    '<div class="reversal-badge">🔄 REVERSIÓN FUERTE</div>' +
-    '<div class="extreme-signal-badge">⚠️ EXTREMO</div>';
-  
-  priorityExplanation.classList.toggle('active', showReversal || showExtreme);
-  logicExplanation.classList.toggle('active', true);
-  document.getElementById('logic-text').textContent = logicText;
-  
-  // Actualizar proyecciones
-  updateProjections(trendMA, activeCross, recentTrend, currentCandle, extremeCondition);
-  
-  // Historial visual
-  document.getElementById('history').innerHTML = history.map((h, i) => {
-    const isTrap = i === manualTrapIndex;
-    const isNew = i === history.length - 1;
-    return `<div class="candle candle-${h.toLowerCase()} ${isTrap ? 'candle-trap' : ''} ${isNew && !isTrap ? 'candle-new' : ''}" 
-                onclick="openTrapModal(${i})" title="${isTrap ? 'TRAMPA' : 'Marcar trampa'}">${h}</div>`;
-  }).join('');
-}
-
-function updateProjections(trendMA, activeCross, recentTrend, currentCandle, extremeCondition) {
-  let effectiveHistory = history;
-  if (manualTrapIndex !== null) {
-    effectiveHistory = history.filter((_, idx) => idx !== manualTrapIndex);
-  }
-  
-  const lastTwo = effectiveHistory.slice(-2);
-  
-  if (lastTwo.length < 2) {
-    document.getElementById('proj-g-seq').textContent = '--';
-    document.getElementById('proj-r-seq').textContent = '--';
-    return;
-  }
-  
-  const proj = analyzePattern(lastTwo, null, extremeCondition);
-  
-  if (proj) {
-    // Proyección VERDE
-    const gIsReversal = currentCandle.isReversal && currentCandle.current === 'G';
-    const gIsExtremeBuy = extremeCondition && extremeCondition.type === 'extreme_bearish' && currentCandle.current === 'G';
-    
-    document.getElementById('proj-g-seq').textContent = proj.ifG.pat;
-    
-    // Ajustar señal si hay extremo
-    let gSignal = proj.ifG.sig;
-    let gClass = proj.ifG.sig === 'COMPRA' ? 'proj-signal-buy' : 'proj-signal-hold';
-    let gBoxClass = 'proj-box proj-green';
-    let gConfidence = Math.round(proj.ifG.conf * 100) + '%';
-    
-    if (extremeCondition && extremeCondition.type === 'extreme_bullish') {
-      gSignal = 'ESPERAR';
-      gClass = 'proj-signal-extreme';
-      gBoxClass = 'proj-box proj-green proj-extreme';
-      gConfidence = '0% - EXTREMO';
-    }
-    
-    document.getElementById('proj-g-sig').textContent = gSignal;
-    document.getElementById('proj-g-sig').className = `proj-signal ${gClass}`;
-    document.getElementById('proj-g-conf').textContent = gConfidence;
-    document.getElementById('proj-g-reason').textContent = gIsReversal ? '🔄 Vela de reversión' : '';
-    document.getElementById('proj-g-reversal').textContent = gIsReversal ? 'Prioridad máxima por reversión' : '';
-    document.getElementById('proj-g-extreme').textContent = (extremeCondition && extremeCondition.type === 'extreme_bullish') ? 
-      '⚠️ NO COMPRAR: Sobrecompra extrema' : '';
-    document.getElementById('proj-g-box').className = gBoxClass;
-    
-    // Proyección ROJO
-    const rIsReversal = currentCandle.isReversal && currentCandle.current === 'R';
-    const rIsExtremeSell = extremeCondition && extremeCondition.type === 'extreme_bearish' && currentCandle.current === 'R';
-    
-    document.getElementById('proj-r-seq').textContent = proj.ifR.pat;
-    
-    // Ajustar señal si hay extremo
-    let rSignal = proj.ifR.sig;
-    let rClass = proj.ifR.sig === 'VENTA' ? 'proj-signal-sell' : 'proj-signal-hold';
-    let rBoxClass = 'proj-box proj-red';
-    let rConfidence = Math.round(proj.ifR.conf * 100) + '%';
-    
-    if (extremeCondition && extremeCondition.type === 'extreme_bearish') {
-      rSignal = 'ESPERAR';
-      rClass = 'proj-signal-extreme';
-      rBoxClass = 'proj-box proj-red proj-extreme';
-      rConfidence = '0% - EXTREMO';
-    }
-    
-    document.getElementById('proj-r-sig').textContent = rSignal;
-    document.getElementById('proj-r-sig').className = `proj-signal ${rClass}`;
-    document.getElementById('proj-r-conf').textContent = rConfidence;
-    document.getElementById('proj-r-reason').textContent = rIsReversal ? '🔄 Vela de reversión' : '';
-    document.getElementById('proj-r-reversal').textContent = rIsReversal ? 'Prioridad máxima por reversión' : '';
-    document.getElementById('proj-r-extreme').textContent = (extremeCondition && extremeCondition.type === 'extreme_bearish') ? 
-      '⚠️ NO VENDER: Sobreventa extrema' : '';
-    document.getElementById('proj-r-box').className = rBoxClass;
-  }
-}
-
-function openTrapModal(index) {
-  if (manualTrapIndex === index) {
-    clearTrap();
-    return;
-  }
-  pendingTrapIndex = index;
-  document.getElementById('trap-candle-color').textContent = history[index];
-  document.getElementById('trap-candle-pos').textContent = '#' + (index + 1);
-  document.getElementById('trap-modal').classList.add('active');
-}
-
-function closeModal() {
-  document.getElementById('trap-modal').classList.remove('active');
-  pendingTrapIndex = null;
-}
-
-function confirmTrap() {
-  if (pendingTrapIndex !== null) {
-    manualTrapIndex = pendingTrapIndex;
+    document.getElementById('trap-banner').classList.remove('active');
+    document.getElementById('extreme-alert').classList.remove('active');
+    document.getElementById('btn-clear-trap').style.display = 'none';
+    document.getElementById('priority-explanation').classList.remove('active');
+    document.getElementById('logic-explanation').classList.remove('active');
     closeModal();
     update();
   }
-}
 
-function clearTrap() {
-  manualTrapIndex = null;
-  originalTrendMA = null;
   update();
-}
-
-function add(color) {
-  history.push(color);
-  if (history.length > 30) {
-    if (manualTrapIndex !== null) {
-      if (manualTrapIndex === 0) manualTrapIndex = null;
-      else manualTrapIndex--;
-    }
-    history.shift();
-  }
-  update();
-}
-
-function reset() {
-  history = [];
-  crosses = [];
-  manualTrapIndex = null;
-  pendingTrapIndex = null;
-  originalTrendMA = null;
-  document.getElementById('cross-alert').classList.remove('show');
-  document.getElementById('trap-banner').classList.remove('active');
-  document.getElementById('extreme-alert').classList.remove('active');
-  document.getElementById('btn-clear-trap').style.display = 'none';
-  document.getElementById('priority-explanation').classList.remove('active');
-  document.getElementById('logic-explanation').classList.remove('active');
-  closeModal();
-  update();
-}
-
-update();
 </script>
 
 </body>
