@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Detector MA - Anti-Trampa</title>
+  <style>
+    :root {
+      --green: #00ff88;
+      --red: #ff4444;
+      --gold: #ffd700;
+      --blue: #00d4ff;
+      --orange: #ff8800;
+      --bg: #0a0a0a;
+      --panel: #1a1a1a;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: #fff;
+      font-family: 'Courier New', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 15px;
+    }
+    
+    /* ALERTA DE TRAMPA */
+    .noise-alert {
+      width: 100%;
+      max-width: 500px;
+      background: linear-gradient(90deg, var(--orange), transparent);
+      border-left: 4px solid var(--orange);
+      padding: 12px;
+      margin-bottom: 15px;
+      display: none;
+      font-weight: bold;
+      animation: pulse 2s infinite;
+    }
+    .noise-alert.active { display: block; }
+    .noise-alert.trap { background: linear-gradient(90deg, var(--red), transparent); border-color: var(--red); }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    
+    /* Detector de Cruces */
+    .cross-detector {
+      width: 100%;
+      max-width: 500px;
+      background: var(--panel);
+      border: 2px solid var(--gold);
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+    .cross-title {
+      color: var(--gold);
+      font-size: 0.9em;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .cross-active {
+      background: linear-gradient(90deg, var(--gold), transparent);
+      padding: 12px;
+      border-radius: 6px;
+      text-align: center;
+      font-size: 1.3em;
+      font-weight: bold;
+      display: none;
+    }
+    .cross-active.show { display: block; }
+    .cross-type-golden { color: var(--green); }
+    .cross-type-death { color: var(--red); }
+    
+    /* Grid de MA */
+    .ma-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .ma-item {
+      background: rgba(0,0,0,0.3);
+      padding: 8px;
+      border-radius: 4px;
+      text-align: center;
+      font-size: 0.8em;
+      position: relative;
+    }
+    .ma-item.active { border: 1px solid var(--gold); background: rgba(255,215,0,0.1); }
+    .ma-item.trap { border: 1px solid var(--red); opacity: 0.6; }
+    .ma-name { color: #888; font-size: 0.75em; }
+    .ma-val { font-weight: bold; font-size: 1.1em; }
+    .ma-up { color: var(--green); }
+    .ma-down { color: var(--red); }
+    .ma-trap-icon { 
+      position: absolute; top: 2px; right: 2px; 
+      font-size: 10px; color: var(--red); display: none; 
+    }
+    .ma-item.trap .ma-trap-icon { display: block; }
+    
+    /* Tendencia Global */
+    .trend-box {
+      width: 100%;
+      max-width: 500px;
+      background: var(--panel);
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      text-align: center;
+      border: 2px solid transparent;
+    }
+    .trend-box.bullish { border-color: var(--green); }
+    .trend-box.bearish { border-color: var(--red); }
+    .trend-box.neutral { border-color: var(--gold); }
+    .trend-label { color: #888; font-size: 0.8em; margin-bottom: 5px; }
+    .trend-value { font-size: 1.2em; font-weight: bold; }
+    
+    /* Señal Principal */
+    .main-signal {
+      width: 100%;
+      max-width: 500px;
+      padding: 40px 20px;
+      border-radius: 12px;
+      text-align: center;
+      font-size: 2.2em;
+      font-weight: bold;
+      margin-bottom: 15px;
+      border: 3px solid;
+      position: relative;
+    }
+    .signal-buy { background: rgba(0,255,136,0.1); border-color: var(--green); color: var(--green); }
+    .signal-sell { background: rgba(255,68,68,0.1); border-color: var(--red); color: var(--red); }
+    .signal-wait { background: rgba(255,215,0,0.05); border-color: var(--gold); color: var(--gold); font-size: 1.8em; }
+    .signal-trap { 
+      background: repeating-linear-gradient(45deg, rgba(255,68,68,0.1), rgba(255,68,68,0.1) 10px, rgba(255,136,0,0.1) 10px, rgba(255,136,0,0.1) 20px);
+      border-color: var(--orange); 
+      color: var(--orange); 
+    }
+    
+    .trap-badge {
+      position: absolute;
+      top: 5px;
+      right: 10px;
+      font-size: 0.4em;
+      background: var(--red);
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 4px;
+      display: none;
+    }
+    .signal-trap .trap-badge { display: block; }
+    
+    /* Proyecciones */
+    .projections {
+      width: 100%;
+      max-width: 500px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .proj-box {
+      background: var(--panel);
+      padding: 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid transparent;
+      position: relative;
+    }
+    .proj-box:hover { transform: scale(1.02); }
+    .proj-green { border-color: var(--green); }
+    .proj-red { border-color: var(--red); }
+    .proj-trap { opacity: 0.5; border-style: dashed; }
+    
+    .proj-label {
+      font-size: 0.8em;
+      color: #888;
+      margin-bottom: 8px;
+    }
+    .proj-sequence {
+      font-size: 1.5em;
+      letter-spacing: 4px;
+      margin-bottom: 8px;
+    }
+    .proj-signal {
+      font-size: 1.1em;
+      font-weight: bold;
+    }
+    .proj-signal-buy { color: var(--green); }
+    .proj-signal-sell { color: var(--red); }
+    .proj-signal-hold { color: var(--gold); }
+    .proj-confidence {
+      font-size: 0.75em;
+      color: #666;
+      margin-top: 5px;
+    }
+    .proj-warning {
+      font-size: 0.7em;
+      color: var(--orange);
+      margin-top: 5px;
+      display: none;
+    }
+    .proj-trap .proj-warning { display: block; }
+    
+    /* Controles */
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    button {
+      padding: 18px 35px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 1.1em;
+    }
+    .btn-g { background: var(--green); color: #000; }
+    .btn-r { background: var(--red); color: #fff; }
+    .btn-reset { background: #333; color: #fff; }
+    
+    /* Historial */
+    .history {
+      display: flex;
+      gap: 3px;
+      justify-content: center;
+      flex-wrap: wrap;
+      max-width: 500px;
+    }
+    .candle {
+      width: 22px;
+      height: 22px;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: bold;
+    }
+    .candle-g { background: var(--green); color: #000; }
+    .candle-r { background: var(--red); color: #fff; }
+    .candle-new { box-shadow: 0 0 10px var(--gold); }
+    
+    /* Cruces Recientes */
+    .recent-crosses {
+      width: 100%;
+      max-width: 500px;
+      background: var(--panel);
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 10px;
+      font-size: 0.8em;
+    }
+    .recent-title { color: var(--gold); margin-bottom: 8px; }
+    .cross-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: 1px solid #333;
+      align-items: center;
+    }
+    .cross-golden { color: var(--green); }
+    .cross-death { color: var(--red); }
+    .cross-trap { 
+      background: var(--orange); 
+      color: #000; 
+      font-size: 0.7em; 
+      padding: 2px 6px; 
+      border-radius: 3px; 
+      margin-left: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Alerta de Ruido/Trampa -->
+  <div class="noise-alert" id="noise-alert">
+    ⚠️ <span id="noise-text">CRUCE EN ZONA DE RUIDO - Posible trampa</span>
+  </div>
+
+  <!-- Detector de Cruces MA -->
+  <div class="cross-detector">
+    <div class="cross-title">⚔️ DETECTOR MULTI-CRUCE MA</div>
+    <div class="cross-active" id="cross-alert">
+      <span id="cross-pair">MA2/MA10</span>: 
+      <span id="cross-type" class="cross-type-golden">GOLDEN CROSS</span>
+    </div>
+    <div class="ma-grid" id="ma-grid"></div>
+  </div>
+
+  <!-- Tendencia Global (MA20/MA26) -->
+  <div class="trend-box neutral" id="trend-box">
+    <div class="trend-label">TENDENCIA GLOBAL (MA20)</div>
+    <div class="trend-value" id="trend-value">NEUTRAL</div>
+  </div>
+
+  <!-- Señal Principal -->
+  <div class="main-signal signal-wait" id="main-signal">
+    ESPERAR
+    <div class="trap-badge">TRAMPA</div>
+  </div>
+
+  <!-- Proyecciones Duales -->
+  <div class="projections" id="projections">
+    <div class="proj-box proj-green" id="proj-g-box" onclick="add('G')">
+      <div class="proj-label">Si VERDE →</div>
+      <div class="proj-sequence" id="proj-g-seq">--</div>
+      <div class="proj-signal proj-signal-hold" id="proj-g-sig">HOLD</div>
+      <div class="proj-confidence" id="proj-g-conf">0%</div>
+      <div class="proj-warning" id="proj-g-warn">⚠️ Contra tendencia</div>
+    </div>
+    <div class="proj-box proj-red" id="proj-r-box" onclick="add('R')">
+      <div class="proj-label">Si ROJO →</div>
+      <div class="proj-sequence" id="proj-r-seq">--</div>
+      <div class="proj-signal proj-signal-hold" id="proj-r-sig">HOLD</div>
+      <div class="proj-confidence" id="proj-r-conf">0%</div>
+      <div class="proj-warning" id="proj-r-warn">⚠️ Contra tendencia</div>
+    </div>
+  </div>
+
+  <!-- Controles -->
+  <div class="controls">
+    <button class="btn-g" onclick="add('G')">VERDE</button>
+    <button class="btn-r" onclick="add('R')">ROJO</button>
+    <button class="btn-reset" onclick="reset()">↺</button>
+  </div>
+
+  <!-- Historial -->
+  <div class="history" id="history"></div>
+
+  <!-- Cruces Recientes -->
+  <div class="recent-crosses" id="recent-crosses" style="display:none;">
+    <div class="recent-title">📋 Historial de Cruces</div>
+    <div id="cross-list"></div>
+  </div>
+
+<script>
+let history = [];
+let crosses = [];
+
+// Configuración: MA para cruces + MA para filtro de tendencia
+const MA_CONFIG = {
+  crosses: [
+    { fast: 2, slow: 10, name: 'MA2/MA10', type: 'agresivo' },
+    { fast: 6, slow: 20, name: 'MA6/MA20', type: 'estandar' },
+    { fast: 10, slow: 20, name: 'MA10/MA20', type: 'confirmado' }
+  ],
+  trend: { period: 20, name: 'MA20' } // Filtro principal anti-trampa
+};
+
+function calcMA(period) {
+  if (history.length < period) return null;
+  const slice = history.slice(-period);
+  return (slice.filter(h => h === 'G').length / period) * 100;
+}
+
+function calcPrevMA(period) {
+  if (history.length <= period) return null;
+  const slice = history.slice(-period - 1, -1);
+  return (slice.filter(h => h === 'G').length / period) * 100;
+}
+
+// Detectar si hay trampa: cruce va contra la tendencia global
+function isTrap(crossType, trendMA) {
+  if (trendMA === null) return false;
+  
+  // Si tendencia es bajista (MA20 < 50%) pero hay Golden Cross = trampa
+  // Si tendencia es alcista (MA20 > 50%) pero hay Death Cross = trampa
+  
+  if (crossType === 'golden' && trendMA < 45) return true;
+  if (crossType === 'death' && trendMA > 55) return true;
+  
+  return false;
+}
+
+// Detectar ruido: muchos cruces recientes sin dirección clara
+function isNoisy() {
+  if (crosses.length < 3) return false;
+  
+  const recent = crosses.slice(-3);
+  const hasBoth = recent.some(c => c.type === 'golden') && recent.some(c => c.type === 'death');
+  const timeSpan = recent[recent.length - 1].timestamp - recent[0].timestamp;
+  
+  // Si hay cruces contradictorios en poco tiempo = ruido
+  return hasBoth && timeSpan < 60000; // 1 minuto
+}
+
+function detectCrosses() {
+  const results = [];
+  const trendMA = calcMA(MA_CONFIG.trend.period);
+  
+  for (let cfg of MA_CONFIG.crosses) {
+    const maFast = calcMA(cfg.fast);
+    const maSlow = calcMA(cfg.slow);
+    
+    if (maFast === null || maSlow === null) continue;
+    
+    let crossed = false;
+    let crossType = null;
+    let trap = false;
+    
+    if (history.length > cfg.slow) {
+      const prevFast = calcPrevMA(cfg.fast);
+      const prevSlow = calcPrevMA(cfg.slow);
+      
+      if (prevFast !== null && prevSlow !== null) {
+        if (prevFast <= prevSlow && maFast > maSlow) {
+          crossed = true; crossType = 'golden';
+          trap = isTrap('golden', trendMA);
+        } else if (prevFast >= prevSlow && maFast < maSlow) {
+          crossed = true; crossType = 'death';
+          trap = isTrap('death', trendMA);
+        }
+      }
+    }
+    
+    results.push({
+      pair: cfg.name,
+      type: cfg.type,
+      maFast,
+      maSlow,
+      diff: maFast - maSlow,
+      crossed,
+      crossType,
+      trap,
+      active: Math.abs(maFast - maSlow) < 5
+    });
+  }
+  
+  return { crosses: results, trendMA };
+}
+
+function analyzePattern(lastTwo) {
+  if (lastTwo.length < 2) return null;
+  const [prev, curr] = lastTwo;
+  const pattern = prev + curr;
+  
+  const scenarios = {
+    'GG': { 
+      ifG: { pat: 'GGG', sig: 'COMPRA', conf: 0.75, desc: 'Continuación alcista' },
+      ifR: { pat: 'GGR', sig: 'VENTA', conf: 0.60, desc: 'Reversión bajista' }
+    },
+    'RR': {
+      ifG: { pat: 'RRG', sig: 'COMPRA', conf: 0.60, desc: 'Rebote alcista' },
+      ifR: { pat: 'RRR', sig: 'VENTA', conf: 0.75, desc: 'Continuación bajista' }
+    },
+    'GR': {
+      ifG: { pat: 'GRG', sig: 'COMPRA', conf: 0.55, desc: 'Reversión alcista' },
+      ifR: { pat: 'GRR', sig: 'VENTA', conf: 0.65, desc: 'Confirmación bajista' }
+    },
+    'RG': {
+      ifG: { pat: 'RGG', sig: 'COMPRA', conf: 0.65, desc: 'Confirmación alcista' },
+      ifR: { pat: 'RGR', sig: 'VENTA', conf: 0.55, desc: 'Reversión bajista' }
+    }
+  };
+  
+  return scenarios[pattern] || null;
+}
+
+function update() {
+  const { crosses: maResults, trendMA } = detectCrosses();
+  const noiseAlert = document.getElementById('noise-alert');
+  const mainSignal = document.getElementById('main-signal');
+  const trendBox = document.getElementById('trend-box');
+  const trendValue = document.getElementById('trend-value');
+  
+  // Actualizar tendencia global
+  if (trendMA !== null) {
+    trendBox.className = 'trend-box ' + (trendMA > 55 ? 'bullish' : trendMA < 45 ? 'bearish' : 'neutral');
+    trendValue.textContent = trendMA > 55 ? 'ALCISTA ↑' : trendMA < 45 ? 'BAJISTA ↓' : 'NEUTRAL →';
+    trendValue.style.color = trendMA > 55 ? 'var(--green)' : trendMA < 45 ? 'var(--red)' : 'var(--gold)';
+  } else {
+    trendBox.className = 'trend-box neutral';
+    trendValue.textContent = 'SIN DATOS';
+  }
+  
+  // Verificar ruido
+  const noisy = isNoisy();
+  if (noisy) {
+    noiseAlert.classList.add('active');
+    document.getElementById('noise-text').textContent = '⚠️ MERCADO CON RUIDO - Muchos cruces contradictorios';
+  } else {
+    noiseAlert.classList.remove('active');
+  }
+  
+  // Actualizar grid de MA
+  const maGrid = document.getElementById('ma-grid');
+  maGrid.innerHTML = maResults.map(r => `
+    <div class="ma-item ${r.crossed ? 'active' : ''} ${r.trap ? 'trap' : ''}">
+      <span class="ma-trap-icon">🚫</span>
+      <div class="ma-name">${r.pair}</div>
+      <div class="ma-val ${r.diff > 0 ? 'ma-up' : 'ma-down'}">
+        ${r.maFast.toFixed(0)}|${r.maSlow.toFixed(0)}
+      </div>
+      <div style="font-size:0.7em;color:${r.trap ? 'var(--red)' : r.crossed ? 'var(--gold)' : r.active ? 'var(--orange)' : '#666'}">
+        ${r.trap ? 'TRAMPA' : r.crossed ? '✓ CRUCE' : r.active ? '⚠ CERCA' : ''}
+      </div>
+    </div>
+  `).join('');
+  
+  // Buscar cruce activo (prioridad: estándar > agresivo > confirmado)
+  const activeCross = maResults.find(r => r.crossed && !r.trap) || 
+                      maResults.find(r => r.crossed);
+  
+  const crossAlert = document.getElementById('cross-alert');
+  
+  if (activeCross) {
+    crossAlert.classList.add('show');
+    document.getElementById('cross-pair').textContent = activeCross.pair;
+    const typeEl = document.getElementById('cross-type');
+    typeEl.textContent = activeCross.crossType === 'golden' ? 'GOLDEN CROSS' : 'DEATH CROSS';
+    typeEl.className = activeCross.crossType === 'golden' ? 'cross-type-golden' : 'cross-type-death';
+    
+    // Guardar cruce
+    crosses.push({
+      pair: activeCross.pair,
+      type: activeCross.crossType,
+      trap: activeCross.trap,
+      timestamp: Date.now(),
+      time: new Date().toLocaleTimeString()
+    });
+    if (crosses.length > 10) crosses.shift();
+    
+    // Señal principal
+    if (activeCross.trap) {
+      mainSignal.className = 'main-signal signal-trap';
+      mainSignal.innerHTML = `${activeCross.crossType === 'golden' ? 'COMPRA?' : 'VENTA?'}<div class="trap-badge">TRAMPA</div>`;
+      noiseAlert.classList.add('active', 'trap');
+      document.getElementById('noise-text').textContent = `🚫 CRUCE ${activeCross.pair} ES TRAMPA - Va contra tendencia MA20`;
+    } else {
+      mainSignal.className = activeCross.crossType === 'golden' ? 'main-signal signal-buy' : 'main-signal signal-sell';
+      mainSignal.innerHTML = `${activeCross.crossType === 'golden' ? 'COMPRAR' : 'VENDER'}<br><small style="font-size:0.4em;">${activeCross.pair} | Confiable</small>`;
+    }
+  } else {
+    crossAlert.classList.remove('show');
+    
+    // Sin cruce: usar tendencia + patrón
+    if (history.length >= 2 && trendMA !== null) {
+      const lastTwo = history.slice(-2);
+      const proj = analyzePattern(lastTwo);
+      
+      if (proj) {
+        // Solo señal si coincide con tendencia global
+        const trendUp = trendMA > 55;
+        const trendDown = trendMA < 45;
+        
+        if (trendUp && proj.ifG.sig === 'COMPRA') {
+          mainSignal.className = 'main-signal signal-buy';
+          mainSignal.textContent = 'COMPRAR';
+        } else if (trendDown && proj.ifR.sig === 'VENTA') {
+          mainSignal.className = 'main-signal signal-sell';
+          mainSignal.textContent = 'VENDER';
+        } else {
+          mainSignal.className = 'main-signal signal-wait';
+          mainSignal.textContent = 'ESPERAR';
+        }
+      } else {
+        mainSignal.className = 'main-signal signal-wait';
+        mainSignal.textContent = 'ESPERAR';
+      }
+    } else {
+      mainSignal.className = 'main-signal signal-wait';
+      mainSignal.textContent = 'ESPERAR';
+    }
+  }
+  
+  // Actualizar proyecciones con alerta de trampa
+  updateProjections(trendMA);
+  
+  // Historial visual
+  document.getElementById('history').innerHTML = history.map((h, i) => 
+    `<div class="candle candle-${h.toLowerCase()} ${i === history.length - 1 ? 'candle-new' : ''}">${h}</div>`
+  ).join('');
+  
+  // Lista de cruces
+  if (crosses.length > 0) {
+    document.getElementById('recent-crosses').style.display = 'block';
+    document.getElementById('cross-list').innerHTML = crosses.slice().reverse().map(c => `
+      <div class="cross-item">
+        <span>
+          <span class="${c.type === 'golden' ? 'cross-golden' : 'cross-death'}">
+            ${c.type === 'golden' ? '🚀' : '💀'} ${c.pair}
+          </span>
+          ${c.trap ? '<span class="cross-trap">TRAMPA</span>' : ''}
+        </span>
+        <span style="color:#666">${c.time}</span>
+      </div>
+    `).join('');
+  }
+}
+
+function updateProjections(trendMA) {
+  if (history.length < 2) {
+    document.getElementById('proj-g-seq').textContent = '--';
+    document.getElementById('proj-r-seq').textContent = '--';
+    return;
+  }
+  
+  const lastTwo = history.slice(-2);
+  const proj = analyzePattern(lastTwo);
+  
+  const gBox = document.getElementById('proj-g-box');
+  const rBox = document.getElementById('proj-r-box');
+  
+  if (proj) {
+    // Proyección VERDE
+    const gIsTrap = trendMA !== null && trendMA < 45; // Comprar en tendencia bajista = trampa
+    document.getElementById('proj-g-seq').textContent = lastTwo.join('') + 'G';
+    document.getElementById('proj-g-sig').textContent = proj.ifG.sig;
+    document.getElementById('proj-g-sig').className = `proj-signal ${proj.ifG.sig === 'COMPRA' ? 'proj-signal-buy' : proj.ifG.sig === 'VENTA' ? 'proj-signal-sell' : 'proj-signal-hold'}`;
+    document.getElementById('proj-g-conf').textContent = Math.round(proj.ifG.conf * 100) + '%';
+    document.getElementById('proj-g-warn').textContent = gIsTrap ? '🚫 Comprar en tendencia bajista' : '✓ A favor de tendencia';
+    gBox.className = 'proj-box proj-green ' + (gIsTrap ? 'proj-trap' : '');
+    
+    // Proyección ROJO
+    const rIsTrap = trendMA !== null && trendMA > 55; // Vender en tendencia alcista = trampa
+    document.getElementById('proj-r-seq').textContent = lastTwo.join('') + 'R';
+    document.getElementById('proj-r-sig').textContent = proj.ifR.sig;
+    document.getElementById('proj-r-sig').className = `proj-signal ${proj.ifR.sig === 'COMPRA' ? 'proj-signal-buy' : proj.ifR.sig === 'VENTA' ? 'proj-signal-sell' : 'proj-signal-hold'}`;
+    document.getElementById('proj-r-conf').textContent = Math.round(proj.ifR.conf * 100) + '%';
+    document.getElementById('proj-r-warn').textContent = rIsTrap ? '🚫 Vender en tendencia alcista' : '✓ A favor de tendencia';
+    rBox.className = 'proj-box proj-red ' + (rIsTrap ? 'proj-trap' : '');
+  }
+}
+
+function add(color) {
+  history.push(color);
+  if (history.length > 30) history.shift();
+  update();
+}
+
+function reset() {
+  history = [];
+  crosses = [];
+  document.getElementById('cross-alert').classList.remove('show');
+  document.getElementById('noise-alert').classList.remove('active', 'trap');
+  document.getElementById('recent-crosses').style.display = 'none';
+  update();
+}
+
+update();
+</script>
+
+</body>
+</html>

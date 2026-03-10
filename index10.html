@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Detector MA - Confirmar o Corregir Fuerza</title>
+  <style>
+    :root {
+      --green: #00ff88;
+      --red: #ff4444;
+      --gold: #ffd700;
+      --blue: #00d4ff;
+      --orange: #ff8800;
+      --purple: #ff00ff;
+      --cyan: #00ffff;
+      --bg: #0a0a0a;
+      --panel: #1a1a1a;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: #fff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 15px;
+    }
+    
+    /* ===== PANEL DE CONFIRMACIÓN ===== */
+    .confirm-panel {
+      width: 100%;
+      max-width: 500px;
+      background: var(--panel);
+      border: 3px solid var(--cyan);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+    .confirm-title {
+      color: var(--cyan);
+      font-size: 0.9em;
+      margin-bottom: 15px;
+      font-weight: bold;
+    }
+    .suggestion-box {
+      background: rgba(0,0,0,0.4);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 15px;
+      border: 2px solid #444;
+      transition: all 0.3s;
+    }
+    .suggestion-box.confirmed {
+      border-color: var(--green);
+      background: rgba(0,255,136,0.1);
+    }
+    .suggestion-box.corrected {
+      border-color: var(--orange);
+      background: rgba(255,136,0,0.1);
+    }
+    .suggestion-label {
+      font-size: 0.8em;
+      color: #888;
+      margin-bottom: 8px;
+    }
+    .suggestion-strength {
+      font-size: 2.5em;
+      font-weight: bold;
+      margin-bottom: 5px;
+      letter-spacing: 5px;
+    }
+    .strength-3 { color: var(--green); text-shadow: 0 0 20px var(--green); }
+    .strength-2 { color: var(--gold); }
+    .strength-1 { color: #888; }
+    .suggestion-text {
+      font-size: 1.2em;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    .suggestion-reason {
+      font-size: 0.75em;
+      color: #aaa;
+      line-height: 1.4;
+    }
+    .correction-notice {
+      display: none;
+      font-size: 0.8em;
+      color: var(--orange);
+      margin-top: 8px;
+      font-weight: bold;
+    }
+    .correction-notice.active { display: block; }
+    
+    /* Botones de acción */
+    .action-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .btn-confirm {
+      background: linear-gradient(135deg, var(--green), #00aa55);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      padding: 15px;
+      font-size: 1.1em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-confirm:hover { transform: scale(1.02); box-shadow: 0 0 20px var(--green); }
+    .btn-correct {
+      background: linear-gradient(135deg, var(--orange), #cc6a00);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      padding: 15px;
+      font-size: 1.1em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-correct:hover { transform: scale(1.02); box-shadow: 0 0 20px var(--orange); }
+    
+    /* Opciones de corrección (aparecen al hacer click en "Corregir") */
+    .correction-options {
+      display: none;
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #444;
+      animation: slideDown 0.3s;
+    }
+    .correction-options.active { display: block; }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .correction-title {
+      font-size: 0.8em;
+      color: var(--orange);
+      margin-bottom: 10px;
+    }
+    .correction-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .correction-btn {
+      background: #333;
+      border: 2px solid #555;
+      color: #fff;
+      border-radius: 8px;
+      padding: 12px;
+      cursor: pointer;
+      font-size: 0.9em;
+      transition: all 0.2s;
+    }
+    .correction-btn:hover { border-color: #fff; transform: scale(1.05); }
+    .correction-btn.selected {
+      border-color: var(--gold);
+      background: rgba(255,215,0,0.2);
+    }
+    .correction-btn.strong-sel { border-color: var(--green); }
+    .correction-btn.medium-sel { border-color: var(--gold); }
+    .correction-btn.weak-sel { border-color: #888; }
+    
+    /* Estado de confirmación */
+    .status-bar {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 0.85em;
+      font-weight: bold;
+    }
+    .status-pending {
+      background: rgba(255,215,0,0.1);
+      border: 1px solid var(--gold);
+      color: var(--gold);
+    }
+    .status-confirmed {
+      background: rgba(0,255,136,0.1);
+      border: 1px solid var(--green);
+      color: var(--green);
+    }
+    .status-corrected {
+      background: rgba(255,136,0,0.1);
+      border: 1px solid var(--orange);
+      color: var(--orange);
+    }
+    
+    /* Botones de color (solo activos después de confirmar/corregir) */
+    .color-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-top: 15px;
+      opacity: 0.3;
+      pointer-events: none;
+      transition: all 0.3s;
+    }
+    .color-buttons.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .btn-green {
+      background: linear-gradient(135deg, var(--green), #00aa55);
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      padding: 25px;
+      font-size: 1.5em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-green:hover { transform: scale(1.05); box-shadow: 0 0 25px var(--green); }
+    .btn-red {
+      background: linear-gradient(135deg, var(--red), #aa0000);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 25px;
+      font-size: 1.5em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-red:hover { transform: scale(1.05); box-shadow: 0 0 25px var(--red); }
+    
+    /* ===== RESTO DE ESTILOS ===== */
+    .trap-modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .trap-modal.active { display: flex; }
+    .trap-modal-content {
+      background: var(--panel);
+      padding: 25px;
+      border-radius: 12px;
+      border: 2px solid var(--orange);
+      text-align: center;
+      max-width: 300px;
+    }
+    .trap-modal-title { color: var(--orange); font-size: 1.2em; margin-bottom: 15px; }
+    .trap-modal-text { font-size: 0.9em; margin-bottom: 20px; color: #ccc; }
+    .trap-modal-buttons { display: flex; gap: 10px; justify-content: center; }
+    .trap-btn { padding: 12px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    .trap-btn-confirm { background: var(--orange); color: #000; }
+    .trap-btn-cancel { background: #333; color: #fff; }
+    
+    .active-trap-banner {
+      width: 100%;
+      max-width: 500px;
+      background: linear-gradient(90deg, var(--purple), transparent);
+      border-left: 4px solid var(--purple);
+      padding: 12px;
+      margin-bottom: 15px;
+      display: none;
+      animation: pulse 2s infinite;
+    }
+    .active-trap-banner.active { display: block; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    
+    .extreme-alert {
+      width: 100%;
+      max-width: 500px;
+      background: linear-gradient(90deg, var(--red), transparent);
+      border-left: 4px solid var(--red);
+      padding: 15px;
+      margin-bottom: 15px;
+      display: none;
+      animation: pulse-red 1.5s infinite;
+    }
+    .extreme-alert.active { display: block; }
+    @keyframes pulse-red { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+    .extreme-title { font-size: 1.1em; font-weight: bold; margin-bottom: 5px; }
+    .extreme-text { font-size: 0.85em; color: #ccc; }
+    
+    .cross-detector {
+      width: 100%;
+      max-width: 500px;
+      background: var(--panel);
+      border: 2px solid var(--gold);
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+    .cross-title { color: var(--gold); font-size: 0.9em; margin-bottom: 10px; text-align: center; }
+    .cross-active {
+      background: linear-gradient(90deg, var(--gold), transparent);
+      padding: 12px;
+      border-radius: 6px;
+      text-align: center;
+      font-size: 1.3em;
+      font-weight: bold;
+      display: none;
+    }
+    .cross-active.show { display: block; }
+    .cross-type-golden { color: var(--green); }
+    .cross-type-death { color: var(--red); }
+    
+    .ma-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+    .ma-item { background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; text-align: center; font-size: 0.8em; }
+    .ma-item.active { border: 1px solid var(--gold); background: rgba(255,215,0,0.1); }
+    .ma-item.trap { border: 1px solid var(--purple); opacity: 0.7; }
+    .ma-item.extreme { border: 2px solid var(--red); background: rgba(255,68,68,0.2); }
+    .ma-name { color: #888; font-size: 0.75em; }
+    .ma-val { font-weight: bold; font-size: 1.1em; }
+    .ma-up { color: var(--green); }
+    .ma-down { color: var(--red); }
+    .ma-extreme { color: var(--red); animation: blink 1s infinite; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    
+    .current-candle-analysis {
+      width: 100%;
+      max-width: 500px;
+      background: var(--panel);
+      border: 2px solid var(--cyan);
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 15px;
+      display: none;
+    }
+    .current-candle-analysis.active { display: block; }
+    .current-title { color: var(--cyan); font-size: 0.9em; margin-bottom: 10px; text-align: center; font-weight: bold; }
+    .current-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .stat-box {
+      background: rgba(0,0,0,0.3);
+      padding: 8px;
+      border-radius: 4px;
+      text-align: center;
+    }
+    .stat-label { font-size: 0.7em; color: #888; }
+    .stat-value { font-size: 1.2em; font-weight: bold; }
+    .current-verdict {
+      text-align: center;
+      padding: 10px;
+      border-radius: 6px;
+      font-weight: bold;
+    }
+    .verdict-strong-green { background: rgba(0,255,136,0.2); color: var(--green); border: 1px solid var(--green); }
+    .verdict-strong-red { background: rgba(255,68,68,0.2); color: var(--red); border: 1px solid var(--red); }
+    .verdict-weak { background: rgba(255,215,0,0.1); color: var(--gold); border: 1px solid var(--gold); }
+    
+    .trend-box {
+      width: 100%;
+      max-width: 500px;
+      background: var(--panel);
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      text-align: center;
+      border: 2px solid transparent;
+      position: relative;
+    }
+    .trend-box.bullish { border-color: var(--green); }
+    .trend-box.bearish { border-color: var(--red); }
+    .trend-box.neutral { border-color: var(--gold); }
+    .trend-box.extreme-bullish { 
+      border-color: var(--red); 
+      background: linear-gradient(135deg, var(--panel), rgba(255,0,0,0.1));
+      animation: pulse-border 2s infinite;
+    }
+    .trend-box.extreme-bearish { 
+      border-color: var(--green); 
+      background: linear-gradient(135deg, var(--panel), rgba(0,255,0,0.1));
+      animation: pulse-border 2s infinite;
+    }
+    @keyframes pulse-border { 
+      0%, 100% { box-shadow: 0 0 5px currentColor; } 
+      50% { box-shadow: 0 0 20px currentColor; } 
+    }
+    .trend-label { color: #888; font-size: 0.8em; margin-bottom: 5px; }
+    .trend-value { font-size: 1.2em; font-weight: bold; }
+    
+    .main-signal {
+      width: 100%;
+      max-width: 500px;
+      padding: 40px 20px;
+      border-radius: 12px;
+      text-align: center;
+      font-size: 2.2em;
+      font-weight: bold;
+      margin-bottom: 15px;
+      border: 3px solid;
+      position: relative;
+    }
+    .signal-buy { background: rgba(0,255,136,0.1); border-color: var(--green); color: var(--green); }
+    .signal-sell { background: rgba(255,68,68,0.1); border-color: var(--red); color: var(--red); }
+    .signal-wait { background: rgba(255,215,0,0.05); border-color: var(--gold); color: var(--gold); font-size: 1.8em; }
+    .signal-conflict {
+      background: repeating-linear-gradient(45deg, rgba(255,215,0,0.1), rgba(255,215,0,0.1) 10px, rgba(255,0,255,0.1) 10px, rgba(255,0,255,0.1) 20px);
+      border-color: var(--orange);
+      color: var(--orange);
+    }
+    .signal-strong-reversal {
+      background: linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,255,136,0.05));
+      border-color: var(--cyan);
+      color: var(--cyan);
+      animation: pulse-cyan 1.5s infinite;
+    }
+    @keyframes pulse-cyan { 
+      0%, 100% { box-shadow: 0 0 0 0 rgba(0,255,255,0.4); } 
+      50% { box-shadow: 0 0 20px 5px rgba(0,255,255,0.2); } 
+    }
+    
+    .projections {
+      width: 100%;
+      max-width: 500px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .proj-box {
+      background: var(--panel);
+      padding: 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid transparent;
+    }
+    .proj-box:hover { transform: scale(1.02); }
+    .proj-green { border-color: var(--green); }
+    .proj-red { border-color: var(--red); }
+    
+    .proj-label { font-size: 0.8em; color: #888; margin-bottom: 8px; }
+    .proj-sequence { font-size: 1.5em; letter-spacing: 4px; margin-bottom: 8px; }
+    .proj-signal { font-size: 1.1em; font-weight: bold; }
+    .proj-signal-buy { color: var(--green); }
+    .proj-signal-sell { color: var(--red); }
+    .proj-signal-hold { color: var(--gold); }
+    .proj-confidence { font-size: 0.75em; color: #666; margin-top: 5px; }
+    
+    .controls { display: flex; gap: 10px; margin-bottom: 15px; }
+    button { padding: 18px 35px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.1em; }
+    .btn-reset { background: #333; color: #fff; }
+    .btn-clear-trap { background: var(--purple); color: #fff; font-size: 0.9em; padding: 10px 20px; }
+    
+    .history-container { width: 100%; max-width: 500px; margin-bottom: 10px; }
+    .history-label { color: #888; font-size: 0.8em; margin-bottom: 8px; text-align: center; }
+    .history { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; }
+    .candle {
+      width: 32px; height: 32px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      flex-direction: column;
+    }
+    .candle:hover { transform: scale(1.2); }
+    .candle-g { background: var(--green); color: #000; }
+    .candle-r { background: var(--red); color: #fff; }
+    .candle-new { box-shadow: 0 0 10px var(--gold); }
+    .candle-trap { border: 2px solid var(--purple); box-shadow: 0 0 8px var(--purple); }
+    .candle-trap::after {
+      content: '✕';
+      position: absolute;
+      top: -5px; right: -5px;
+      background: var(--purple);
+      color: #fff;
+      font-size: 8px;
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .candle-strength {
+      font-size: 7px;
+      position: absolute;
+      bottom: 2px;
+      font-weight: normal;
+    }
+    .strength-3-ind { color: var(--green); text-shadow: 0 0 3px var(--green); }
+    .strength-2-ind { color: rgba(0,0,0,0.5); }
+    .candle-r .strength-2-ind { color: rgba(255,255,255,0.6); }
+    .strength-1-ind { color: #666; font-size: 6px; }
+    
+    .instruction { color: #666; font-size: 0.75em; text-align: center; margin-top: 5px; }
+    
+    .recent-trend {
+      width: 100%;
+      max-width: 500px;
+      background: var(--panel);
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      border: 2px solid #333;
+    }
+    .recent-title { color: var(--blue); font-size: 0.8em; margin-bottom: 8px; font-weight: bold; }
+    .recent-sequence {
+      display: flex;
+      gap: 4px;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+    .recent-candle {
+      width: 24px; height: 24px;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: bold;
+    }
+    .recent-candle-g { background: var(--green); color: #000; }
+    .recent-candle-r { background: var(--red); color: #fff; }
+    .recent-analysis {
+      text-align: center;
+      font-size: 0.9em;
+      padding: 5px;
+      border-radius: 4px;
+    }
+    .recent-bullish { background: rgba(0,255,136,0.1); color: var(--green); }
+    .recent-bearish { background: rgba(255,68,68,0.1); color: var(--red); }
+    .recent-neutral { background: rgba(255,215,0,0.1); color: var(--gold); }
+    
+    .momentum-indicator {
+      width: 100%;
+      max-width: 500px;
+      background: var(--panel);
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-size: 0.8em;
+      border: 1px solid #333;
+    }
+    .momentum-title { color: var(--blue); margin-bottom: 5px; font-weight: bold; }
+    .momentum-bar {
+      height: 20px;
+      background: #333;
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+    }
+    .momentum-fill {
+      height: 100%;
+      transition: all 0.3s;
+    }
+    .momentum-fill.bullish { background: linear-gradient(90deg, var(--green), #00aa55); }
+    .momentum-fill.bearish { background: linear-gradient(90deg, var(--red), #aa0000); }
+    .momentum-marker {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: #fff;
+      box-shadow: 0 0 4px #000;
+    }
+    
+    .hint {
+      text-align: center;
+      font-size: 0.7em;
+      color: #555;
+      margin-top: 10px;
+    }
+    .hint kbd {
+      background: #333;
+      padding: 2px 6px;
+      border-radius: 3px;
+      border: 1px solid #555;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="trap-modal" id="trap-modal">
+    <div class="trap-modal-content">
+      <div class="trap-modal-title">🎭 MARCAR COMO TRAMPA</div>
+      <div class="trap-modal-text">
+        ¿La vela <strong id="trap-candle-color">--</strong> en posición <strong id="trap-candle-pos">--</strong> fue una trampa?
+      </div>
+      <div class="trap-modal-buttons">
+        <button class="trap-btn trap-btn-confirm" onclick="confirmTrap()">Sí, recalcular</button>
+        <button class="trap-btn trap-btn-cancel" onclick="closeModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PANEL DE CONFIRMACIÓN/CORRECCIÓN ===== -->
+  <div class="confirm-panel">
+    <div class="confirm-title">🤖 SISTEMA SUGIERE FUERZA DE VELA</div>
+    
+    <div class="suggestion-box" id="suggestion-box">
+      <div class="suggestion-label">Análisis automático del patrón:</div>
+      <div class="suggestion-strength strength-2" id="suggestion-bars">▰▰</div>
+      <div class="suggestion-text" id="suggestion-text">MEDIA</div>
+      <div class="suggestion-reason" id="suggestion-reason">
+        Continuación de tendencia detectada
+      </div>
+      <div class="correction-notice" id="correction-notice">
+        ⚠️ Corregido manualmente (era: MEDIA)
+      </div>
+    </div>
+    
+    <!-- Paso 1: Confirmar o Corregir -->
+    <div id="step-confirm">
+      <div class="action-buttons">
+        <button class="btn-confirm" onclick="confirmStrength()">
+          ✓ CONFIRMAR<br>
+          <span style="font-size:0.7em;opacity:0.8;">Está correcto</span>
+        </button>
+        <button class="btn-correct" onclick="showCorrectionOptions()">
+          ✏️ CORREGIR<br>
+          <span style="font-size:0.7em;opacity:0.8;">Está equivocado</span>
+        </button>
+      </div>
+      
+      <div class="status-bar status-pending" id="status-bar">
+        ⏳ PENDIENTE: Confirma o corrige la fuerza sugerida
+      </div>
+    </div>
+    
+    <!-- Paso 2: Opciones de corrección (inicialmente oculto) -->
+    <div class="correction-options" id="correction-options">
+      <div class="correction-title">Selecciona la fuerza correcta:</div>
+      <div class="correction-grid">
+        <button class="correction-btn strong-sel" onclick="correctStrength(3)" id="corr-3">
+          <div style="font-size:1.5em;color:var(--green);">▰▰▰</div>
+          <div style="font-weight:bold;">FUERTE</div>
+          <div style="font-size:0.7em;">Reversión importante</div>
+        </button>
+        <button class="correction-btn medium-sel" onclick="correctStrength(2)" id="corr-2">
+          <div style="font-size:1.5em;color:var(--gold);">▰▰</div>
+          <div style="font-weight:bold;">MEDIA</div>
+          <div style="font-size:0.7em;">Momentum normal</div>
+        </button>
+        <button class="correction-btn weak-sel" onclick="correctStrength(1)" id="corr-1">
+          <div style="font-size:1.5em;color:#888;">▰</div>
+          <div style="font-weight:bold;">DÉBIL</div>
+          <div style="font-size:0.7em;">Doji/indecisión</div>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Paso 3: Botones de color (inicialmente desactivados) -->
+    <div class="color-buttons" id="color-buttons">
+      <button class="btn-green" onclick="addCandle('G')">
+        VERDE 🟢<br>
+        <span style="font-size:0.6em;" id="green-strength">Fuerza: 2/3</span>
+      </button>
+      <button class="btn-red" onclick="addCandle('R')">
+        ROJO 🔴<br>
+        <span style="font-size:0.6em;" id="red-strength">Fuerza: 2/3</span>
+      </button>
+    </div>
+    
+    <div class="hint">
+      Atajos: <kbd>C</kbd> = Confirmar | <kbd>E</kbd> = Corregir | <kbd>1/2/3</kbd> = Fuerza | <kbd>G/R</kbd> = Color
+    </div>
+  </div>
+
+  <div class="active-trap-banner" id="trap-banner">
+    🎭 <strong>TRAMPA MANUAL ACTIVA</strong> | Vela <span id="trap-info">--</span> excluida
+  </div>
+
+  <div class="extreme-alert" id="extreme-alert">
+    <div class="extreme-title">⚠️ EXTREMO DETECTADO</div>
+    <div class="extreme-text" id="extreme-text">Mercado en sobrecompra/sobreventa extrema</div>
+  </div>
+
+  <div class="cross-detector">
+    <div class="cross-title">⚔️ DETECTOR MULTI-CRUCE MA</div>
+    <div class="cross-active" id="cross-alert">
+      <span id="cross-pair">MA2/MA10</span>: <span id="cross-type" class="cross-type-golden">GOLDEN CROSS</span>
+    </div>
+    <div class="ma-grid" id="ma-grid"></div>
+  </div>
+
+  <div class="current-candle-analysis" id="current-analysis">
+    <div class="current-title">🎯 ANÁLISIS VELA ACTUAL</div>
+    <div class="current-stats">
+      <div class="stat-box">
+        <div class="stat-label">Fuerza Confirmada</div>
+        <div class="stat-value" id="current-strength">--</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Origen</div>
+        <div class="stat-value" id="current-origin">--</div>
+      </div>
+    </div>
+    <div class="current-verdict" id="current-verdict">--</div>
+  </div>
+
+  <div class="recent-trend" id="recent-box">
+    <div class="recent-title">📊 CONTEXTO RECIENTE (Últimas 5 velas)</div>
+    <div class="recent-sequence" id="recent-sequence"></div>
+    <div class="recent-analysis" id="recent-analysis">--</div>
+  </div>
+
+  <div class="momentum-indicator" id="momentum-box" style="display: none;">
+    <div class="momentum-title">📈 Tendencia MA10</div>
+    <div class="momentum-bar">
+      <div class="momentum-fill" id="momentum-fill"></div>
+      <div class="momentum-marker" style="left: 50%;"></div>
+    </div>
+  </div>
+
+  <div class="trend-box neutral" id="trend-box">
+    <div class="trend-label">TENDENCIA GLOBAL</div>
+    <div class="trend-value" id="trend-value">NEUTRAL</div>
+  </div>
+
+  <div class="main-signal signal-wait" id="main-signal">ESPERAR</div>
+
+  <div class="projections" id="projections">
+    <div class="proj-box proj-green" id="proj-g-box">
+      <div class="proj-label">Si VERDE →</div>
+      <div class="proj-sequence" id="proj-g-seq">--</div>
+      <div class="proj-signal proj-signal-hold" id="proj-g-sig">HOLD</div>
+    </div>
+    <div class="proj-box proj-red" id="proj-r-box">
+      <div class="proj-label">Si ROJO →</div>
+      <div class="proj-sequence" id="proj-r-seq">--</div>
+      <div class="proj-signal proj-signal-hold" id="proj-r-sig">HOLD</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn-reset" onclick="reset()">↺ REINICIAR TODO</button>
+  </div>
+  <button class="btn-clear-trap" id="btn-clear-trap" onclick="clearTrap()" style="display:none;">
+    🗑 Limpiar Trampa
+  </button>
+
+  <div class="history-container">
+    <div class="history-label">HISTORIAL (Click para marcar trampa)</div>
+    <div class="history" id="history"></div>
+    <div class="instruction">✓ = Confirmado | ✏️ = Corregido | Número = Fuerza (1-3)</div>
+  </div>
+
+<script>
+// ===== VARIABLES =====
+let history = [];
+let manualStrengths = {};  // {index: {strength: 3, origin: 'auto'|'confirmed'|'corrected'}}
+let manualTrapIndex = null;
+let pendingTrapIndex = null;
+
+// Estado actual de confirmación
+let autoSuggestedStrength = 2;
+let confirmedStrength = null;
+let strengthOrigin = 'pending'; // 'pending', 'auto', 'confirmed', 'corrected'
+
+const MA_CONFIG = {
+  crosses: [
+    { fast: 2, slow: 10, name: 'MA2/MA10' },
+    { fast: 6, slow: 20, name: 'MA6/MA20' },
+    { fast: 10, slow: 20, name: 'MA10/MA20' }
+  ],
+  trend: { period: 10, name: 'MA10' }
+};
+
+// ===== CÁLCULO AUTOMÁTICO DE FUERZA =====
+function calculateAutoStrength() {
+  if (history.length < 2) return 2;
+  
+  const last = history[history.length - 1];
+  let consecutiveOpposite = 0;
+  
+  // Contar velas opuestas consecutivas
+  for (let i = history.length - 1; i >= 0; i--) {
+    if (history[i] !== last) consecutiveOpposite++;
+    else if (i < history.length - 1) break;
+  }
+  
+  const trendMA = calcMA(10, true);
+  const isExtreme = trendMA !== null && (trendMA >= 85 || trendMA <= 15);
+  
+  // Lógica de fuerza
+  if (consecutiveOpposite >= 3) return 3;  // Reversión fuerte
+  if (isExtreme) return 3;                  // Extremo = reversión probable
+  if (consecutiveOpposite === 2) return 2;  // Reversión media
+  if (consecutiveOpposite === 0) {          // Mismo color = posible agotamiento
+    let sameCount = 0;
+    for (let i = history.length - 1; i >= 0 && history[i] === last; i--) sameCount++;
+    if (sameCount >= 4) return 1;           // Agotamiento
+  }
+  
+  return 2; // Default media
+}
+
+function getStrengthReason(strength) {
+  const reasons = {
+    3: "Reversión potente detectada (3+ velas opuestas o extremo)",
+    2: "Momentum estándar / continuación de tendencia",
+    1: "Indecisión o agotamiento del movimiento previo"
+  };
+  return reasons[strength] || "Análisis de patrón";
+}
+
+// ===== FLUJO DE CONFIRMACIÓN =====
+
+function updateSuggestionPanel() {
+  // Solo actualizar si estamos en estado pendiente (no hay vela agregada aún)
+  if (strengthOrigin !== 'pending') return;
+  
+  autoSuggestedStrength = calculateAutoStrength();
+  
+  // Actualizar visualización
+  const bars = '▰'.repeat(autoSuggestedStrength);
+  const box = document.getElementById('suggestion-box');
+  const barsEl = document.getElementById('suggestion-bars');
+  const textEl = document.getElementById('suggestion-text');
+  const reasonEl = document.getElementById('suggestion-reason');
+  
+  barsEl.textContent = bars;
+  barsEl.className = 'suggestion-strength strength-' + autoSuggestedStrength;
+  textEl.textContent = autoSuggestedStrength === 3 ? 'FUERTE' : autoSuggestedStrength === 2 ? 'MEDIA' : 'DÉBIL';
+  textEl.style.color = autoSuggestedStrength === 3 ? 'var(--green)' : autoSuggestedStrength === 2 ? 'var(--gold)' : '#888';
+  reasonEl.textContent = getStrengthReason(autoSuggestedStrength);
+  
+  // Reset estilos
+  box.classList.remove('confirmed', 'corrected');
+  document.getElementById('correction-notice').classList.remove('active');
+  
+  // Reset estado
+  confirmedStrength = null;
+  document.getElementById('status-bar').className = 'status-bar status-pending';
+  document.getElementById('status-bar').textContent = '⏳ PENDIENTE: Confirma o corrige la fuerza sugerida';
+  
+  // Ocultar opciones de corrección y botones de color
+  document.getElementById('correction-options').classList.remove('active');
+  document.getElementById('color-buttons').classList.remove('active');
+  document.getElementById('step-confirm').style.display = 'block';
+}
+
+function confirmStrength() {
+  // Usuario confirma la sugerencia automática
+  confirmedStrength = autoSuggestedStrength;
+  strengthOrigin = 'confirmed';
+  
+  // Visual feedback
+  document.getElementById('suggestion-box').classList.add('confirmed');
+  document.getElementById('status-bar').className = 'status-bar status-confirmed';
+  document.getElementById('status-bar').textContent = '✓ CONFIRMADO: Usando fuerza ' + confirmedStrength + '/3';
+  
+  // Ocultar opciones de corrección si estaban abiertas
+  document.getElementById('correction-options').classList.remove('active');
+  
+  // Mostrar botones de color
+  showColorButtons();
+}
+
+function showCorrectionOptions() {
+  // Mostrar opciones para corregir
+  document.getElementById('correction-options').classList.add('active');
+  
+  // Highlight la sugerida
+  document.querySelectorAll('.correction-btn').forEach(btn => btn.classList.remove('selected'));
+  document.getElementById('corr-' + autoSuggestedStrength).classList.add('selected');
+  
+  document.getElementById('status-bar').textContent = '✏️ SELECCIONA la fuerza correcta';
+}
+
+function correctStrength(newStrength) {
+  // Usuario corrige la fuerza
+  confirmedStrength = newStrength;
+  strengthOrigin = 'corrected';
+  
+  // Actualizar visualización
+  const bars = '▰'.repeat(newStrength);
+  const box = document.getElementById('suggestion-box');
+  const barsEl = document.getElementById('suggestion-bars');
+  const textEl = document.getElementById('suggestion-text');
+  
+  barsEl.textContent = bars;
+  barsEl.className = 'suggestion-strength strength-' + newStrength;
+  textEl.textContent = newStrength === 3 ? 'FUERTE' : newStrength === 2 ? 'MEDIA' : 'DÉBIL';
+  textEl.style.color = newStrength === 3 ? 'var(--green)' : newStrength === 2 ? 'var(--gold)' : '#888';
+  
+  box.classList.remove('confirmed');
+  box.classList.add('corrected');
+  
+  // Mostrar aviso de corrección
+  const notice = document.getElementById('correction-notice');
+  notice.textContent = `⚠️ Corregido manualmente (auto sugería: ${autoSuggestedStrength}/3)`;
+  notice.classList.add('active');
+  
+  // Actualizar estado
+  document.getElementById('status-bar').className = 'status-bar status-corrected';
+  document.getElementById('status-bar').textContent = '✏️ CORREGIDO: ' + newStrength + '/3 (era ' + autoSuggestedStrength + '/3)';
+  
+  // Highlight botón seleccionado
+  document.querySelectorAll('.correction-btn').forEach(btn => btn.classList.remove('selected'));
+  document.getElementById('corr-' + newStrength).classList.add('selected');
+  
+  // Mostrar botones de color
+  showColorButtons();
+}
+
+function showColorButtons() {
+  // Actualizar texto de fuerza en botones
+  document.getElementById('green-strength').textContent = 'Fuerza: ' + confirmedStrength + '/3';
+  document.getElementById('red-strength').textContent = 'Fuerza: ' + confirmedStrength + '/3';
+  
+  // Mostrar y activar botones
+  const colorBtns = document.getElementById('color-buttons');
+  colorBtns.classList.add('active');
+  
+  // Ocultar paso de confirmación suavemente
+  setTimeout(() => {
+    document.getElementById('step-confirm').style.display = 'none';
+  }, 300);
+}
+
+function addCandle(color) {
+  if (confirmedStrength === null) {
+    alert('Primero debes CONFIRMAR o CORREGIR la fuerza sugerida');
+    return;
+  }
+  
+  const index = history.length;
+  history.push(color);
+  manualStrengths[index] = {
+    strength: confirmedStrength,
+    origin: strengthOrigin,
+    autoSuggested: autoSuggestedStrength
+  };
+  
+  // Reset para siguiente vela
+  resetConfirmationPanel();
+  
+  // Mantener máximo 30 velas
+  if (history.length > 30) {
+    if (manualTrapIndex !== null) {
+      if (manualTrapIndex === 0) manualTrapIndex = null;
+      else manualTrapIndex--;
+    }
+    // Reindexar
+    const newStrengths = {};
+    for (let i = 1; i < 30; i++) {
+      if (manualStrengths[i]) newStrengths[i-1] = manualStrengths[i];
+    }
+    manualStrengths = newStrengths;
+    history.shift();
+  }
+  
+  update();
+}
+
+function resetConfirmationPanel() {
+  strengthOrigin = 'pending';
+  confirmedStrength = null;
+  autoSuggestedStrength = 2;
+  
+  // Reset UI
+  document.getElementById('suggestion-box').classList.remove('confirmed', 'corrected');
+  document.getElementById('correction-notice').classList.remove('active');
+  document.getElementById('correction-options').classList.remove('active');
+  document.getElementById('color-buttons').classList.remove('active');
+  document.getElementById('step-confirm').style.display = 'block';
+  document.querySelectorAll('.correction-btn').forEach(btn => btn.classList.remove('selected'));
+  
+  updateSuggestionPanel();
+}
+
+// ===== FUNCIONES DE ANÁLISIS =====
+
+function getCandleStrength(index) {
+  if (manualStrengths[index]) return manualStrengths[index].strength;
+  return 2; // default
+}
+
+function getCandleOrigin(index) {
+  if (manualStrengths[index]) {
+    const origins = {
+      'confirmed': '✓ Auto',
+      'corrected': '✏️ Manual',
+      'auto': 'Auto'
+    };
+    return origins[manualStrengths[index].origin] || 'Auto';
+  }
+  return 'Auto';
+}
+
+function analyzeCurrentCandle() {
+  if (history.length === 0) return { strength: 0, type: 'neutral', isReversal: false, origin: '-' };
+  
+  const idx = history.length - 1;
+  const current = history[idx];
+  const strength = getCandleStrength(idx);
+  const origin = getCandleOrigin(idx);
+  
+  let isReversal = false;
+  let type = 'normal';
+  
+  if (history.length >= 3) {
+    const prev = history[idx-1];
+    const prev2 = history[idx-2];
+    const wasOpposite = prev !== current && prev2 !== current;
+    
+    if (wasOpposite) {
+      isReversal = true;
+      type = strength >= 3 ? 'strong-reversal' : 'weak-reversal';
+    } else if (current === prev) {
+      type = 'continuation';
+    }
+  }
+  
+  return { strength, type, isReversal: isReversal && strength >= 2, current, origin };
+}
+
+function analyzeRecentTrend() {
+  const recent = history.slice(-5);
+  const strengths = recent.map((_, i) => {
+    const idx = history.length - 5 + i;
+    return getCandleStrength(idx < 0 ? 0 : idx);
+  });
+  
+  if (recent.length < 2) return { trend: 'neutral', strength: 0 };
+  
+  let score = 0;
+  recent.forEach((c, i) => {
+    const w = strengths[i] || 2;
+    score += (c === 'G' ? 1 : -1) * w;
+  });
+  
+  const greens = recent.filter(c => c === 'G').length;
+  const reds = recent.filter(c => c === 'R').length;
+  
+  if (score > 4) return { trend: 'bullish', strength: Math.abs(score) };
+  if (score < -4) return { trend: 'bearish', strength: Math.abs(score) };
+  return { trend: 'neutral', strength: 0 };
+}
+
+function calcMA(period, useOriginal = false) {
+  if (history.length < period) return null;
+  let data = history;
+  if (!useOriginal && manualTrapIndex !== null) {
+    data = history.filter((_, idx) => idx !== manualTrapIndex);
+  }
+  const slice = data.slice(-period);
+  return (slice.filter(h => h === 'G').length / period) * 100;
+}
+
+function calcPrevMA(period, useOriginal = false) {
+  let data = history;
+  if (!useOriginal && manualTrapIndex !== null) {
+    data = history.filter((_, idx) => idx !== manualTrapIndex);
+  }
+  if (data.length <= period) return null;
+  const slice = data.slice(-period-1, -1);
+  return (slice.filter(h => h === 'G').length / period) * 100;
+}
+
+function detectCrosses(useOriginal = false) {
+  const results = [];
+  const trendMA = calcMA(10, useOriginal);
+  const prevTrendMA = calcPrevMA(10, useOriginal);
+  const recentTrend = analyzeRecentTrend();
+  const currentCandle = analyzeCurrentCandle();
+  
+  for (let cfg of MA_CONFIG.crosses) {
+    const maFast = calcMA(cfg.fast, useOriginal);
+    const maSlow = calcMA(cfg.slow, useOriginal);
+    if (maFast === null || maSlow === null) continue;
+    
+    let crossed = false, crossType = null;
+    const prevFast = calcPrevMA(cfg.fast, useOriginal);
+    const prevSlow = calcPrevMA(cfg.slow, useOriginal);
+    
+    if (prevFast !== null && prevSlow !== null) {
+      if (prevFast <= prevSlow && maFast > maSlow) { crossed = true; crossType = 'golden'; }
+      else if (prevFast >= prevSlow && maFast < maSlow) { crossed = true; crossType = 'death'; }
+    }
+    
+    results.push({ pair: cfg.name, maFast, maSlow, crossed, crossType });
+  }
+  
+  return { crosses: results, trendMA, recentTrend, currentCandle };
+}
+
+// ===== ACTUALIZACIÓN PRINCIPAL =====
+
+function update() {
+  const result = detectCrosses(false);
+  const { crosses, trendMA, recentTrend, currentCandle } = result;
+  
+  // Actualizar sugerencia si estamos pendientes
+  if (strengthOrigin === 'pending') {
+    updateSuggestionPanel();
+  }
+  
+  // Análisis de vela actual
+  const analysisDiv = document.getElementById('current-analysis');
+  if (currentCandle.strength > 0) {
+    analysisDiv.classList.add('active');
+    const bars = '▰'.repeat(currentCandle.strength) + '▱'.repeat(3 - currentCandle.strength);
+    document.getElementById('current-strength').innerHTML = `<span style="color:${currentCandle.strength>=3?'var(--green)':currentCandle.strength===2?'var(--gold)':'#888'}">${bars}</span>`;
+    document.getElementById('current-origin').textContent = currentCandle.origin;
+    
+    const verdict = document.getElementById('current-verdict');
+    if (currentCandle.isReversal && currentCandle.strength >= 3) {
+      verdict.className = 'current-verdict verdict-strong-' + (currentCandle.current==='G'?'green':'red');
+      verdict.innerHTML = `<strong>🔄 REVERSIÓN FUERTE</strong><br><small>${currentCandle.origin === '✓ Auto' ? 'Confirmada automática' : 'Corregida manualmente'}</small>`;
+    } else {
+      verdict.className = 'current-verdict verdict-weak';
+      verdict.textContent = currentCandle.isReversal ? 'Reversión débil' : 'Continuación';
+    }
+  } else {
+    analysisDiv.classList.remove('active');
+  }
+  
+  // Tendencia reciente
+  document.getElementById('recent-sequence').innerHTML = history.slice(-5).map((c, i) => {
+    const idx = Math.max(0, history.length - 5 + i);
+    const s = getCandleStrength(idx);
+    return `<div class="recent-candle recent-candle-${c.toLowerCase()}">
+              ${c}<span style="font-size:7px;opacity:0.7;">${s}</span>
+            </div>`;
+  }).join('');
+  
+  const analysis = document.getElementById('recent-analysis');
+  analysis.className = 'recent-analysis recent-' + recentTrend.trend;
+  analysis.textContent = recentTrend.trend === 'bullish' ? 'Tendencia Alcista' : recentTrend.trend === 'bearish' ? 'Tendencia Bajista' : 'Neutral';
+  
+  // Momentum
+  if (trendMA !== null) {
+    document.getElementById('momentum-box').style.display = 'block';
+    document.getElementById('momentum-fill').style.width = trendMA + '%';
+    document.getElementById('momentum-fill').className = 'momentum-fill ' + (trendMA > 55 ? 'bullish' : trendMA < 45 ? 'bearish' : 'neutral');
+  }
+  
+  // Tendencia global
+  const trendBox = document.getElementById('trend-box');
+  if (trendMA !== null) {
+    const trend = trendMA > 55 ? { text: 'ALCISTA ↑', class: 'bullish', color: 'var(--green)' } :
+                  trendMA < 45 ? { text: 'BAJISTA ↓', class: 'bearish', color: 'var(--red)' } :
+                  { text: 'NEUTRAL →', class: 'neutral', color: 'var(--gold)' };
+    trendBox.className = 'trend-box ' + trend.class;
+    document.getElementById('trend-value').textContent = trend.text;
+    document.getElementById('trend-value').style.color = trend.color;
+  }
+  
+  // Cruces MA
+  document.getElementById('ma-grid').innerHTML = crosses.map(r => `
+    <div class="ma-item ${r.crossed ? 'active' : ''}">
+      <div class="ma-name">${r.pair}</div>
+      <div class="ma-val ${r.maFast > r.maSlow ? 'ma-up' : 'ma-down'}">${r.maFast.toFixed(0)}|${r.maSlow.toFixed(0)}</div>
+    </div>
+  `).join('');
+  
+  // Señal principal
+  const activeCross = crosses.find(r => r.crossed);
+  const mainSignal = document.getElementById('main-signal');
+  
+  let signal = 'ESPERAR', signalClass = 'signal-wait';
+  
+  if (currentCandle.isReversal && currentCandle.strength >= 3) {
+    signal = currentCandle.current === 'G' ? 'COMPRAR' : 'VENDER';
+    signalClass = 'signal-strong-reversal';
+  } else if (activeCross) {
+    signal = activeCross.crossType === 'golden' ? 'COMPRAR' : 'VENDER';
+    signalClass = activeCross.crossType === 'golden' ? 'signal-buy' : 'signal-sell';
+  }
+  
+  mainSignal.className = 'main-signal ' + signalClass;
+  mainSignal.textContent = signal;
+  
+  // Proyecciones
+  const lastTwo = history.slice(-2);
+  if (lastTwo.length >= 2) {
+    const pattern = lastTwo[0] + lastTwo[1];
+    document.getElementById('proj-g-seq').textContent = pattern + 'G';
+    document.getElementById('proj-r-seq').textContent = pattern + 'R';
+  }
+  
+  // Historial
+  document.getElementById('history').innerHTML = history.map((h, i) => {
+    const s = getCandleStrength(i);
+    const origin = manualStrengths[i]?.origin || 'auto';
+    const indicator = s >= 3 ? '<span class="candle-strength strength-3-ind">3</span>' :
+                      s === 2 ? '<span class="candle-strength strength-2-ind">2</span>' :
+                      '<span class="candle-strength strength-1-ind">1</span>';
+    return `<div class="candle candle-${h.toLowerCase()} ${i===history.length-1?'candle-new':''} ${i===manualTrapIndex?'candle-trap':''}" 
+                onclick="openTrapModal(${i})" title="Fuerza: ${s}/3, Origen: ${origin}">
+              ${h}${indicator}
+            </div>`;
+  }).join('');
+}
+
+// ===== UTILIDADES =====
+
+function openTrapModal(index) {
+  if (manualTrapIndex === index) {
+    clearTrap();
+    return;
+  }
+  pendingTrapIndex = index;
+  document.getElementById('trap-candle-color').textContent = history[index];
+  document.getElementById('trap-candle-pos').textContent = '#' + (index + 1);
+  document.getElementById('trap-modal').classList.add('active');
+}
+
+function closeModal() {
+  document.getElementById('trap-modal').classList.remove('active');
+  pendingTrapIndex = null;
+}
+
+function confirmTrap() {
+  if (pendingTrapIndex !== null) {
+    manualTrapIndex = pendingTrapIndex;
+    closeModal();
+    update();
+  }
+}
+
+function clearTrap() {
+  manualTrapIndex = null;
+  update();
+}
+
+function reset() {
+  history = [];
+  manualStrengths = {};
+  manualTrapIndex = null;
+  resetConfirmationPanel();
+  update();
+}
+
+// Atajos de teclado
+document.addEventListener('keydown', (e) => {
+  if (document.getElementById('trap-modal').classList.contains('active')) return;
+  
+  const key = e.key.toLowerCase();
+  
+  if (strengthOrigin === 'pending') {
+    if (key === 'c') confirmStrength();
+    if (key === 'e') showCorrectionOptions();
+    if (key === '1') { showCorrectionOptions(); correctStrength(1); }
+    if (key === '2') { showCorrectionOptions(); correctStrength(2); }
+    if (key === '3') { showCorrectionOptions(); correctStrength(3); }
+  } else {
+    if (key === 'g') addCandle('G');
+    if (key === 'r') addCandle('R');
+  }
+});
+
+// Iniciar
+update();
+</script>
+
+</body>
+</html>

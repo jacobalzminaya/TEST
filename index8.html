@@ -1,0 +1,1875 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Detector MA + Fuerza Manual de Vela</title>
+  <style>
+    :root {
+      --green: #00ff88;
+      --red: #ff4444;
+      --gold: #ffd700;
+      --blue: #00d4ff;
+      --orange: #ff8800;
+      --purple: #ff00ff;
+      --cyan: #00ffff;
+      --bg: #0a0a0a;
+      --panel: #1a1a1a;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: #fff;
+      font-family: 'Courier New', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 15px;
+    }
+    
+    /* ===== NUEVO: Selector de fuerza de vela ===== */
+    .strength-selector {
+      width: 100%;
+      max-width: 500px;
+      background: var(--panel);
+      border: 2px solid var(--cyan);
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+    .strength-title {
+      color: var(--cyan);
+      font-size: 0.9em;
+      margin-bottom: 10px;
+      text-align: center;
+      font-weight: bold;
+    }
+    .strength-options {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .strength-btn {
+      padding: 12px;
+      border: 2px solid #444;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.9em;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .strength-btn:hover { transform: scale(1.05); }
+    .strength-btn.selected { 
+      border-color: var(--gold); 
+      box-shadow: 0 0 10px var(--gold);
+    }
+    
+    /* Fuerza 3 - Fuerte */
+    .strength-strong { 
+      background: linear-gradient(135deg, rgba(0,255,136,0.3), rgba(0,255,136,0.1)); 
+      color: var(--green);
+      border-color: var(--green);
+    }
+    .strength-strong.selected { background: rgba(0,255,136,0.4); }
+    
+    /* Fuerza 2 - Media */
+    .strength-medium { 
+      background: linear-gradient(135deg, rgba(255,215,0,0.3), rgba(255,215,0,0.1)); 
+      color: var(--gold);
+      border-color: var(--gold);
+    }
+    .strength-medium.selected { background: rgba(255,215,0,0.4); }
+    
+    /* Fuerza 1 - Débil/Doji */
+    .strength-weak { 
+      background: linear-gradient(135deg, rgba(100,100,100,0.3), rgba(100,100,100,0.1)); 
+      color: #888;
+      border-color: #666;
+    }
+    .strength-weak.selected { background: rgba(100,100,100,0.4); }
+    
+    .strength-preview {
+      text-align: center;
+      font-size: 0.8em;
+      color: #888;
+      margin-top: 5px;
+      min-height: 20px;
+    }
+    
+    /* Indicadores visuales en el historial */
+    .candle-strength-indicator {
+      position: absolute;
+      bottom: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 8px;
+      font-weight: bold;
+    }
+    .strength-3 { color: var(--green); text-shadow: 0 0 3px var(--green); }
+    .strength-2 { color: var(--gold); }
+    .strength-1 { color: #666; font-size: 6px; }
+    
+    /* ===== ESTILOS EXISTENTES (mantener todos los anteriores) ===== */
+    .trap-modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .trap-modal.active { display: flex; }
+    .trap-modal-content {
+      background: var(--panel);
+      padding: 25px;
+      border-radius: 12px;
+      border: 2px solid var(--orange);
+      text-align: center;
+      max-width: 300px;
+    }
+    .trap-modal-title { color: var(--orange); font-size: 1.2em; margin-bottom: 15px; }
+    .trap-modal-text { font-size: 0.9em; margin-bottom: 20px; color: #ccc; }
+    .trap-modal-buttons { display: flex; gap: 10px; justify-content: center; }
+    .trap-btn { padding: 12px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    .trap-btn-confirm { background: var(--orange); color: #000; }
+    .trap-btn-cancel { background: #333; color: #fff; }
+    
+    .active-trap-banner {
+      width: 100%;
+      max-width: 500px;
+      background: linear-gradient(90deg, var(--purple), transparent);
+      border-left: 4px solid var(--purple);
+      padding: 12px;
+      margin-bottom: 15px;
+      display: none;
+      animation: pulse 2s infinite;
+    }
+    .active-trap-banner.active { display: block; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    
+    .extreme-alert {
+      width: 100%;
+      max-width: 500px;
+      background: linear-gradient(90deg, var(--red), transparent);
+      border-left: 4px solid var(--red);
+      padding: 15px;
+      margin-bottom: 15px;
+      display: none;
+      animation: pulse-red 1.5s infinite;
+    }
+    .extreme-alert.active { display: block; }
+    @keyframes pulse-red { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+    .extreme-title { font-size: 1.1em; font-weight: bold; margin-bottom: 5px; }
+    .extreme-text { font-size: 0.85em; color: #ccc; }
+    
+    .cross-detector {
+      width: 100%;
+      max-width: 500px;
+      background: var(--panel);
+      border: 2px solid var(--gold);
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+    .cross-title { color: var(--gold); font-size: 0.9em; margin-bottom: 10px; text-align: center; }
+    .cross-active {
+      background: linear-gradient(90deg, var(--gold), transparent);
+      padding: 12px;
+      border-radius: 6px;
+      text-align: center;
+      font-size: 1.3em;
+      font-weight: bold;
+      display: none;
+    }
+    .cross-active.show { display: block; }
+    .cross-type-golden { color: var(--green); }
+    .cross-type-death { color: var(--red); }
+    
+    .ma-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+    .ma-item { background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; text-align: center; font-size: 0.8em; }
+    .ma-item.active { border: 1px solid var(--gold); background: rgba(255,215,0,0.1); }
+    .ma-item.trap { border: 1px solid var(--purple); opacity: 0.7; }
+    .ma-item.extreme { border: 2px solid var(--red); background: rgba(255,68,68,0.2); }
+    .ma-name { color: #888; font-size: 0.75em; }
+    .ma-val { font-weight: bold; font-size: 1.1em; }
+    .ma-up { color: var(--green); }
+    .ma-down { color: var(--red); }
+    .ma-extreme { color: var(--red); animation: blink 1s infinite; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    
+    .current-candle-analysis {
+      width: 100%;
+      max-width: 500px;
+      background: var(--panel);
+      border: 2px solid var(--cyan);
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 15px;
+      display: none;
+    }
+    .current-candle-analysis.active { display: block; }
+    .current-title { color: var(--cyan); font-size: 0.9em; margin-bottom: 10px; text-align: center; font-weight: bold; }
+    .current-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .stat-box {
+      background: rgba(0,0,0,0.3);
+      padding: 8px;
+      border-radius: 4px;
+      text-align: center;
+    }
+    .stat-label { font-size: 0.7em; color: #888; }
+    .stat-value { font-size: 1.2em; font-weight: bold; }
+    .current-verdict {
+      text-align: center;
+      padding: 10px;
+      border-radius: 6px;
+      font-weight: bold;
+    }
+    .verdict-strong-green { background: rgba(0,255,136,0.2); color: var(--green); border: 1px solid var(--green); }
+    .verdict-strong-red { background: rgba(255,68,68,0.2); color: var(--red); border: 1px solid var(--red); }
+    .verdict-weak { background: rgba(255,215,0,0.1); color: var(--gold); border: 1px solid var(--gold); }
+    
+    .trend-box {
+      width: 100%;
+      max-width: 500px;
+      background: var(--panel);
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      text-align: center;
+      border: 2px solid transparent;
+      position: relative;
+    }
+    .trend-box.bullish { border-color: var(--green); }
+    .trend-box.bearish { border-color: var(--red); }
+    .trend-box.neutral { border-color: var(--gold); }
+    .trend-box.weakening-bullish { border-color: var(--orange); }
+    .trend-box.strengthening-bearish { border-color: var(--cyan); }
+    .trend-box.extreme-bullish { 
+      border-color: var(--red); 
+      background: linear-gradient(135deg, var(--panel), rgba(255,0,0,0.1));
+      animation: pulse-border 2s infinite;
+    }
+    .trend-box.extreme-bearish { 
+      border-color: var(--green); 
+      background: linear-gradient(135deg, var(--panel), rgba(0,255,0,0.1));
+      animation: pulse-border 2s infinite;
+    }
+    @keyframes pulse-border { 
+      0%, 100% { box-shadow: 0 0 5px currentColor; } 
+      50% { box-shadow: 0 0 20px currentColor; } 
+    }
+    .trend-label { color: #888; font-size: 0.8em; margin-bottom: 5px; }
+    .trend-value { font-size: 1.2em; font-weight: bold; }
+    .trend-original { font-size: 0.75em; color: #666; text-decoration: line-through; margin-top: 5px; }
+    .trend-badge {
+      position: absolute;
+      top: 5px; right: 10px;
+      font-size: 0.6em;
+      background: var(--purple);
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 4px;
+      display: none;
+    }
+    .trend-box.adjusted .trend-badge { display: block; }
+    .extreme-badge {
+      position: absolute;
+      top: 5px; left: 10px;
+      font-size: 0.6em;
+      background: var(--red);
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 4px;
+      display: none;
+    }
+    .trend-box.extreme-bullish .extreme-badge,
+    .trend-box.extreme-bearish .extreme-badge { display: block; }
+    
+    .momentum-note {
+      font-size: 0.7em;
+      color: var(--orange);
+      margin-top: 5px;
+      font-style: italic;
+    }
+    
+    .main-signal {
+      width: 100%;
+      max-width: 500px;
+      padding: 40px 20px;
+      border-radius: 12px;
+      text-align: center;
+      font-size: 2.2em;
+      font-weight: bold;
+      margin-bottom: 15px;
+      border: 3px solid;
+      position: relative;
+    }
+    .signal-buy { background: rgba(0,255,136,0.1); border-color: var(--green); color: var(--green); }
+    .signal-sell { background: rgba(255,68,68,0.1); border-color: var(--red); color: var(--red); }
+    .signal-wait { background: rgba(255,215,0,0.05); border-color: var(--gold); color: var(--gold); font-size: 1.8em; }
+    .signal-conflict {
+      background: repeating-linear-gradient(45deg, rgba(255,215,0,0.1), rgba(255,215,0,0.1) 10px, rgba(255,0,255,0.1) 10px, rgba(255,0,255,0.1) 20px);
+      border-color: var(--orange);
+      color: var(--orange);
+    }
+    .signal-trap { 
+      background: repeating-linear-gradient(45deg, rgba(255,0,255,0.1), rgba(255,0,255,0.1) 10px, rgba(255,136,0,0.1) 10px, rgba(255,136,0,0.1) 20px);
+      border-color: var(--purple); 
+      color: var(--purple); 
+    }
+    .signal-strong-reversal {
+      background: linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,255,136,0.05));
+      border-color: var(--cyan);
+      color: var(--cyan);
+      animation: pulse-cyan 1.5s infinite;
+    }
+    .signal-extreme {
+      background: linear-gradient(135deg, rgba(255,68,68,0.2), rgba(255,215,0,0.1));
+      border-color: var(--red);
+      color: var(--red);
+      animation: pulse-extreme 1s infinite;
+    }
+    @keyframes pulse-extreme { 
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255,68,68,0.6); } 
+      50% { box-shadow: 0 0 30px 10px rgba(255,68,68,0.3); } 
+    }
+    @keyframes pulse-cyan { 
+      0%, 100% { box-shadow: 0 0 0 0 rgba(0,255,255,0.4); } 
+      50% { box-shadow: 0 0 20px 5px rgba(0,255,255,0.2); } 
+    }
+    
+    .manual-trap-badge {
+      position: absolute;
+      top: 5px; right: 10px;
+      font-size: 0.35em;
+      background: var(--purple);
+      color: #fff;
+      padding: 3px 10px;
+      border-radius: 4px;
+      display: none;
+    }
+    .signal-trap .manual-trap-badge { display: block; }
+    
+    .conflict-badge {
+      position: absolute;
+      bottom: 5px; left: 10px;
+      font-size: 0.3em;
+      background: var(--orange);
+      color: #000;
+      padding: 3px 10px;
+      border-radius: 4px;
+      display: none;
+    }
+    .signal-conflict .conflict-badge { display: block; }
+    
+    .reversal-badge {
+      position: absolute;
+      top: 5px; left: 10px;
+      font-size: 0.35em;
+      background: var(--cyan);
+      color: #000;
+      padding: 3px 10px;
+      border-radius: 4px;
+      display: none;
+    }
+    .signal-strong-reversal .reversal-badge { display: block; }
+    
+    .extreme-signal-badge {
+      position: absolute;
+      top: 5px; left: 10px;
+      font-size: 0.35em;
+      background: var(--red);
+      color: #fff;
+      padding: 3px 10px;
+      border-radius: 4px;
+      display: none;
+    }
+    .signal-extreme .extreme-signal-badge { display: block; }
+    
+    .projections {
+      width: 100%;
+      max-width: 500px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .proj-box {
+      background: var(--panel);
+      padding: 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid transparent;
+      position: relative;
+    }
+    .proj-box:hover { transform: scale(1.02); }
+    .proj-green { border-color: var(--green); }
+    .proj-red { border-color: var(--red); }
+    .proj-adjusted { background: linear-gradient(135deg, var(--panel), rgba(255,0,255,0.1)); border-style: dashed; }
+    .proj-conflict { border-color: var(--orange); background: rgba(255,136,0,0.1); }
+    .proj-reversal { border-color: var(--cyan); background: rgba(0,255,255,0.1); }
+    .proj-extreme { 
+      border-color: var(--red); 
+      background: rgba(255,68,68,0.15); 
+      animation: pulse-proj 2s infinite;
+    }
+    @keyframes pulse-proj { 
+      0%, 100% { opacity: 1; } 
+      50% { opacity: 0.8; } 
+    }
+    
+    .proj-label { font-size: 0.8em; color: #888; margin-bottom: 8px; }
+    .proj-sequence { font-size: 1.5em; letter-spacing: 4px; margin-bottom: 8px; }
+    .proj-original { font-size: 0.75em; color: #666; text-decoration: line-through; margin-bottom: 5px; }
+    .proj-signal { font-size: 1.1em; font-weight: bold; }
+    .proj-signal-buy { color: var(--green); }
+    .proj-signal-sell { color: var(--red); }
+    .proj-signal-hold { color: var(--gold); }
+    .proj-signal-extreme { color: var(--red); animation: blink 1s infinite; }
+    .proj-confidence { font-size: 0.75em; color: #666; margin-top: 5px; }
+    .proj-reason { font-size: 0.7em; color: var(--purple); margin-top: 5px; font-style: italic; }
+    .proj-conflict-note { font-size: 0.7em; color: var(--orange); margin-top: 5px; font-weight: bold; }
+    .proj-reversal-note { font-size: 0.7em; color: var(--cyan); margin-top: 5px; font-weight: bold; }
+    .proj-extreme-note { 
+      font-size: 0.7em; 
+      color: var(--red); 
+      margin-top: 5px; 
+      font-weight: bold;
+      background: rgba(255,68,68,0.2);
+      padding: 3px;
+      border-radius: 3px;
+    }
+    
+    .controls { display: flex; gap: 10px; margin-bottom: 15px; }
+    button { padding: 18px 35px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.1em; }
+    .btn-g { background: var(--green); color: #000; }
+    .btn-r { background: var(--red); color: #fff; }
+    .btn-reset { background: #333; color: #fff; }
+    .btn-clear-trap { background: var(--purple); color: #fff; font-size: 0.9em; padding: 10px 20px; }
+    
+    .history-container { width: 100%; max-width: 500px; margin-bottom: 10px; }
+    .history-label { color: #888; font-size: 0.8em; margin-bottom: 8px; text-align: center; }
+    .history { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; }
+    .candle {
+      width: 28px; height: 28px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .candle:hover { transform: scale(1.2); }
+    .candle-g { background: var(--green); color: #000; }
+    .candle-r { background: var(--red); color: #fff; }
+    .candle-new { box-shadow: 0 0 10px var(--gold); }
+    .candle-trap { border: 2px solid var(--purple); box-shadow: 0 0 8px var(--purple); }
+    .candle-trap::after {
+      content: '✕';
+      position: absolute;
+      top: -5px; right: -5px;
+      background: var(--purple);
+      color: #fff;
+      font-size: 8px;
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .instruction { color: #666; font-size: 0.75em; text-align: center; margin-top: 5px; }
+    
+    .recent-trend {
+      width: 100%;
+      max-width: 500px;
+      background: var(--panel);
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      border: 2px solid #333;
+    }
+    .recent-title { color: var(--blue); font-size: 0.8em; margin-bottom: 8px; font-weight: bold; }
+    .recent-sequence {
+      display: flex;
+      gap: 4px;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+    .recent-candle {
+      width: 24px; height: 24px;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: bold;
+      position: relative;
+    }
+    .recent-candle-g { background: var(--green); color: #000; }
+    .recent-candle-r { background: var(--red); color: #fff; }
+    .recent-analysis {
+      text-align: center;
+      font-size: 0.9em;
+      padding: 5px;
+      border-radius: 4px;
+    }
+    .recent-bullish { background: rgba(0,255,136,0.1); color: var(--green); }
+    .recent-bearish { background: rgba(255,68,68,0.1); color: var(--red); }
+    .recent-neutral { background: rgba(255,215,0,0.1); color: var(--gold); }
+    .recent-conflict { 
+      background: rgba(255,136,0,0.15); 
+      color: var(--orange); 
+      border: 1px solid var(--orange);
+    }
+    .recent-extreme { 
+      background: rgba(255,68,68,0.2); 
+      color: var(--red); 
+      border: 1px solid var(--red);
+      animation: blink 1s infinite;
+    }
+    
+    .momentum-indicator {
+      width: 100%;
+      max-width: 500px;
+      background: var(--panel);
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-size: 0.8em;
+      border: 1px solid #333;
+    }
+    .momentum-title { color: var(--blue); margin-bottom: 5px; font-weight: bold; }
+    .momentum-bar {
+      height: 20px;
+      background: #333;
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+    }
+    .momentum-fill {
+      height: 100%;
+      transition: all 0.3s;
+      position: relative;
+    }
+    .momentum-fill.bullish { background: linear-gradient(90deg, var(--green), #00aa55); }
+    .momentum-fill.bearish { background: linear-gradient(90deg, var(--red), #aa0000); }
+    .momentum-fill.extreme-bullish { 
+      background: linear-gradient(90deg, var(--green), var(--red)); 
+      animation: shake 0.5s infinite;
+    }
+    .momentum-fill.extreme-bearish { 
+      background: linear-gradient(90deg, var(--red), var(--green)); 
+    }
+    @keyframes shake { 
+      0%, 100% { transform: translateX(0); } 
+      25% { transform: translateX(-2px); } 
+      75% { transform: translateX(2px); } 
+    }
+    .momentum-marker {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: #fff;
+      box-shadow: 0 0 4px #000;
+    }
+    .momentum-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 5px;
+      font-size: 0.7em;
+      color: #666;
+    }
+    
+    .priority-explanation {
+      width: 100%;
+      max-width: 500px;
+      background: rgba(255,136,0,0.1);
+      border: 1px solid var(--orange);
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 15px;
+      font-size: 0.75em;
+      display: none;
+    }
+    .priority-explanation.active { display: block; }
+    .priority-title { color: var(--orange); font-weight: bold; margin-bottom: 5px; }
+    .priority-item { color: #ccc; margin: 3px 0; }
+    .priority-item.extreme { color: var(--red); font-weight: bold; }
+    
+    .logic-explanation {
+      width: 100%;
+      max-width: 500px;
+      background: rgba(0,255,136,0.05);
+      border: 1px solid var(--green);
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 15px;
+      font-size: 0.75em;
+      display: none;
+    }
+    .logic-explanation.active { display: block; }
+    .logic-title { color: var(--green); font-weight: bold; margin-bottom: 5px; }
+    .logic-item { color: #ccc; margin: 3px 0; }
+    
+    /* Visualización de fuerza en controles */
+    .strength-visual {
+      display: flex;
+      justify-content: center;
+      gap: 5px;
+      margin-top: 5px;
+    }
+    .strength-bar {
+      width: 8px;
+      height: 20px;
+      border-radius: 2px;
+      background: #333;
+      transition: all 0.3s;
+    }
+    .strength-bar.active { background: var(--cyan); box-shadow: 0 0 5px var(--cyan); }
+  </style>
+</head>
+<body>
+
+  <div class="trap-modal" id="trap-modal">
+    <div class="trap-modal-content">
+      <div class="trap-modal-title">🎭 MARCAR COMO TRAMPA</div>
+      <div class="trap-modal-text">
+        ¿La vela <strong id="trap-candle-color">--</strong> en posición <strong id="trap-candle-pos">--</strong> fue una trampa?
+        <br><br>
+        Esto recalculará <strong>TODAS</strong> las MA incluyendo la tendencia global.
+      </div>
+      <div class="trap-modal-buttons">
+        <button class="trap-btn trap-btn-confirm" onclick="confirmTrap()">Sí, recalcular</button>
+        <button class="trap-btn trap-btn-cancel" onclick="closeModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== NUEVO: Selector de Fuerza de Vela ===== -->
+  <div class="strength-selector" id="strength-selector">
+    <div class="strength-title">💪 SELECCIONAR FUERZA DE LA VELA ACTUAL</div>
+    <div class="strength-options">
+      <button class="strength-btn strength-strong" id="btn-strong" onclick="selectStrength(3)">
+        <div style="font-size: 1.5em;">▰▰▰</div>
+        <div>FUERTE</div>
+        <div style="font-size: 0.7em; opacity: 0.8;">Vela ancha</div>
+      </button>
+      <button class="strength-btn strength-medium selected" id="btn-medium" onclick="selectStrength(2)">
+        <div style="font-size: 1.5em;">▰▰</div>
+        <div>MEDIA</div>
+        <div style="font-size: 0.7em; opacity: 0.8;">Semi-ancha</div>
+      </button>
+      <button class="strength-btn strength-weak" id="btn-weak" onclick="selectStrength(1)">
+        <div style="font-size: 1.5em;">▰</div>
+        <div>DÉBIL</div>
+        <div style="font-size: 0.7em; opacity: 0.8;">Doji/Pequeña</div>
+      </button>
+    </div>
+    <div class="strength-visual" id="strength-visual">
+      <div class="strength-bar"></div>
+      <div class="strength-bar active"></div>
+      <div class="strength-bar active"></div>
+    </div>
+    <div class="strength-preview" id="strength-preview">
+      Fuerza seleccionada: <strong>MEDIA (2/3)</strong> - Vela semi-ancha, momentum moderado
+    </div>
+  </div>
+
+  <div class="active-trap-banner" id="trap-banner">
+    🎭 <strong>TRAMPA MANUAL ACTIVA</strong> | 
+    Vela <span id="trap-info">--</span> excluida | 
+    Tendencia global recalculada
+  </div>
+
+  <div class="extreme-alert" id="extreme-alert">
+    <div class="extreme-title">⚠️ EXTREMO DETECTADO</div>
+    <div class="extreme-text" id="extreme-text">
+      Mercado en sobrecompra/sobreventa extrema. Alta probabilidad de reversión.
+    </div>
+  </div>
+
+  <div class="cross-detector">
+    <div class="cross-title">⚔️ DETECTOR MULTI-CRUCE MA</div>
+    <div class="cross-active" id="cross-alert">
+      <span id="cross-pair">MA2/MA10</span>: 
+      <span id="cross-type" class="cross-type-golden">GOLDEN CROSS</span>
+    </div>
+    <div class="ma-grid" id="ma-grid"></div>
+  </div>
+
+  <div class="current-candle-analysis" id="current-analysis">
+    <div class="current-title">🎯 ANÁLISIS VELA ACTUAL</div>
+    <div class="current-stats">
+      <div class="stat-box">
+        <div class="stat-label">Fuerza Manual</div>
+        <div class="stat-value" id="current-strength">--</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Tipo</div>
+        <div class="stat-value" id="current-type">--</div>
+      </div>
+    </div>
+    <div class="current-verdict" id="current-verdict">Analizando...</div>
+  </div>
+
+  <div class="recent-trend" id="recent-box">
+    <div class="recent-title">📊 CONTEXTO RECIENTE (Últimas 5 velas - Ponderado por Fuerza)</div>
+    <div class="recent-sequence" id="recent-sequence"></div>
+    <div class="recent-analysis" id="recent-analysis">Analizando...</div>
+  </div>
+
+  <div class="momentum-indicator" id="momentum-box" style="display: none;">
+    <div class="momentum-title">📈 Tendencia MA10 (con Dirección)</div>
+    <div class="momentum-bar">
+      <div class="momentum-fill" id="momentum-fill"></div>
+      <div class="momentum-marker" style="left: 50%;"></div>
+    </div>
+    <div class="momentum-labels">
+      <span>Bajista</span>
+      <span>Neutral</span>
+      <span>Alcista</span>
+    </div>
+    <div style="text-align: center; margin-top: 5px; font-size: 0.75em; color: #888;" id="momentum-detail"></div>
+  </div>
+
+  <div class="trend-box neutral" id="trend-box">
+    <div class="trend-badge">AJUSTADA</div>
+    <div class="extreme-badge">EXTREMO</div>
+    <div class="trend-label">TENDENCIA GLOBAL (MA10 + Momentum)</div>
+    <div class="trend-value" id="trend-value">NEUTRAL</div>
+    <div class="trend-original" id="trend-original"></div>
+    <div class="momentum-note" id="momentum-note"></div>
+  </div>
+
+  <div class="main-signal signal-wait" id="main-signal">
+    ESPERAR
+    <div class="manual-trap-badge">TRAMPA ACTIVA</div>
+    <div class="conflict-badge">⚠️ CONFLICTO</div>
+    <div class="reversal-badge">🔄 REVERSIÓN</div>
+    <div class="extreme-signal-badge">⚠️ EXTREMO</div>
+  </div>
+
+  <div class="priority-explanation" id="priority-explanation">
+    <div class="priority-title">⚡ Prioridad de Señales:</div>
+    <div class="priority-item extreme">1. EXTREMO (>90% o <10%) - Esperar reversión</div>
+    <div class="priority-item">2. Vela fuerte de reversión (ignora tendencia previa)</div>
+    <div class="priority-item">3. Cruce MA activo válido</div>
+    <div class="priority-item">4. Patrón de velas + contexto (con ponderación)</div>
+  </div>
+
+  <div class="logic-explanation" id="logic-explanation">
+    <div class="logic-title">🧠 Lógica Actual:</div>
+    <div class="logic-item" id="logic-text">Analizando condiciones de mercado...</div>
+  </div>
+
+  <div class="projections" id="projections">
+    <div class="proj-box proj-green" id="proj-g-box" onclick="addWithCurrentStrength('G')">
+      <div class="proj-label">Si VERDE →</div>
+      <div class="proj-original" id="proj-g-orig"></div>
+      <div class="proj-sequence" id="proj-g-seq">--</div>
+      <div class="proj-signal proj-signal-hold" id="proj-g-sig">HOLD</div>
+      <div class="proj-confidence" id="proj-g-conf">0%</div>
+      <div class="proj-reason" id="proj-g-reason"></div>
+      <div class="proj-conflict-note" id="proj-g-conflict"></div>
+      <div class="proj-reversal-note" id="proj-g-reversal"></div>
+      <div class="proj-extreme-note" id="proj-g-extreme"></div>
+    </div>
+    <div class="proj-box proj-red" id="proj-r-box" onclick="addWithCurrentStrength('R')">
+      <div class="proj-label">Si ROJO →</div>
+      <div class="proj-original" id="proj-r-orig"></div>
+      <div class="proj-sequence" id="proj-r-seq">--</div>
+      <div class="proj-signal proj-signal-hold" id="proj-r-sig">HOLD</div>
+      <div class="proj-confidence" id="proj-r-conf">0%</div>
+      <div class="proj-reason" id="proj-r-reason"></div>
+      <div class="proj-conflict-note" id="proj-r-conflict"></div>
+      <div class="proj-reversal-note" id="proj-r-reversal"></div>
+      <div class="proj-extreme-note" id="proj-r-extreme"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn-g" onclick="addWithCurrentStrength('G')">VERDE</button>
+    <button class="btn-r" onclick="addWithCurrentStrength('R')">ROJO</button>
+    <button class="btn-reset" onclick="reset()">↺</button>
+  </div>
+  <button class="btn-clear-trap" id="btn-clear-trap" onclick="clearTrap()" style="display:none;">
+    🗑 Limpiar Trampa y Restaurar
+  </button>
+
+  <div class="history-container">
+    <div class="history-label">HISTORIAL (clic para marcar trampa, fuerza visible)</div>
+    <div class="history" id="history"></div>
+    <div class="instruction">💡 Click en vela → Excluye de TODOS los cálculos MA | Fuerza: ▰▰▰ Fuerte | ▰▰ Media | ▰ Débil</div>
+  </div>
+
+<script>
+// ===== NUEVO: Sistema de fuerza manual =====
+let currentStrength = 2; // Por defecto MEDIA (2)
+let manualStrengths = {}; // Almacena fuerzas manuales por índice: {0: 3, 1: 1, etc}
+
+function selectStrength(level) {
+  currentStrength = level;
+  
+  // Actualizar UI
+  document.querySelectorAll('.strength-btn').forEach(btn => btn.classList.remove('selected'));
+  document.getElementById('btn-strong').classList.toggle('selected', level === 3);
+  document.getElementById('btn-medium').classList.toggle('selected', level === 2);
+  document.getElementById('btn-weak').classList.toggle('selected', level === 1);
+  
+  // Actualizar barras visuales
+  const bars = document.querySelectorAll('.strength-bar');
+  bars.forEach((bar, i) => {
+    bar.classList.toggle('active', i < level);
+  });
+  
+  // Actualizar texto descriptivo
+  const descriptions = {
+    3: 'FUERTE (3/3) - Vela ancha, alto momentum, ignora tendencia previa si es reversión',
+    2: 'MEDIA (2/3) - Vela semi-ancha, momentum moderado, respeta tendencia',
+    1: 'DÉBIL (1/3) - Doji/Pequeña, indecisión, esperar confirmación'
+  };
+  document.getElementById('strength-preview').innerHTML = `Fuerza seleccionada: <strong>${descriptions[level]}</strong>`;
+}
+
+// Función para agregar vela con fuerza actual
+function addWithCurrentStrength(color) {
+  const index = history.length;
+  history.push(color);
+  manualStrengths[index] = currentStrength; // Guardar fuerza manual
+  
+  if (history.length > 30) {
+    if (manualTrapIndex !== null) {
+      if (manualTrapIndex === 0) manualTrapIndex = null;
+      else manualTrapIndex--;
+    }
+    // Reindexar fuerzas manuales
+    const newStrengths = {};
+    for (let i = 1; i <= 30; i++) {
+      if (manualStrengths[i] !== undefined) {
+        newStrengths[i - 1] = manualStrengths[i];
+      }
+    }
+    manualStrengths = newStrengths;
+    history.shift();
+  }
+  update();
+}
+
+// Función para obtener fuerza de una vela (manual o por defecto)
+function getCandleStrength(index) {
+  // Si hay fuerza manual, usarla
+  if (manualStrengths[index] !== undefined) {
+    return manualStrengths[index];
+  }
+  
+  // Si no, calcular automáticamente basado en contexto (para velas antiguas)
+  return calculateAutoStrength(index);
+}
+
+// Cálculo automático para velas sin fuerza manual asignada
+function calculateAutoStrength(index) {
+  if (index < 2) return 2; // Por defecto media si no hay historial suficiente
+  
+  const current = history[index];
+  const prev = history[index - 1];
+  const prev2 = history[index - 2];
+  
+  const wasBearish = prev === 'R' && prev2 === 'R';
+  const wasBullish = prev === 'G' && prev2 === 'G';
+  
+  if (current === 'G') {
+    if (wasBearish) return 3; // Reversión alcista fuerte
+    if (prev === 'G') return 2; // Continuación
+    return 1; // Débil
+  } else {
+    if (wasBullish) return 3; // Reversión bajista fuerte
+    if (prev === 'R') return 2; // Continuación
+    return 1; // Débil
+  }
+}
+
+// Modificar analyzeCurrentCandle para usar fuerza manual
+function analyzeCurrentCandle() {
+  if (history.length === 0) return { strength: 0, type: 'neutral', isReversal: false };
+  
+  const currentIndex = history.length - 1;
+  const current = history[currentIndex];
+  const strength = getCandleStrength(currentIndex);
+  
+  // Determinar si es reversión basado en fuerza y contexto
+  let isReversal = false;
+  let type = 'normal';
+  
+  if (history.length >= 3) {
+    const prev = history[currentIndex - 1];
+    const prev2 = history[currentIndex - 2];
+    const wasBearish = prev === 'R' && prev2 === 'R';
+    const wasBullish = prev === 'G' && prev2 === 'G';
+    
+    if (current === 'G' && wasBearish) {
+      isReversal = true;
+      type = strength >= 3 ? 'strong-reversal-green' : 'weak-reversal-green';
+    } else if (current === 'R' && wasBullish) {
+      isReversal = true;
+      type = strength >= 3 ? 'strong-reversal-red' : 'weak-reversal-red';
+    } else if (current === prev) {
+      type = strength >= 3 ? 'strong-continuation' : 'continuation';
+    } else {
+      type = strength >= 3 ? 'strong-normal' : 'weak-normal';
+    }
+  } else {
+    type = strength >= 3 ? 'strong' : strength === 2 ? 'medium' : 'weak';
+  }
+  
+  return { 
+    strength, 
+    type, 
+    isReversal: isReversal && strength >= 2, // Solo considerar reversión si fuerza >= 2
+    current, 
+    isManual: manualStrengths[currentIndex] !== undefined 
+  };
+}
+
+// Modificar analyzeRecentTrend para ponderar por fuerza
+function analyzeRecentTrend() {
+  let data = history;
+  if (manualTrapIndex !== null) {
+    data = history.filter((_, idx) => idx !== manualTrapIndex);
+  }
+  
+  // Tomar últimas 5 velas o las que haya
+  const recentCount = Math.min(5, data.length);
+  const recent = [];
+  const strengths = [];
+  
+  for (let i = 0; i < recentCount; i++) {
+    const idx = history.length - recentCount + i;
+    recent.push(history[idx]);
+    strengths.push(getCandleStrength(idx));
+  }
+  
+  if (recent.length < 2) return { 
+    trend: 'neutral', 
+    sequence: recent, 
+    strengths: strengths,
+    strength: 0, 
+    weightedScore: 0 
+  };
+  
+  // Calcular score ponderado por fuerza
+  let weightedScore = 0;
+  for (let i = 0; i < recent.length; i++) {
+    const candleStrength = strengths[i] || 2; // Default 2 si no hay fuerza
+    const recencyWeight = (i + 1) / recent.length; // Velas más recientes pesan más
+    const finalWeight = candleStrength * recencyWeight;
+    
+    if (recent[i] === 'G') {
+      weightedScore += finalWeight;
+    } else {
+      weightedScore -= finalWeight;
+    }
+  }
+  
+  // Calcular consecutivas ponderadas
+  let consecutiveGreens = 0;
+  let consecutiveReds = 0;
+  let totalConsecutiveStrength = 0;
+  
+  for (let i = recent.length - 1; i >= 0; i--) {
+    const candleStrength = strengths[i] || 2;
+    if (recent[i] === 'G') {
+      if (consecutiveReds === 0) {
+        consecutiveGreens++;
+        totalConsecutiveStrength += candleStrength;
+      } else break;
+    } else {
+      if (consecutiveGreens === 0) {
+        consecutiveReds++;
+        totalConsecutiveStrength += candleStrength;
+      } else break;
+    }
+  }
+  
+  // Detectar extremos basado en fuerza acumulada
+  const isExtremeBullish = consecutiveGreens >= 3 && totalConsecutiveStrength >= 8;
+  const isExtremeBearish = consecutiveReds >= 3 && totalConsecutiveStrength >= 8;
+  
+  if (isExtremeBullish) return { 
+    trend: 'bullish', 
+    sequence: recent, 
+    strengths: strengths,
+    strength: consecutiveGreens, 
+    reason: `${consecutiveGreens} verdes fuertes seguidas (fuerza total: ${totalConsecutiveStrength})`,
+    weightedScore,
+    isExtreme: true
+  };
+  
+  if (isExtremeBearish) return { 
+    trend: 'bearish', 
+    sequence: recent, 
+    strengths: strengths,
+    strength: consecutiveReds, 
+    reason: `${consecutiveReds} rojas fuertes seguidas (fuerza total: ${totalConsecutiveStrength})`,
+    weightedScore,
+    isExtreme: true
+  };
+  
+  // Detectar conflicto de momentum
+  const lastTwo = recent.slice(-2);
+  const lastTwoStrengths = strengths.slice(-2);
+  const lastTwoRed = lastTwo[0] === 'R' && lastTwo[1] === 'R';
+  const lastTwoGreen = lastTwo[0] === 'G' && lastTwo[1] === 'G';
+  
+  if (lastTwoRed && weightedScore > 2) {
+    return { 
+      trend: 'neutral', 
+      sequence: recent, 
+      strengths: strengths,
+      strength: consecutiveReds, 
+      reason: `⚠️ Conflicto: Score +${weightedScore.toFixed(1)} pero últimas 2 rojas`,
+      weightedScore,
+      warning: 'momentum_change',
+      detail: 'Momentum alcista pero últimas velas débiles/rojas'
+    };
+  }
+  
+  if (lastTwoGreen && weightedScore < -2) {
+    return { 
+      trend: 'neutral', 
+      sequence: recent, 
+      strengths: strengths,
+      strength: consecutiveGreens, 
+      reason: `⚠️ Conflicto: Score ${weightedScore.toFixed(1)} pero últimas 2 verdes`,
+      weightedScore,
+      warning: 'momentum_change',
+      detail: 'Momentum bajista pero últimas velas débiles/verdes'
+    };
+  }
+  
+  // Determinar tendencia por score ponderado
+  if (weightedScore > 3) return { 
+    trend: 'bullish', 
+    sequence: recent, 
+    strengths: strengths,
+    strength: Math.abs(weightedScore), 
+    reason: `Mayoría verde ponderada (score: +${weightedScore.toFixed(1)})`,
+    weightedScore
+  };
+  
+  if (weightedScore < -3) return { 
+    trend: 'bearish', 
+    sequence: recent, 
+    strengths: strengths,
+    strength: Math.abs(weightedScore), 
+    reason: `Mayoría roja ponderada (score: ${weightedScore.toFixed(1)})`,
+    weightedScore
+  };
+  
+  return { 
+    trend: 'neutral', 
+    sequence: recent, 
+    strengths: strengths,
+    strength: 0, 
+    reason: 'Equilibrio o conflicto de fuerzas',
+    weightedScore
+  };
+}
+
+// ===== RESTO DEL CÓDIGO (mantener funciones existentes) =====
+let history = [];
+let crosses = [];
+let manualTrapIndex = null;
+let pendingTrapIndex = null;
+let originalTrendMA = null;
+
+const MA_CONFIG = {
+  crosses: [
+    { fast: 2, slow: 10, name: 'MA2/MA10', type: 'agresivo' },
+    { fast: 6, slow: 20, name: 'MA6/MA20', type: 'estandar' },
+    { fast: 10, slow: 20, name: 'MA10/MA20', type: 'confirmado' }
+  ],
+  trend: { period: 10, name: 'MA10' }
+};
+
+const EXTREME_THRESHOLDS = {
+  overbought: 90,
+  bullish: 70,
+  neutralHigh: 55,
+  neutralLow: 45,
+  bearish: 30,
+  oversold: 10
+};
+
+function calcMA(period, useOriginal = false) {
+  if (history.length < period) return null;
+  let data = history;
+  if (!useOriginal && manualTrapIndex !== null && manualTrapIndex < history.length) {
+    data = history.filter((_, idx) => idx !== manualTrapIndex);
+    if (data.length < period) return null;
+  }
+  const slice = data.slice(-period);
+  return (slice.filter(h => h === 'G').length / period) * 100;
+}
+
+function calcPrevMA(period, useOriginal = false) {
+  let data = history;
+  if (!useOriginal && manualTrapIndex !== null) {
+    data = history.filter((_, idx) => idx !== manualTrapIndex);
+  }
+  if (data.length <= period) return null;
+  const slice = data.slice(-period - 1, -1);
+  return (slice.filter(h => h === 'G').length / period) * 100;
+}
+
+function detectExtreme(trendMA, recentTrend) {
+  if (trendMA === null) return null;
+  
+  if (trendMA >= EXTREME_THRESHOLDS.overbought && recentTrend.strength >= 4 && recentTrend.trend === 'bullish') {
+    return {
+      type: 'extreme_bullish',
+      level: trendMA,
+      message: `SOBRECOMPRA EXTREMA: MA10 al ${trendMA.toFixed(0)}% con fuerza ${recentTrend.strength.toFixed(1)}. Reversión bajista inminente.`,
+      action: 'wait_sell',
+      confidence: 0.85
+    };
+  }
+  
+  if (trendMA <= EXTREME_THRESHOLDS.oversold && recentTrend.strength >= 4 && recentTrend.trend === 'bearish') {
+    return {
+      type: 'extreme_bearish',
+      level: trendMA,
+      message: `SOBREVENTA EXTREMA: MA10 al ${trendMA.toFixed(0)}% con fuerza ${recentTrend.strength.toFixed(1)}. Reversión alcista inminente.`,
+      action: 'wait_buy',
+      confidence: 0.85
+    };
+  }
+  
+  if (trendMA >= 80 && recentTrend.trend === 'bullish' && recentTrend.strength >= 3) {
+    return {
+      type: 'warning_bullish',
+      level: trendMA,
+      message: `Sobrecompra: MA10 al ${trendMA.toFixed(0)}%. Precaución con compras.`,
+      action: 'caution',
+      confidence: 0.60
+    };
+  }
+  
+  if (trendMA <= 20 && recentTrend.trend === 'bearish' && recentTrend.strength >= 3) {
+    return {
+      type: 'warning_bearish',
+      level: trendMA,
+      message: `Sobreventa: MA10 al ${trendMA.toFixed(0)}%. Oportunidad de compra cercana.`,
+      action: 'caution',
+      confidence: 0.60
+    };
+  }
+  
+  return null;
+}
+
+function isTrap(crossType, trendMA, recentTrend, currentCandle, extremeCondition) {
+  if (trendMA === null) return false;
+  
+  if (extremeCondition) {
+    if (extremeCondition.type === 'extreme_bullish' && crossType === 'golden') return true;
+    if (extremeCondition.type === 'extreme_bearish' && crossType === 'death') return true;
+  }
+  
+  if (currentCandle.isReversal && currentCandle.strength >= 3) return false;
+  
+  if (crossType === 'golden' && recentTrend.trend === 'bearish' && recentTrend.strength >= 3) return true;
+  if (crossType === 'death' && recentTrend.trend === 'bullish' && recentTrend.strength >= 3) return true;
+  
+  if (trendMA >= 45 && trendMA <= 55) return false;
+  
+  if (crossType === 'golden' && trendMA < 35) return true;
+  if (crossType === 'death' && trendMA > 65) return true;
+  
+  return false;
+}
+
+function detectCrosses(useOriginal = false) {
+  const results = [];
+  const trendMA = calcMA(MA_CONFIG.trend.period, useOriginal);
+  const prevTrendMA = calcPrevMA(MA_CONFIG.trend.period, useOriginal);
+  const recentTrend = analyzeRecentTrend();
+  const currentCandle = analyzeCurrentCandle();
+  const extremeCondition = detectExtreme(trendMA, recentTrend);
+  
+  for (let cfg of MA_CONFIG.crosses) {
+    const maFast = calcMA(cfg.fast, useOriginal);
+    const maSlow = calcMA(cfg.slow, useOriginal);
+    
+    if (maFast === null || maSlow === null) continue;
+    
+    let crossed = false;
+    let crossType = null;
+    let trap = false;
+    
+    let data = history;
+    if (!useOriginal && manualTrapIndex !== null) {
+      data = history.filter((_, idx) => idx !== manualTrapIndex);
+    }
+    
+    if (data.length > cfg.slow) {
+      const prevFast = calcPrevMA(cfg.fast, useOriginal);
+      const prevSlow = calcPrevMA(cfg.slow, useOriginal);
+      
+      if (prevFast !== null && prevSlow !== null) {
+        if (prevFast <= prevSlow && maFast > maSlow) {
+          crossed = true; crossType = 'golden';
+          trap = isTrap('golden', trendMA, recentTrend, currentCandle, extremeCondition);
+        } else if (prevFast >= prevSlow && maFast < maSlow) {
+          crossed = true; crossType = 'death';
+          trap = isTrap('death', trendMA, recentTrend, currentCandle, extremeCondition);
+        }
+      }
+    }
+    
+    results.push({
+      pair: cfg.name,
+      type: cfg.type,
+      maFast,
+      maSlow,
+      diff: maFast - maSlow,
+      crossed,
+      crossType,
+      trap,
+      active: Math.abs(maFast - maSlow) < 5,
+      isExtreme: maFast >= 90 || maSlow >= 90 || maFast <= 10 || maSlow <= 10
+    });
+  }
+  
+  return { crosses: results, trendMA, prevTrendMA, recentTrend, currentCandle, extremeCondition };
+}
+
+function analyzePattern(lastTwo, originalTwo = null, extremeCondition = null) {
+  if (lastTwo.length < 2) return null;
+  
+  const [prev, curr] = lastTwo;
+  const pattern = prev + curr;
+  const origPattern = originalTwo ? originalTwo[0] + originalTwo[1] : null;
+  
+  let extremeMultiplier = 1;
+  if (extremeCondition) {
+    if (extremeCondition.type === 'extreme_bullish') extremeMultiplier = 0.3;
+    if (extremeCondition.type === 'extreme_bearish') extremeMultiplier = 0.3;
+  }
+  
+  const scenarios = {
+    'GG': { 
+      ifG: { pat: 'GGG', sig: 'COMPRA', conf: 0.75 * extremeMultiplier, desc: 'Continuación alcista' },
+      ifR: { pat: 'GGR', sig: 'VENTA', conf: 0.85, desc: 'Reversión bajista FUERTE' }
+    },
+    'RR': {
+      ifG: { pat: 'RRG', sig: 'COMPRA', conf: 0.85, desc: 'Reversión alcista FUERTE' },
+      ifR: { pat: 'RRR', sig: 'VENTA', conf: 0.75 * extremeMultiplier, desc: 'Continuación bajista' }
+    },
+    'GR': {
+      ifG: { pat: 'GRG', sig: 'COMPRA', conf: 0.55 * extremeMultiplier, desc: 'Reversión alcista' },
+      ifR: { pat: 'GRR', sig: 'VENTA', conf: 0.65, desc: 'Confirmación bajista' }
+    },
+    'RG': {
+      ifG: { pat: 'RGG', sig: 'COMPRA', conf: 0.65, desc: 'Confirmación alcista' },
+      ifR: { pat: 'RGR', sig: 'VENTA', conf: 0.55 * extremeMultiplier, desc: 'Reversión bajista' }
+    }
+  };
+  
+  const result = scenarios[pattern] || null;
+  if (result && origPattern && origPattern !== pattern) {
+    result.originalPattern = origPattern;
+    result.changed = true;
+  }
+  return result;
+}
+
+function getTrendLabel(currentValue, prevValue, extremeCondition = null) {
+  if (extremeCondition && extremeCondition.type === 'extreme_bullish') {
+    return { 
+      text: '⚠️ EXTREMO ALCISTA', 
+      class: 'extreme-bullish', 
+      color: 'var(--red)', 
+      isExtreme: true,
+      note: 'Reversión bajista inminente'
+    };
+  }
+  if (extremeCondition && extremeCondition.type === 'extreme_bearish') {
+    return { 
+      text: '⚠️ EXTREMO BAJISTA', 
+      class: 'extreme-bearish', 
+      color: 'var(--green)', 
+      isExtreme: true,
+      note: 'Reversión alcista inminente'
+    };
+  }
+  
+  if (prevValue === null || currentValue === null) {
+    if (currentValue > 55) return { text: 'ALCISTA ↑', class: 'bullish', color: 'var(--green)', isExtreme: false };
+    if (currentValue < 45) return { text: 'BAJISTA ↓', class: 'bearish', color: 'var(--red)', isExtreme: false };
+    return { text: 'NEUTRAL →', class: 'neutral', color: 'var(--gold)', isExtreme: false };
+  }
+  
+  const diff = currentValue - prevValue;
+  const trendDirection = diff > 0 ? 'rising' : diff < 0 ? 'falling' : 'flat';
+  
+  if (trendDirection === 'falling' && diff < -10) {
+    return { 
+      text: 'BAJISTA ↓↓', 
+      class: 'bearish', 
+      color: 'var(--red)', 
+      isExtreme: false, 
+      note: `Cayendo fuerte (${diff.toFixed(1)}%)` 
+    };
+  }
+  if (trendDirection === 'rising' && diff > 10) {
+    return { 
+      text: 'ALCISTA ↑↑', 
+      class: 'bullish', 
+      color: 'var(--green)', 
+      isExtreme: false, 
+      note: `Subiendo fuerte (+${diff.toFixed(1)}%)` 
+    };
+  }
+  
+  if (currentValue > 55 && trendDirection === 'falling') {
+    return { 
+      text: 'ALCISTA ↓', 
+      class: 'weakening-bullish', 
+      color: 'var(--orange)', 
+      isExtreme: false, 
+      note: `Perdiendo fuerza (${diff.toFixed(1)}%)` 
+    };
+  }
+  
+  if (currentValue < 45 && trendDirection === 'rising') {
+    return { 
+      text: 'BAJISTA ↑', 
+      class: 'strengthening-bearish', 
+      color: 'var(--cyan)', 
+      isExtreme: false, 
+      note: `Ganando fuerza (+${diff.toFixed(1)}%)` 
+    };
+  }
+  
+  if (currentValue > 55) {
+    const arrow = trendDirection === 'rising' ? '↑' : trendDirection === 'falling' ? '↗' : '→';
+    return { 
+      text: `ALCISTA ${arrow}`, 
+      class: 'bullish', 
+      color: 'var(--green)', 
+      isExtreme: false,
+      note: trendDirection !== 'flat' ? `Momentum: ${diff > 0 ? '+' : ''}${diff.toFixed(1)}%` : 'Estable'
+    };
+  }
+  if (currentValue < 45) {
+    const arrow = trendDirection === 'falling' ? '↓' : trendDirection === 'rising' ? '↘' : '→';
+    return { 
+      text: `BAJISTA ${arrow}`, 
+      class: 'bearish', 
+      color: 'var(--red)', 
+      isExtreme: false,
+      note: trendDirection !== 'flat' ? `Momentum: ${diff > 0 ? '+' : ''}${diff.toFixed(1)}%` : 'Estable'
+    };
+  }
+  
+  return { 
+    text: 'NEUTRAL →', 
+    class: 'neutral', 
+    color: 'var(--gold)', 
+    isExtreme: false,
+    note: diff !== 0 ? `Cambiando: ${diff > 0 ? '+' : ''}${diff.toFixed(1)}%` : 'Sin dirección clara'
+  };
+}
+
+function update() {
+  const adjustedResult = detectCrosses(false);
+  const originalResult = detectCrosses(true);
+  
+  const trendMA = adjustedResult.trendMA;
+  const prevTrendMA = adjustedResult.prevTrendMA;
+  const recentTrend = adjustedResult.recentTrend;
+  const currentCandle = adjustedResult.currentCandle;
+  const extremeCondition = adjustedResult.extremeCondition;
+  
+  if (manualTrapIndex !== null && originalResult.trendMA !== null) {
+    originalTrendMA = originalResult.trendMA;
+  }
+  
+  // Actualizar alerta de extremo
+  const extremeAlert = document.getElementById('extreme-alert');
+  if (extremeCondition && (extremeCondition.type === 'extreme_bullish' || extremeCondition.type === 'extreme_bearish')) {
+    extremeAlert.classList.add('active');
+    document.getElementById('extreme-text').textContent = extremeCondition.message;
+  } else {
+    extremeAlert.classList.remove('active');
+  }
+  
+  // Actualizar análisis de vela actual con fuerza manual
+  const currentAnalysis = document.getElementById('current-analysis');
+  if (currentCandle.strength > 0) {
+    currentAnalysis.classList.add('active');
+    
+    // Mostrar indicador de fuerza
+    const strengthBars = '▰'.repeat(currentCandle.strength) + '▱'.repeat(3 - currentCandle.strength);
+    const strengthText = document.getElementById('current-strength');
+    strengthText.innerHTML = `<span style="color: ${currentCandle.strength >= 3 ? 'var(--green)' : currentCandle.strength === 2 ? 'var(--gold)' : '#666'}">${strengthBars}</span>`;
+    
+    const typeLabels = {
+      'strong-reversal-green': 'REVERSIÓN FUERTE 🟢',
+      'strong-reversal-red': 'REVERSIÓN FUERTE 🔴',
+      'weak-reversal-green': 'Reversión débil 🟢',
+      'weak-reversal-red': 'Reversión débil 🔴',
+      'strong-continuation': 'Continuación Fuerte',
+      'continuation': 'Continuación',
+      'strong-normal': 'Vela Fuerte',
+      'strong': 'Fuerte',
+      'medium': 'Media',
+      'weak': 'Débil',
+      'weak-normal': 'Vela Débil'
+    };
+    
+    const typeText = typeLabels[currentCandle.type] || currentCandle.type;
+    document.getElementById('current-type').innerHTML = `${typeText} ${currentCandle.isManual ? '<span style="font-size:0.7em;color:var(--cyan)">[MANUAL]</span>' : '<span style="font-size:0.7em;color:#666">[AUTO]</span>'}`;
+    
+    const verdict = document.getElementById('current-verdict');
+    if (currentCandle.isReversal && currentCandle.strength >= 3) {
+      verdict.className = 'current-verdict verdict-strong-' + (currentCandle.current === 'G' ? 'green' : 'red');
+      verdict.innerHTML = `<strong>🔄 REVERSIÓN ${currentCandle.current === 'G' ? 'ALCISTA' : 'BAJISTA'} FUERTE</strong><br><small>Fuerza ${currentCandle.strength}/3 - Ignora tendencia previa</small>`;
+    } else if (currentCandle.isReversal) {
+      verdict.className = 'current-verdict verdict-weak';
+      verdict.innerHTML = `<strong>Reversión ${currentCandle.current === 'G' ? 'Alcista' : 'Bajista'}</strong><br><small>Fuerza ${currentCandle.strength}/3 - Requiere confirmación</small>`;
+    } else {
+      verdict.className = 'current-verdict verdict-weak';
+      verdict.innerHTML = `<strong>Vela de ${currentCandle.current === 'G' ? 'continuación' : 'continuación'}</strong><br><small>Fuerza: ${currentCandle.strength}/3</small>`;
+    }
+  } else {
+    currentAnalysis.classList.remove('active');
+  }
+  
+  // Actualizar tendencia reciente con fuerzas
+  const recentSequence = document.getElementById('recent-sequence');
+  const recentAnalysis = document.getElementById('recent-analysis');
+  
+  if (recentTrend.sequence.length > 0) {
+    recentSequence.innerHTML = recentTrend.sequence.map((c, i) => {
+      const isLast = i === recentTrend.sequence.length - 1;
+      const strength = recentTrend.strengths[i] || 2;
+      const weight = ((i + 1) / recentTrend.sequence.length).toFixed(1);
+      const strengthIndicator = strength >= 3 ? '▰▰▰' : strength === 2 ? '▰▰' : '▰';
+      
+      return `<div class="recent-candle recent-candle-${c.toLowerCase()} ${isLast ? 'candle-new' : ''}" 
+                  title="Fuerza: ${strength}/3, Peso tiempo: ${weight}x">
+                ${c}
+                <div class="candle-strength-indicator strength-${strength}">${strengthIndicator}</div>
+              </div>`;
+    }).join('');
+    
+    let analysisClass = 'recent-' + recentTrend.trend;
+    if (recentTrend.isExtreme) analysisClass = 'recent-extreme';
+    else if (recentTrend.warning === 'momentum_change') analysisClass = 'recent-conflict';
+    
+    recentAnalysis.className = 'recent-analysis ' + analysisClass;
+    recentAnalysis.innerHTML = `<strong>${recentTrend.reason}</strong>${recentTrend.detail ? '<br><small>' + recentTrend.detail + '</small>' : ''}`;
+  }
+  
+  // Actualizar momentum
+  const momentumBox = document.getElementById('momentum-box');
+  if (trendMA !== null) {
+    momentumBox.style.display = 'block';
+    const fill = document.getElementById('momentum-fill');
+    const diff = prevTrendMA !== null ? (trendMA - prevTrendMA).toFixed(1) : '0.0';
+    document.getElementById('momentum-detail').textContent = `MA10: ${trendMA.toFixed(1)}% (${diff > 0 ? '+' : ''}${diff}%) | Vela: Fuerza ${currentCandle.strength}/3`;
+    fill.style.width = trendMA + '%';
+    
+    if (extremeCondition && extremeCondition.type === 'extreme_bullish') {
+      fill.className = 'momentum-fill extreme-bullish';
+    } else if (extremeCondition && extremeCondition.type === 'extreme_bearish') {
+      fill.className = 'momentum-fill extreme-bearish';
+    } else {
+      fill.className = 'momentum-fill ' + (trendMA > 55 ? 'bullish' : trendMA < 45 ? 'bearish' : 'neutral');
+    }
+  } else {
+    momentumBox.style.display = 'none';
+  }
+  
+  // Banner de trampa
+  const trapBanner = document.getElementById('trap-banner');
+  const btnClearTrap = document.getElementById('btn-clear-trap');
+  
+  if (manualTrapIndex !== null) {
+    trapBanner.classList.add('active');
+    document.getElementById('trap-info').textContent = `#${manualTrapIndex + 1} (${history[manualTrapIndex]})`;
+    btnClearTrap.style.display = 'block';
+  } else {
+    trapBanner.classList.remove('active');
+    btnClearTrap.style.display = 'none';
+    originalTrendMA = null;
+  }
+  
+  // Tendencia Global
+  const trendBox = document.getElementById('trend-box');
+  const trendValue = document.getElementById('trend-value');
+  
+  if (trendMA !== null) {
+    const trend = getTrendLabel(trendMA, prevTrendMA, extremeCondition);
+    trendBox.className = 'trend-box ' + trend.class + (manualTrapIndex !== null ? ' adjusted' : '');
+    trendValue.textContent = trend.text;
+    trendValue.style.color = trend.color;
+    
+    const noteEl = document.getElementById('momentum-note');
+    if (trend.note) {
+      noteEl.textContent = trend.note;
+      noteEl.style.display = 'block';
+    } else {
+      noteEl.style.display = 'none';
+    }
+  } else {
+    trendBox.className = 'trend-box neutral' + (manualTrapIndex !== null ? ' adjusted' : '');
+    trendValue.textContent = 'SIN DATOS';
+    document.getElementById('momentum-note').style.display = 'none';
+  }
+  
+  // Grid de MA
+  const maResults = adjustedResult.crosses;
+  document.getElementById('ma-grid').innerHTML = maResults.map(r => {
+    const isExtreme = r.maFast >= 90 || r.maSlow >= 90 || r.maFast <= 10 || r.maSlow <= 10;
+    return `
+    <div class="ma-item ${r.crossed ? 'active' : ''} ${r.trap ? 'trap' : ''} ${isExtreme ? 'extreme' : ''}">
+      <div class="ma-name">${r.pair}</div>
+      <div class="ma-val ${r.diff > 0 ? 'ma-up' : 'ma-down'} ${isExtreme ? 'ma-extreme' : ''}">
+        ${r.maFast.toFixed(0)}|${r.maSlow.toFixed(0)}
+      </div>
+      <div style="font-size:0.7em;color:${r.trap ? 'var(--purple)' : r.crossed ? 'var(--gold)' : isExtreme ? 'var(--red)' : '#666'}">
+        ${r.trap ? 'TRAMPA' : r.crossed ? '✓ CRUCE' : isExtreme ? 'EXTREMO' : ''}
+      </div>
+    </div>
+  `}).join('');
+  
+  // Lógica de señal principal
+  const activeCross = maResults.find(r => r.crossed && !r.trap) || maResults.find(r => r.crossed);
+  const mainSignal = document.getElementById('main-signal');
+  const priorityExplanation = document.getElementById('priority-explanation');
+  const logicExplanation = document.getElementById('logic-explanation');
+  
+  let effectiveHistory = history;
+  if (manualTrapIndex !== null) {
+    effectiveHistory = history.filter((_, idx) => idx !== manualTrapIndex);
+  }
+  const lastTwo = effectiveHistory.slice(-2);
+  const proj = lastTwo.length >= 2 ? analyzePattern(lastTwo, null, extremeCondition) : null;
+  
+  let finalSignal = 'wait';
+  let signalClass = 'signal-wait';
+  let signalText = 'ESPERAR';
+  let showReversal = false;
+  let showExtreme = false;
+  let logicText = '';
+  
+  // PRIORIDAD 0: Condición extrema
+  if (extremeCondition && (extremeCondition.type === 'extreme_bullish' || extremeCondition.type === 'extreme_bearish')) {
+    showExtreme = true;
+    if (extremeCondition.type === 'extreme_bullish') {
+      if (currentCandle.current === 'R' && currentCandle.strength >= 2) {
+        finalSignal = 'sell';
+        signalClass = 'signal-extreme';
+        signalText = 'VENDER EXTREMO';
+        logicText = `MA10 al ${trendMA.toFixed(0)}% (extremo) + vela roja fuerza ${currentCandle.strength}/3. Reversión confirmada.`;
+      } else {
+        finalSignal = 'wait';
+        signalClass = 'signal-extreme';
+        signalText = '⚠️ ESPERAR';
+        logicText = `MA10 al ${trendMA.toFixed(0)}% - Sobrecompra extrema. NO comprar.`;
+      }
+    } else if (extremeCondition.type === 'extreme_bearish') {
+      if (currentCandle.current === 'G' && currentCandle.strength >= 2) {
+        finalSignal = 'buy';
+        signalClass = 'signal-extreme';
+        signalText = 'COMPRAR EXTREMO';
+        logicText = `MA10 al ${trendMA.toFixed(0)}% (extremo) + vela verde fuerza ${currentCandle.strength}/3. Reversión confirmada.`;
+      } else {
+        finalSignal = 'wait';
+        signalClass = 'signal-extreme';
+        signalText = '⚠️ ESPERAR';
+        logicText = `MA10 al ${trendMA.toFixed(0)}% - Sobreventa extrema. NO vender.`;
+      }
+    }
+  }
+  // PRIORIDAD 1: Vela de reversión fuerte (fuerza 3)
+  else if (currentCandle.isReversal && currentCandle.strength >= 3) {
+    showReversal = true;
+    if (currentCandle.current === 'G') {
+      finalSignal = 'buy';
+      signalClass = 'signal-strong-reversal';
+      signalText = 'COMPRAR';
+      logicText = `Reversión alcista FUERTE (fuerza 3/3). Ignora tendencia previa.`;
+    } else {
+      finalSignal = 'sell';
+      signalClass = 'signal-strong-reversal';
+      signalText = 'VENDER';
+      logicText = `Reversión bajista FUERTE (fuerza 3/3). Ignora tendencia previa.`;
+    }
+  }
+  // PRIORIDAD 1.5: Vela de reversión media (fuerza 2) - requiere confirmación
+  else if (currentCandle.isReversal && currentCandle.strength === 2) {
+    finalSignal = 'wait';
+    signalClass = 'signal-conflict';
+    signalText = 'ESPERAR';
+    logicText = `Reversión detectada pero fuerza media (2/3). Esperar confirmación.`;
+  }
+  // Conflicto de momentum
+  else if (recentTrend.warning === 'momentum_change') {
+    finalSignal = 'wait';
+    signalClass = 'signal-conflict';
+    signalText = 'ESPERAR';
+    logicText = `Conflicto de momentum: ${recentTrend.reason}. Esperar confirmación.`;
+  }
+  // Cruce válido
+  else if (activeCross && !activeCross.trap) {
+    if (activeCross.crossType === 'golden') {
+      finalSignal = 'buy';
+      signalClass = 'signal-buy';
+      signalText = 'COMPRAR';
+      logicText = `Golden Cross válido en ${activeCross.pair}. Tendencia alcista.`;
+    } else {
+      finalSignal = 'sell';
+      signalClass = 'signal-sell';
+      signalText = 'VENDER';
+      logicText = `Death Cross válido en ${activeCross.pair}. Tendencia bajista.`;
+    }
+  }
+  // Patrón + contexto
+  else if (proj && recentTrend.trend !== 'neutral') {
+    const momentumConsistent = (recentTrend.trend === 'bullish' && trendMA > prevTrendMA) || 
+                               (recentTrend.trend === 'bearish' && trendMA < prevTrendMA) ||
+                               Math.abs(trendMA - prevTrendMA) < 5;
+    
+    if (!momentumConsistent && Math.abs(trendMA - prevTrendMA) > 10) {
+      finalSignal = 'wait';
+      signalClass = 'signal-conflict';
+      signalText = 'ESPERAR';
+      logicText = `Patrón detectado pero momentum en contra. Esperar.`;
+    } else if (recentTrend.trend === 'bullish' && proj.ifG.sig === 'COMPRA') {
+      finalSignal = 'buy';
+      signalClass = 'signal-buy';
+      signalText = 'COMPRAR';
+      logicText = `Patrón ${proj.ifG.pat} en contexto alcista ponderado.`;
+    } else if (recentTrend.trend === 'bearish' && proj.ifR.sig === 'VENTA') {
+      finalSignal = 'sell';
+      signalClass = 'signal-sell';
+      signalText = 'VENDER';
+      logicText = `Patrón ${proj.ifR.pat} en contexto bajista ponderado.`;
+    } else {
+      logicText = `Patrón en conflicto con tendencia ponderada. Esperando.`;
+    }
+  } else {
+    logicText = `Sin señales claras. MA10: ${trendMA ? trendMA.toFixed(0) + '%' : 'N/A'}`;
+  }
+  
+  // Trampa detectada
+  if (activeCross && activeCross.trap && !showExtreme && recentTrend.warning !== 'momentum_change') {
+    signalClass = 'signal-trap';
+    signalText = activeCross.crossType === 'golden' ? '¿COMPRA?' : '¿VENTA?';
+    logicText = `⚠️ ${activeCross.pair} detectó cruce ${activeCross.crossType} pero es TRAMPA.`;
+  }
+  
+  // Actualizar cruce visible
+  if (activeCross && !showExtreme) {
+    document.getElementById('cross-alert').classList.add('show');
+    document.getElementById('cross-pair').textContent = activeCross.pair;
+    const typeEl = document.getElementById('cross-type');
+    typeEl.textContent = activeCross.crossType === 'golden' ? 'GOLDEN CROSS' : 'DEATH CROSS';
+    typeEl.className = activeCross.crossType === 'golden' ? 'cross-type-golden' : 'cross-type-death';
+  } else {
+    document.getElementById('cross-alert').classList.remove('show');
+  }
+  
+  mainSignal.className = 'main-signal ' + signalClass;
+  mainSignal.innerHTML = signalText + 
+    '<div class="manual-trap-badge">TRAMPA ACTIVA</div>' +
+    '<div class="conflict-badge">⚠️ CONFLICTO</div>' +
+    '<div class="reversal-badge">🔄 REVERSIÓN FUERTE</div>' +
+    '<div class="extreme-signal-badge">⚠️ EXTREMO</div>';
+  
+  priorityExplanation.classList.toggle('active', showReversal || showExtreme || recentTrend.warning === 'momentum_change');
+  logicExplanation.classList.toggle('active', true);
+  document.getElementById('logic-text').textContent = logicText;
+  
+  // Actualizar proyecciones
+  updateProjections(trendMA, prevTrendMA, activeCross, recentTrend, currentCandle, extremeCondition);
+  
+  // Historial visual con indicadores de fuerza
+  document.getElementById('history').innerHTML = history.map((h, i) => {
+    const isTrap = i === manualTrapIndex;
+    const isNew = i === history.length - 1;
+    const strength = getCandleStrength(i);
+    const strengthIndicator = strength >= 3 ? '<span class="candle-strength-indicator strength-3">▰▰▰</span>' : 
+                              strength === 2 ? '<span class="candle-strength-indicator strength-2">▰▰</span>' : 
+                              '<span class="candle-strength-indicator strength-1">▰</span>';
+    
+    return `<div class="candle candle-${h.toLowerCase()} ${isTrap ? 'candle-trap' : ''} ${isNew && !isTrap ? 'candle-new' : ''}" 
+                onclick="openTrapModal(${i})" title="${isTrap ? 'TRAMPA' : 'Marcar trampa'} | Fuerza: ${strength}/3">
+              ${h}
+              ${strengthIndicator}
+            </div>`;
+  }).join('');
+}
+
+function updateProjections(trendMA, prevTrendMA, activeCross, recentTrend, currentCandle, extremeCondition) {
+  let effectiveHistory = history;
+  if (manualTrapIndex !== null) {
+    effectiveHistory = history.filter((_, idx) => idx !== manualTrapIndex);
+  }
+  
+  const lastTwo = effectiveHistory.slice(-2);
+  
+  if (lastTwo.length < 2) {
+    document.getElementById('proj-g-seq').textContent = '--';
+    document.getElementById('proj-r-seq').textContent = '--';
+    return;
+  }
+  
+  const proj = analyzePattern(lastTwo, null, extremeCondition);
+  
+  if (proj) {
+    // Proyección VERDE
+    const gIsReversal = currentCandle.isReversal && currentCandle.current === 'G' && currentCandle.strength >= 3;
+    
+    document.getElementById('proj-g-seq').textContent = proj.ifG.pat;
+    
+    let gSignal = proj.ifG.sig;
+    let gClass = proj.ifG.sig === 'COMPRA' ? 'proj-signal-buy' : 'proj-signal-hold';
+    let gBoxClass = 'proj-box proj-green';
+    let gConfidence = Math.round(proj.ifG.conf * 100) + '%';
+    
+    if (extremeCondition && extremeCondition.type === 'extreme_bullish') {
+      gSignal = 'ESPERAR';
+      gClass = 'proj-signal-extreme';
+      gBoxClass = 'proj-box proj-green proj-extreme';
+      gConfidence = '0% - EXTREMO';
+    } else if (recentTrend.warning === 'momentum_change' && recentTrend.weightedScore < 0) {
+      gSignal = 'ESPERAR';
+      gClass = 'proj-signal-hold';
+      gBoxClass = 'proj-box proj-green proj-conflict';
+      gConfidence = 'Conflicto momentum';
+    }
+    
+    document.getElementById('proj-g-sig').textContent = gSignal;
+    document.getElementById('proj-g-sig').className = `proj-signal ${gClass}`;
+    document.getElementById('proj-g-conf').textContent = gConfidence;
+    document.getElementById('proj-g-reason').textContent = gIsReversal ? '🔄 Reversión fuerza 3' : '';
+    document.getElementById('proj-g-reversal').textContent = gIsReversal ? 'Prioridad máxima' : '';
+    document.getElementById('proj-g-extreme').textContent = (extremeCondition && extremeCondition.type === 'extreme_bullish') ? 
+      '⚠️ NO COMPRAR: Sobrecompra extrema' : '';
+    document.getElementById('proj-g-conflict').textContent = (recentTrend.warning === 'momentum_change') ?
+      '⚠️ Conflicto: Momentum cambiando' : '';
+    document.getElementById('proj-g-box').className = gBoxClass;
+    
+    // Proyección ROJO
+    const rIsReversal = currentCandle.isReversal && currentCandle.current === 'R' && currentCandle.strength >= 3;
+    
+    document.getElementById('proj-r-seq').textContent = proj.ifR.pat;
+    
+    let rSignal = proj.ifR.sig;
+    let rClass = proj.ifR.sig === 'VENTA' ? 'proj-signal-sell' : 'proj-signal-hold';
+    let rBoxClass = 'proj-box proj-red';
+    let rConfidence = Math.round(proj.ifR.conf * 100) + '%';
+    
+    if (extremeCondition && extremeCondition.type === 'extreme_bearish') {
+      rSignal = 'ESPERAR';
+      rClass = 'proj-signal-extreme';
+      rBoxClass = 'proj-box proj-red proj-extreme';
+      rConfidence = '0% - EXTREMO';
+    } else if (recentTrend.warning === 'momentum_change' && recentTrend.weightedScore > 0) {
+      rSignal = 'ESPERAR';
+      rClass = 'proj-signal-hold';
+      rBoxClass = 'proj-box proj-red proj-conflict';
+      rConfidence = 'Conflicto momentum';
+    }
+    
+    document.getElementById('proj-r-sig').textContent = rSignal;
+    document.getElementById('proj-r-sig').className = `proj-signal ${rClass}`;
+    document.getElementById('proj-r-conf').textContent = rConfidence;
+    document.getElementById('proj-r-reason').textContent = rIsReversal ? '🔄 Reversión fuerza 3' : '';
+    document.getElementById('proj-r-reversal').textContent = rIsReversal ? 'Prioridad máxima' : '';
+    document.getElementById('proj-r-extreme').textContent = (extremeCondition && extremeCondition.type === 'extreme_bearish') ? 
+      '⚠️ NO VENDER: Sobreventa extrema' : '';
+    document.getElementById('proj-r-conflict').textContent = (recentTrend.warning === 'momentum_change') ?
+      '⚠️ Conflicto: Momentum cambiando' : '';
+    document.getElementById('proj-r-box').className = rBoxClass;
+  }
+}
+
+function openTrapModal(index) {
+  if (manualTrapIndex === index) {
+    clearTrap();
+    return;
+  }
+  pendingTrapIndex = index;
+  document.getElementById('trap-candle-color').textContent = history[index];
+  document.getElementById('trap-candle-pos').textContent = '#' + (index + 1);
+  document.getElementById('trap-modal').classList.add('active');
+}
+
+function closeModal() {
+  document.getElementById('trap-modal').classList.remove('active');
+  pendingTrapIndex = null;
+}
+
+function confirmTrap() {
+  if (pendingTrapIndex !== null) {
+    manualTrapIndex = pendingTrapIndex;
+    closeModal();
+    update();
+  }
+}
+
+function clearTrap() {
+  manualTrapIndex = null;
+  originalTrendMA = null;
+  update();
+}
+
+function reset() {
+  history = [];
+  crosses = [];
+  manualTrapIndex = null;
+  pendingTrapIndex = null;
+  originalTrendMA = null;
+  manualStrengths = {}; // Limpiar fuerzas manuales
+  currentStrength = 2; // Reset a media
+  
+  // Reset UI de fuerza
+  selectStrength(2);
+  
+  document.getElementById('cross-alert').classList.remove('show');
+  document.getElementById('trap-banner').classList.remove('active');
+  document.getElementById('extreme-alert').classList.remove('active');
+  document.getElementById('btn-clear-trap').style.display = 'none';
+  document.getElementById('priority-explanation').classList.remove('active');
+  document.getElementById('logic-explanation').classList.remove('active');
+  closeModal();
+  update();
+}
+
+// Inicializar
+selectStrength(2);
+update();
+</script>
+
+</body>
+</html>
