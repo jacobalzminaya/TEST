@@ -1707,7 +1707,7 @@ function detectDistribution(trendMA, recentTrend, currentCandle) {
   };
   
   if (isHighLevel) probability += 0.3;
-  if (dvergence.detected) probability += 0.25;
+  if (divergence.detected) probability += 0.25;
   if (weaknessSignals >= CMD_CONFIG.distribution.weaknessSignals) probability += 0.25;
   if (distributionPattern) probability += 0.2;
   
@@ -1762,7 +1762,7 @@ function detectAccumulation(trendMA, recentTrend, currentCandle) {
   };
   
   if (isLowLevel) probability += 0.3;
-  if (dvergence.detected) probability += 0.25;
+  if (divergence.detected) probability += 0.25;
   if (spring.detected) probability += 0.3;
   if (absorptionPattern) probability += 0.15;
   
