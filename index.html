@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Detector MA + Fuerza Híbrida COMPLETA</title>
+  <title>Detector CMD + MA + Fuerza Híbrida</title>
   <style>
     :root {
       --green: #00ff88;
@@ -15,6 +15,8 @@
       --cyan: #00ffff;
       --bg: #0a0a0a;
       --panel: #1a1a1a;
+      --yellow: #ffff00;
+      --dark-red: #8b0000;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -26,6 +28,108 @@
       flex-direction: column;
       align-items: center;
       padding: 15px;
+    }
+    
+    /* ===== NUEVO: PANEL CMD ===== */
+    .cmd-panel {
+      width: 100%;
+      max-width: 500px;
+      background: var(--panel);
+      border: 3px solid #444;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 15px;
+      position: relative;
+      overflow: hidden;
+    }
+    .cmd-panel::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 4px;
+      background: linear-gradient(90deg, var(--yellow), var(--orange), var(--red));
+    }
+    .cmd-title {
+      color: var(--gold);
+      font-size: 1.1em;
+      margin-bottom: 15px;
+      font-weight: bold;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .cmd-status {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .cmd-item {
+      background: rgba(0,0,0,0.4);
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+      border: 2px solid #333;
+      transition: all 0.3s;
+      position: relative;
+    }
+    .cmd-item.active {
+      transform: scale(1.05);
+      box-shadow: 0 0 20px currentColor;
+    }
+    .cmd-item.consolidation.active { border-color: var(--yellow); color: var(--yellow); background: rgba(255,255,0,0.1); }
+    .cmd-item.manipulation.active { border-color: var(--orange); color: var(--orange); background: rgba(255,136,0,0.1); }
+    .cmd-item.distribution.active { border-color: var(--red); color: var(--red); background: rgba(255,68,68,0.1); }
+    .cmd-item.accumulation.active { border-color: var(--green); color: var(--green); background: rgba(0,255,136,0.1); }
+    
+    .cmd-icon { font-size: 1.5em; margin-bottom: 5px; }
+    .cmd-label { font-size: 0.75em; font-weight: bold; text-transform: uppercase; }
+    .cmd-value { font-size: 0.9em; margin-top: 5px; opacity: 0.8; }
+    .cmd-probability { font-size: 0.7em; margin-top: 3px; color: #888; }
+    
+    .cmd-alert {
+      background: linear-gradient(90deg, rgba(255,0,0,0.2), transparent);
+      border-left: 4px solid var(--red);
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 10px;
+      display: none;
+      animation: pulse-cmd 2s infinite;
+    }
+    .cmd-alert.active { display: block; }
+    @keyframes pulse-cmd { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    .cmd-alert-title { font-weight: bold; color: var(--red); margin-bottom: 5px; }
+    .cmd-alert-text { font-size: 0.85em; color: #ccc; }
+    
+    .whale-activity {
+      margin-top: 15px;
+      padding: 10px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 6px;
+      border: 1px solid #333;
+    }
+    .whale-title { font-size: 0.8em; color: var(--cyan); margin-bottom: 8px; }
+    .whale-bar {
+      height: 8px;
+      background: #333;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 8px;
+      display: flex;
+    }
+    .whale-segment {
+      height: 100%;
+      transition: all 0.5s;
+    }
+    .whale-segment.retail { background: #666; }
+    .whale-segment.smart { background: var(--blue); }
+    .whale-segment.whale { background: var(--purple); }
+    .whale-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.7em;
+      color: #888;
     }
     
     /* ===== PANEL HÍBRIDO DE CONFIRMACIÓN ===== */
@@ -190,7 +294,7 @@
     }
     .btn-red:hover { transform: scale(1.05); box-shadow: 0 0 25px var(--red); }
     
-    /* ===== TODOS LOS PANELES AVANZADOS ===== */
+    /* ===== PANELES EXISTENTES ===== */
     .trap-modal {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -410,6 +514,24 @@
       color: var(--red);
       animation: pulse-extreme 1s infinite;
     }
+    .signal-accumulation {
+      background: linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,100,0,0.1));
+      border-color: var(--green);
+      color: var(--green);
+      animation: pulse-accumulation 2s infinite;
+    }
+    .signal-distribution {
+      background: linear-gradient(135deg, rgba(255,68,68,0.15), rgba(139,0,0,0.1));
+      border-color: var(--red);
+      color: var(--red);
+      animation: pulse-distribution 2s infinite;
+    }
+    .signal-manipulation {
+      background: repeating-linear-gradient(45deg, rgba(255,136,0,0.1), rgba(255,136,0,0.1) 10px, rgba(255,0,255,0.1) 10px, rgba(255,0,255,0.1) 20px);
+      border-color: var(--orange);
+      color: var(--orange);
+      animation: pulse-manipulation 1s infinite;
+    }
     @keyframes pulse-extreme { 
       0%, 100% { box-shadow: 0 0 0 0 rgba(255,68,68,0.6); } 
       50% { box-shadow: 0 0 30px 10px rgba(255,68,68,0.3); } 
@@ -417,6 +539,18 @@
     @keyframes pulse-cyan { 
       0%, 100% { box-shadow: 0 0 0 0 rgba(0,255,255,0.4); } 
       50% { box-shadow: 0 0 20px 5px rgba(0,255,255,0.2); } 
+    }
+    @keyframes pulse-accumulation {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(0,255,136,0.4); }
+      50% { box-shadow: 0 0 20px 5px rgba(0,255,136,0.2); }
+    }
+    @keyframes pulse-distribution {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255,68,68,0.4); }
+      50% { box-shadow: 0 0 20px 5px rgba(255,68,68,0.2); }
+    }
+    @keyframes pulse-manipulation {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.8; }
     }
     .manual-trap-badge {
       position: absolute;
@@ -462,6 +596,19 @@
       display: none;
     }
     .signal-extreme .extreme-signal-badge { display: block; }
+    .cmd-signal-badge {
+      position: absolute;
+      top: 5px; left: 10px;
+      font-size: 0.35em;
+      background: var(--yellow);
+      color: #000;
+      padding: 3px 10px;
+      border-radius: 4px;
+      display: none;
+    }
+    .signal-accumulation .cmd-signal-badge,
+    .signal-distribution .cmd-signal-badge,
+    .signal-manipulation .cmd-signal-badge { display: block; }
     
     .projections {
       width: 100%;
@@ -514,6 +661,15 @@
       padding: 3px;
       border-radius: 3px;
     }
+    .proj-cmd-note {
+      font-size: 0.7em;
+      color: var(--yellow);
+      margin-top: 5px;
+      font-weight: bold;
+      background: rgba(255,255,0,0.1);
+      padding: 3px;
+      border-radius: 3px;
+    }
     
     .priority-explanation {
       width: 100%;
@@ -530,6 +686,7 @@
     .priority-title { color: var(--orange); font-weight: bold; margin-bottom: 5px; }
     .priority-item { color: #ccc; margin: 3px 0; }
     .priority-item.extreme { color: var(--red); font-weight: bold; }
+    .priority-item.cmd { color: var(--yellow); font-weight: bold; }
     
     .logic-explanation {
       width: 100%;
@@ -644,6 +801,13 @@
       border: 1px solid var(--red);
       animation: blink 1s infinite;
     }
+    .recent-cmd {
+      background: rgba(255,255,0,0.1);
+      color: var(--yellow);
+      border: 1px solid var(--yellow);
+      animation: blink-cmd 2s infinite;
+    }
+    @keyframes blink-cmd { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
     
     .momentum-indicator {
       width: 100%;
@@ -712,6 +876,152 @@
       border-radius: 3px;
       border: 1px solid #555;
     }
+    
+    .cmd-phase-indicator {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #333;
+      border: 2px solid #555;
+    }
+    .cmd-phase-indicator.consolidation { background: var(--yellow); box-shadow: 0 0 10px var(--yellow); }
+    .cmd-phase-indicator.manipulation { background: var(--orange); box-shadow: 0 0 10px var(--orange); animation: pulse-manipulation-indicator 1s infinite; }
+    .cmd-phase-indicator.distribution { background: var(--red); box-shadow: 0 0 10px var(--red); }
+    .cmd-phase-indicator.accumulation { background: var(--green); box-shadow: 0 0 10px var(--green); }
+    @keyframes pulse-manipulation-indicator { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    /* ===== AGREGAR AL FINAL DEL <style> ===== */
+
+/* Indicadores de fuerza granular */
+.strength-sub-indicators {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.sub-indicator {
+  background: rgba(0,0,0,0.4);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.7em;
+  color: var(--cyan);
+  border: 1px solid var(--cyan);
+  animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Barra de fuerza continua */
+.strength-bar-container {
+  margin-top: 15px;
+  position: relative;
+}
+
+.strength-bar {
+  height: 8px;
+  background: linear-gradient(90deg, 
+    #888 0%, #888 16.6%, 
+    #aaa 16.6%, #aaa 33.3%, 
+    var(--gold) 33.3%, var(--gold) 50%, 
+    #ffcc00 50%, #ffcc00 66.6%, 
+    var(--green) 66.6%, var(--green) 83.3%, 
+    #00ffcc 83.3%, #00ffcc 100%
+  );
+  border-radius: 4px;
+  position: relative;
+  transition: all 0.3s;
+}
+
+.strength-markers {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+  font-size: 0.6em;
+  color: #555;
+}
+
+.strength-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 0.6em;
+  color: #666;
+}
+
+/* Destacar nivel 4 en historial */
+.candle-strength-4::after {
+  content: '🔥';
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  font-size: 8px;
+}
+
+/* Animación para fuerza extrema */
+@keyframes pulse-extreme {
+  0%, 100% { box-shadow: 0 0 5px #00ffcc; }
+  50% { box-shadow: 0 0 20px #00ffcc, 0 0 40px #00ffcc; }
+}
+
+.strength-4 {
+  animation: pulse-extreme 1s infinite;
+}
+/* ===== AGREGAR AL FINAL DEL <style> ===== */
+
+/* Indicador de fuerza 4 (capitulación) */
+.strength-4-ind { 
+  color: #00ffcc; 
+  text-shadow: 0 0 5px #00ffcc;
+  font-size: 8px;
+}
+
+.candle-extreme {
+  animation: pulse-extreme-candle 1s infinite;
+  box-shadow: 0 0 10px #00ffcc;
+}
+
+@keyframes pulse-extreme-candle {
+  0%, 100% { box-shadow: 0 0 5px #00ffcc; }
+  50% { box-shadow: 0 0 15px #00ffcc, 0 0 25px #00ffcc; }
+}
+
+/* Indicador de fuerza 2.5 (acelerado) */
+.candle-accelerated {
+  border: 1px solid #ffcc00;
+  box-shadow: 0 0 5px #ffcc00;
+}
+
+/* Mejorar visualización de fuerza en sugerencia */
+.suggestion-strength {
+  font-size: 2.5em;
+  font-weight: bold;
+  margin-bottom: 5px;
+  letter-spacing: 3px;
+  transition: all 0.3s;
+}
+
+/* Animación para nivel 4 */
+.strength-4-anim {
+  animation: pulse-fire 0.8s infinite;
+}
+
+@keyframes pulse-fire {
+  0%, 100% { transform: scale(1); text-shadow: 0 0 10px #00ffcc; }
+  50% { transform: scale(1.1); text-shadow: 0 0 20px #00ffcc, 0 0 40px #00ffcc; }
+}
+.cmd-status {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr; /* Cambiar de 3 a 4 */
+  gap: 10px;
+  margin-bottom: 15px;
+}
   </style>
 </head>
 <body>
@@ -727,6 +1037,61 @@
       <div class="trap-modal-buttons">
         <button class="trap-btn trap-btn-confirm" onclick="confirmTrap()">Sí, recalcular</button>
         <button class="trap-btn trap-btn-cancel" onclick="closeModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== NUEVO: PANEL CMD (Consolidación, Manipulación, Distribución) ===== -->
+  <div class="cmd-panel" id="cmd-panel">
+    <div class="cmd-phase-indicator" id="cmd-phase-indicator"></div>
+    <div class="cmd-title">
+      <span>🎯</span>
+      <span>DETECTOR DE FASES DE MERCADO (CMD)</span>
+    </div>
+    
+    <div class="cmd-status">
+      <div class="cmd-item" id="cmd-consolidation">
+        <div class="cmd-icon">📊</div>
+        <div class="cmd-label">Consolidación</div>
+        <div class="cmd-value" id="consolidation-val">--</div>
+        <div class="cmd-probability" id="consolidation-prob">0%</div>
+      </div>
+      <div class="cmd-item" id="cmd-manipulation">
+        <div class="cmd-icon">🎭</div>
+        <div class="cmd-label">Manipulación</div>
+        <div class="cmd-value" id="manipulation-val">--</div>
+        <div class="cmd-probability" id="manipulation-prob">0%</div>
+      </div>
+      <div class="cmd-item" id="cmd-distribution">
+        <div class="cmd-icon">🏦</div>
+        <div class="cmd-label">Distribución</div>
+        <div class="cmd-value" id="distribution-val">--</div>
+        <div class="cmd-probability" id="distribution-prob">0%</div>
+      </div>
+        <div class="cmd-item" id="cmd-accumulation">
+        <div class="cmd-icon">📥</div>
+        <div class="cmd-label">Acumulación</div>
+        <div class="cmd-value" id="accumulation-val">--</div>
+        <div class="cmd-probability" id="accumulation-prob">0%</div>
+      </div>
+    </div>
+    
+    <div class="cmd-alert" id="cmd-alert">
+      <div class="cmd-alert-title" id="cmd-alert-title">⚠️ ALERTA</div>
+      <div class="cmd-alert-text" id="cmd-alert-text">Detectando actividad institucional...</div>
+    </div>
+    
+    <div class="whale-activity" id="whale-activity" style="display: none;">
+      <div class="whale-title">🐋 Actividad de Ballenas (Smart Money)</div>
+      <div class="whale-bar" id="whale-bar">
+        <div class="whale-segment retail" id="whale-retail" style="width: 33%"></div>
+        <div class="whale-segment smart" id="whale-smart" style="width: 33%"></div>
+        <div class="whale-segment whale" id="whale-whale" style="width: 34%"></div>
+      </div>
+      <div class="whale-labels">
+        <span>Retail</span>
+        <span>Smart Money</span>
+        <span>Ballenas</span>
       </div>
     </div>
   </div>
@@ -759,26 +1124,55 @@
       </div>
     </div>
     
-    <div class="correction-options" id="correction-options">
-      <div class="correction-title">Selecciona la fuerza correcta:</div>
-      <div class="correction-grid">
-        <button class="correction-btn strong-sel" onclick="correctStrength(3)" id="corr-3">
-          <div style="font-size:1.5em;color:var(--green);">▰▰▰</div>
-          <div style="font-weight:bold;">FUERTE</div>
-          <div style="font-size:0.7em;">Reversión importante</div>
-        </button>
-        <button class="correction-btn medium-sel selected" onclick="correctStrength(2)" id="corr-2">
-          <div style="font-size:1.5em;color:var(--gold);">▰▰</div>
-          <div style="font-weight:bold;">MEDIA</div>
-          <div style="font-size:0.7em;">Momentum normal</div>
-        </button>
-        <button class="correction-btn weak-sel" onclick="correctStrength(1)" id="corr-1">
-          <div style="font-size:1.5em;color:#888;">▰</div>
-          <div style="font-weight:bold;">DÉBIL</div>
-          <div style="font-size:0.7em;">Doji/indecisión</div>
-        </button>
-      </div>
-    </div>
+    <!-- REEMPLAZAR DENTRO DE correction-options -->
+<div class="correction-options" id="correction-options">
+  <div class="correction-title">Selecciona la fuerza correcta (6 niveles):</div>
+  <div class="correction-grid" style="grid-template-columns: repeat(3, 1fr); gap: 8px;">
+    
+    <!-- Nivel 1: Débil -->
+    <button class="correction-btn" onclick="correctStrength(1)" id="corr-1">
+      <div style="font-size:1.2em;color:#888;">▰</div>
+      <div style="font-weight:bold;font-size:0.9em;">DÉBIL</div>
+      <div style="font-size:0.65em;">Doji puro</div>
+    </button>
+    
+    <!-- Nivel 1.5: Débil+ (NUEVO) -->
+    <button class="correction-btn" onclick="correctStrength(1.5)" id="corr-1-5">
+      <div style="font-size:1.2em;color:#aaa;">▰+</div>
+      <div style="font-weight:bold;font-size:0.9em;">DÉBIL+</div>
+      <div style="font-size:0.65em;">Doji sesgado</div>
+    </button>
+    
+    <!-- Nivel 2: Media -->
+    <button class="correction-btn selected" onclick="correctStrength(2)" id="corr-2">
+      <div style="font-size:1.2em;color:var(--gold);">▰▰</div>
+      <div style="font-weight:bold;font-size:0.9em;">MEDIA</div>
+      <div style="font-size:0.65em;">Normal</div>
+    </button>
+    
+    <!-- Nivel 2.5: Media+ (NUEVO) -->
+    <button class="correction-btn" onclick="correctStrength(2.5)" id="corr-2-5">
+      <div style="font-size:1.2em;color:#ffcc00;">▰▰+</div>
+      <div style="font-weight:bold;font-size:0.9em;">MEDIA+</div>
+      <div style="font-size:0.65em;">Momentum↑</div>
+    </button>
+    
+    <!-- Nivel 3: Fuerte -->
+    <button class="correction-btn" onclick="correctStrength(3)" id="corr-3">
+      <div style="font-size:1.2em;color:var(--green);">▰▰▰</div>
+      <div style="font-weight:bold;font-size:0.9em;">FUERTE</div>
+      <div style="font-size:0.65em;">Reversión</div>
+    </button>
+    
+    <!-- Nivel 4: Extrema (NUEVO) -->
+    <button class="correction-btn" onclick="correctStrength(4)" id="corr-4">
+      <div style="font-size:1.2em;color:#00ffcc;">▰▰▰🔥</div>
+      <div style="font-weight:bold;font-size:0.9em;">EXTREMA</div>
+      <div style="font-size:0.65em;">Capitulación</div>
+    </button>
+    
+  </div>
+</div>
     
     <div class="color-buttons" id="color-buttons">
       <button class="btn-green" onclick="addCandle('G')">
@@ -791,9 +1185,10 @@
       </button>
     </div>
     
-    <div class="hint">
-      Atajos: <kbd>C</kbd>=Confirmar | <kbd>E</kbd>=Corregir | <kbd>1/2/3</kbd>=Fuerza | <kbd>G/R</kbd>=Color
-    </div>
+    <!-- REEMPLAZAR EL HINT EXISTENTE -->
+<div class="hint">
+  Atajos: <kbd>C</kbd>=Confirmar | <kbd>E</kbd>=Corregir | <kbd>1-6</kbd>=Fuerza (1=Débil, 6=Extrema) | <kbd>G/R</kbd>=Color
+</div>
   </div>
 
   <!-- ===== TODOS LOS PANELES AVANZADOS ===== -->
@@ -869,14 +1264,16 @@
     <div class="conflict-badge">⚠️ CONFLICTO</div>
     <div class="reversal-badge">🔄 REVERSIÓN FUERTE</div>
     <div class="extreme-signal-badge">⚠️ EXTREMO</div>
+    <div class="cmd-signal-badge">🎯 FASE CMD</div>
   </div>
 
   <div class="priority-explanation" id="priority-explanation">
     <div class="priority-title">⚡ Prioridad de Señales:</div>
     <div class="priority-item extreme">1. EXTREMO (>90% o <10%) - Esperar reversión</div>
-    <div class="priority-item">2. Vela fuerte de reversión (fuerza 3/3, ignora tendencia)</div>
-    <div class="priority-item">3. Cruce MA activo válido (no trampa)</div>
-    <div class="priority-item">4. Patrón de velas + contexto ponderado</div>
+    <div class="priority-item cmd">2. FASE CMD - Distribución/Acumulación institucional</div>
+    <div class="priority-item">3. Vela fuerte de reversión (fuerza 3/3, ignora tendencia)</div>
+    <div class="priority-item">4. Cruce MA activo válido (no trampa)</div>
+    <div class="priority-item">5. Patrón de velas + contexto ponderado</div>
   </div>
 
   <div class="logic-explanation" id="logic-explanation">
@@ -894,6 +1291,7 @@
       <div class="proj-conflict-note" id="proj-g-conflict"></div>
       <div class="proj-reversal-note" id="proj-g-reversal"></div>
       <div class="proj-extreme-note" id="proj-g-extreme"></div>
+      <div class="proj-cmd-note" id="proj-g-cmd"></div>
     </div>
     <div class="proj-box proj-red" id="proj-r-box">
       <div class="proj-label">Si ROJO →</div>
@@ -904,6 +1302,7 @@
       <div class="proj-conflict-note" id="proj-r-conflict"></div>
       <div class="proj-reversal-note" id="proj-r-reversal"></div>
       <div class="proj-extreme-note" id="proj-r-extreme"></div>
+      <div class="proj-cmd-note" id="proj-r-cmd"></div>
     </div>
   </div>
 
@@ -942,6 +1341,33 @@ const EXTREME_THRESHOLDS = {
   oversold: 10
 };
 
+// ===== NUEVO: CONFIGURACIÓN CMD =====
+const CMD_CONFIG = {
+  consolidation: {
+    minPeriods: 8,        // Mínimo de velas para considerar consolidación
+    maxRange: 15,         // Rango máximo de oscilación en MA10 (%)
+    minTouches: 3,        // Mínimo de toques a soportes/resistencias
+    volumeDrop: 0.6       // Factor de caída de volumen (simulado)
+  },
+  manipulation: {
+    spikeThreshold: 2.5,  // Multiplicador de fuerza para detectar spike
+    fakeoutReversal: 0.7, // Probabilidad de reversión inmediata
+    wickRatio: 0.6,       // Ratio mecha/cuerpo para detectar rechazo
+    institutionalWick: 3  // Velas con mechas largas y cuerpo pequeño
+  },
+  distribution: {
+    topThreshold: 75,     // Nivel alto para distribución
+    volumePattern: 'climax', // Patrón de volumen en climax
+    divergencePeriods: 5, // Periodos para detectar divergencia
+    weaknessSignals: 3    // Señales de debilidad requeridas
+  },
+  accumulation: {
+    bottomThreshold: 25,  // Nivel bajo para acumulación
+    springDetection: true, // Detectar "springs" (falsos quiebres)
+    absorption: true      // Detectar absorción de ventas
+  }
+};
+
 // ===== VARIABLES GLOBALES =====
 let history = [];
 let manualStrengths = {};  // {index: {strength, origin, autoSuggested}}
@@ -954,96 +1380,600 @@ let autoSuggestedStrength = 2;
 let confirmedStrength = null;
 let strengthOrigin = 'pending'; // 'pending', 'confirmed', 'corrected'
 
-// ===== CÁLCULO AUTOMÁTICO DE FUERZA (Versión 1 completa mejorada) =====
+// ===== NUEVO: VARIABLES CMD =====
+let cmdState = {
+  phase: 'none',           // 'consolidation', 'manipulation', 'distribution', 'accumulation', 'none'
+  probability: 0,
+  details: {},
+  lastUpdate: null
+};
+
+// ===== AGREGAR DESPUÉS DE EXTREME_THRESHOLDS =====
+const STRENGTH_CONFIG = {
+  LEVELS: {
+    1: { name: 'DÉBIL', icon: '▰', color: '#888', desc: 'Doji/Indecisión total' },
+    1.5: { name: 'DÉBIL+', icon: '▰', color: '#aaa', desc: 'Doji con sesgo' },
+    2: { name: 'MEDIA', icon: '▰▰', color: 'var(--gold)', desc: 'Momentum normal' },
+    2.5: { name: 'MEDIA+', icon: '▰▰', color: '#ffcc00', desc: 'Momentum fuerte' },
+    3: { name: 'FUERTE', icon: '▰▰▰', color: 'var(--green)', desc: 'Reversión importante' },
+    4: { name: 'EXTREMA', icon: '▰▰▰🔥', color: '#00ffcc', desc: 'Capitulación/Spike' }
+  },
+  VISUAL_MAP: { 1: 1, 1.5: 1, 2: 2, 2.5: 2, 3: 3, 4: 3 }
+};
+
+
+// ===== NUEVO: DETECTOR CMD COMPLETO =====
+
+function detectCMDPhase() {
+  if (history.length < 5) return { phase: 'none', probability: 0, details: {} };
+  
+  const trendMA = calcMA(10, true);
+  const recentTrend = analyzeRecentTrend();
+  const currentCandle = analyzeCurrentCandle();
+  
+  // 1. DETECTAR CONSOLIDACIÓN
+  const consolidation = detectConsolidation(trendMA, recentTrend);
+  
+  // 2. DETECTAR MANIPULACIÓN
+  const manipulation = detectManipulation(trendMA, recentTrend, currentCandle);
+  
+  // 3. DETECTAR DISTRIBUCIÓN
+  const distribution = detectDistribution(trendMA, recentTrend, currentCandle);
+  
+  // 4. DETECTAR ACUMULACIÓN
+  const accumulation = detectAccumulation(trendMA, recentTrend, currentCandle);
+  
+  // Determinar fase dominante
+  const phases = [
+    { name: 'consolidation', ...consolidation },
+    { name: 'manipulation', ...manipulation },
+    { name: 'distribution', ...distribution },
+    { name: 'accumulation', ...accumulation }
+  ];
+  
+  phases.sort((a, b) => b.probability - a.probability);
+  const dominant = phases[0];
+  
+  return {
+    phase: dominant.probability > 0.4 ? dominant.name : 'none',
+    probability: dominant.probability,
+    details: dominant.details,
+    allPhases: phases
+  };
+}
+
+function detectConsolidation(trendMA, recentTrend) {
+  if (history.length < CMD_CONFIG.consolidation.minPeriods) {
+    return { probability: 0, details: {} };
+  }
+  
+  // Calcular rango de oscilación reciente
+  const recent = history.slice(-CMD_CONFIG.consolidation.minPeriods);
+  const maValues = [];
+  
+  for (let i = CMD_CONFIG.consolidation.minPeriods; i > 0; i--) {
+    const slice = history.slice(-i - 10, -i);
+    if (slice.length >= 10) {
+      const ma = (slice.filter(h => h === 'G').length / 10) * 100;
+      maValues.push(ma);
+    }
+  }
+  
+  if (maValues.length < 3) return { probability: 0, details: {} };
+  
+  const maxMA = Math.max(...maValues);
+  const minMA = Math.min(...maValues);
+  const range = maxMA - minMA;
+  
+  // Detectar toques a soportes/resistencias (cambios de dirección)
+  let touches = 0;
+  let lastDir = 0;
+  for (let i = 1; i < maValues.length; i++) {
+    const dir = Math.sign(maValues[i] - maValues[i-1]);
+    if (dir !== 0 && dir !== lastDir) {
+      touches++;
+      lastDir = dir;
+    }
+  }
+  
+  // Calcular probabilidad
+  let probability = 0;
+  const details = {
+    range: range.toFixed(1),
+    touches: touches,
+    isNarrow: range < CMD_CONFIG.consolidation.maxRange
+  };
+  
+  if (range < CMD_CONFIG.consolidation.maxRange) probability += 0.4;
+  if (touches >= CMD_CONFIG.consolidation.minTouches) probability += 0.3;
+  if (recentTrend.trend === 'neutral') probability += 0.2;
+  if (Math.abs(recentTrend.weightedScore) < 2) probability += 0.1;
+  
+  // Detectar si estamos en rango estrecho por mucho tiempo
+  if (range < 10 && history.length > 15) probability += 0.2;
+  
+  return { 
+    probability: Math.min(probability, 0.95), 
+    details,
+    description: range < CMD_CONFIG.consolidation.maxRange ? 
+      `Rango estrecho: ${range.toFixed(1)}% | ${touches} toques` : 
+      'Rango amplio, no consolidación clara'
+  };
+}
+
+function detectManipulation(trendMA, recentTrend, currentCandle) {
+  if (history.length < 3) return { probability: 0, details: {} };
+  
+  const lastThree = history.slice(-3);
+  const strengths = lastThree.map((_, i) => getCandleStrength(history.length - 3 + i));
+  
+  // ===== NUEVO: Análisis granular de fuerza =====
+  const avgStrength = strengths.reduce((a, b) => a + b, 0) / strengths.length;
+  const maxStrength = Math.max(...strengths);
+  const minStrength = Math.min(...strengths);
+  
+  // Detectar CAPITULACIÓN (nivel 4) - Stop hunt institucional
+  const capitulationDetected = maxStrength === 4 || 
+    (maxStrength >= 3 && minStrength <= 1 && avgStrength < 2);
+  
+  // Detectar SPIKE con momentum acelerado (2.5) - Manipulación veloz
+  const acceleratedSpike = strengths.includes(2.5) && strengths.filter(s => s >= 2).length >= 2;
+  
+  // Detectar doji con sesgo (1.5) - Indecisión forzada
+  const biasedDojiTrap = strengths.includes(1.5) && 
+    (strengths[strengths.length - 1] === 1.5 || strengths[strengths.length - 2] === 1.5);
+  
+  // Spike clásico (nivel 3 vs media baja)
+  const spikeDetected = maxStrength >= 3 && avgStrength < 2.3;
+  
+  // Detectar falsos quiebres (trampas) - MEJORADO con niveles 4 y 2.5
+  const lastTwo = history.slice(-2);
+  const prevThree = history.slice(-4, -1);
+  
+  let fakeoutDetected = false;
+  let fakeoutType = '';
+  let fakeoutIntensity = 0; // 1=normal, 2=capitulación
+  
+  // Falso quiebre alcista seguido de reversión
+  if (prevThree.every(h => h === 'G') && lastTwo[0] === 'G' && lastTwo[1] === 'R') {
+    const prevStrengths = prevThree.map((_, i) => getCandleStrength(history.length - 4 + i));
+    const lastStrength = getCandleStrength(history.length - 1);
+    
+    // Trampa normal: previas fuerza 2+, última fuerza 2+
+    if (prevStrengths.every(s => s >= 2) && lastStrength >= 2) {
+      fakeoutDetected = true;
+      fakeoutType = 'bull_trap';
+      fakeoutIntensity = 1;
+    }
+    
+    // Trampa de CAPITULACIÓN: previas fuerza 3/4, última fuerza 1/1.5
+    if (prevStrengths.some(s => s >= 3) && lastStrength <= 1.5) {
+      fakeoutDetected = true;
+      fakeoutType = 'bull_trap_capitulation';
+      fakeoutIntensity = 2; // Más peligrosa
+    }
+  }
+  
+  // Falso quiebre bajista seguido de reversión
+  if (prevThree.every(h => h === 'R') && lastTwo[0] === 'R' && lastTwo[1] === 'G') {
+    const prevStrengths = prevThree.map((_, i) => getCandleStrength(history.length - 4 + i));
+    const lastStrength = getCandleStrength(history.length - 1);
+    
+    // Trampa normal
+    if (prevStrengths.every(s => s >= 2) && lastStrength >= 2) {
+      fakeoutDetected = true;
+      fakeoutType = 'bear_trap';
+      fakeoutIntensity = 1;
+    }
+    
+    // Trampa de CAPITULACIÓN
+    if (prevStrengths.some(s => s >= 3) && lastStrength <= 1.5) {
+      fakeoutDetected = true;
+      fakeoutType = 'bear_trap_capitulation';
+      fakeoutIntensity = 2;
+    }
+  }
+  
+  // Detectar mechas largas (rechazo institucional) - MEJORADO
+  const longWickPattern = detectLongWickPattern();
+  
+  // ===== NUEVO: Patrón de absorción institucional =====
+  // Fuerza 2.5 que no rompe + doji 1.5 = acumulación/distribución oculta
+  const hiddenInstitutional = (strengths.includes(2.5) && strengths.includes(1.5)) ||
+    (strengths.filter(s => s === 2.5).length >= 2);
+  
+  // Calcular probabilidad mejorada
+  let probability = 0;
+  const details = {
+    spikeDetected,
+    capitulationDetected,
+    acceleratedSpike,
+    biasedDojiTrap,
+    fakeoutDetected,
+    fakeoutType,
+    fakeoutIntensity,
+    longWickPattern,
+    hiddenInstitutional,
+    avgStrength: avgStrength.toFixed(1),
+    strengthRange: (maxStrength - minStrength).toFixed(1),
+    maxStrength,
+    minStrength
+  };
+  
+  // Puntuación por severidad
+  if (capitulationDetected) probability += 0.5;          // Máxima prioridad
+  else if (spikeDetected) probability += 0.35;
+  
+  if (fakeoutIntensity === 2) probability += 0.5;         // Capitulación
+  else if (fakeoutDetected) probability += 0.4;        // Trampa normal
+  
+  if (acceleratedSpike) probability += 0.25;
+  if (biasedDojiTrap) probability += 0.2;
+  if (longWickPattern.detected) probability += 0.25;
+  if (hiddenInstitutional) probability += 0.15;
+  
+  // Contexto: manipulación ocurre frecuentemente en consolidación
+  if (cmdState.phase === 'consolidation') probability += 0.15;
+  
+  // Bonus: si hay divergencia entre fuerza 4 y tendencia
+  if (capitulationDetected && trendMA !== null) {
+    const lastCandle = history[history.length - 1];
+    const isBullishCapitulation = lastCandle === 'G' && trendMA <= 20;
+    const isBearishCapitulation = lastCandle === 'R' && trendMA >= 80;
+    if (isBullishCapitulation || isBearishCapitulation) probability += 0.1;
+  }
+  
+  // Generar descripción detallada
+  let description = 'Sin manipulación clara';
+  
+  if (fakeoutIntensity === 2) {
+    description = `🔥 CAPITULACIÓN: ${fakeoutType === 'bull_trap_capitulation' ? 'Trampa Alcista EXTREMA' : 'Trampa Bajista EXTREMA'} - Liquidación de stops institucional`;
+  } else if (fakeoutDetected) {
+    description = `🎭 FALSO QUIEBRE: ${fakeoutType === 'bull_trap' ? 'Trampa Alcista' : 'Trampa Bajista'}`;
+  } else if (capitulationDetected) {
+    description = `⚡ CAPITULACIÓN: Spike ${maxStrength}/4 seguido de colapso (${minStrength}) - Reversión violenta inminente`;
+  } else if (acceleratedSpike) {
+    description = `🚀 MOMENTUM FORZADO: Aceleración artificial detectada (${strengths.filter(s => s >= 2.5).length} velas 2.5+)`;
+  } else if (hiddenInstitutional) {
+    description = `🏦 ACTIVIDAD OCULTA: ${cmdState.phase === 'distribution' ? 'Distribución' : 'Acumulación'} institucional disimulada`;
+  } else if (biasedDojiTrap) {
+    description = `🕯️ DOJI FORZADO: Indecisión con sesgo - Posible preparación de movimiento`;
+  } else if (spikeDetected) {
+    description = `⚡ SPIKE: Fuerza ${maxStrength}/4 vs media ${avgStrength.toFixed(1)} - Volatilidad anormal`;
+  } else if (longWickPattern.detected) {
+    description = `📍 RECHAZO INSTITUCIONAL: Mechas largas en ${longWickPattern.type === 'spike_rejection' ? 'spike' : 'doble reversión'}`;
+  }
+  
+  return {
+    probability: Math.min(probability, 0.95),
+    details,
+    description,
+    severity: fakeoutIntensity === 2 || capitulationDetected ? 'critical' : 
+              fakeoutDetected || acceleratedSpike ? 'high' : 
+              spikeDetected || hiddenInstitutional ? 'medium' : 'low'
+  };
+}
+
+function detectLongWickPattern() {
+  if (history.length < 3) return { detected: false };
+  
+  // Simular detección de mechas basado en fuerza y secuencia
+  const recent = history.slice(-3);
+  const strengths = recent.map((_, i) => getCandleStrength(history.length - 3 + i));
+  
+  // Patrón: fuerza 3 seguida de fuerza 1 (spike y rechazo)
+  const spikeAndRejection = strengths[0] >= 3 && strengths[1] <= 1;
+  const doubleRejection = strengths.every(s => s === 1) && 
+    recent[0] !== recent[1] && recent[1] !== recent[2];
+  
+  return {
+    detected: spikeAndRejection || doubleRejection,
+    type: spikeAndRejection ? 'spike_rejection' : 'double_rejection'
+  };
+}
+
+function detectDistribution(trendMA, recentTrend, currentCandle) {
+  if (trendMA === null) return { probability: 0, details: {} };
+  
+  // Distribución ocurre en tops (sobrecompra)
+  const isHighLevel = trendMA >= CMD_CONFIG.distribution.topThreshold;
+  
+  // Detectar divergencia: precio sube pero momentum cae
+  const divergence = detectDivergence('bearish');
+  
+  // Detectar señales de debilidad en velas recientes
+  const weaknessSignals = countWeaknessSignals();
+  
+  // Patrón de distribución: muchas velas verdes débiles seguidas de rojas fuertes
+  const recent = history.slice(-CMD_CONFIG.distribution.divergencePeriods);
+  const greenCount = recent.filter(h => h === 'G').length;
+  const redStrength = recent
+    .map((h, i) => ({ h, i: history.length - CMD_CONFIG.distribution.divergencePeriods + i }))
+    .filter(x => x.h === 'R')
+    .map(x => getCandleStrength(x.i))
+    .reduce((a, b) => a + b, 0);
+  
+  const distributionPattern = greenCount >= 3 && redStrength >= 6;
+  
+  // Calcular probabilidad
+  let probability = 0;
+  const details = {
+    isHighLevel,
+    divergence,
+    weaknessSignals,
+    distributionPattern,
+    greenCount,
+    redStrength
+  };
+  
+  if (isHighLevel) probability += 0.3;
+  if (dvergence.detected) probability += 0.25;
+  if (weaknessSignals >= CMD_CONFIG.distribution.weaknessSignals) probability += 0.25;
+  if (distributionPattern) probability += 0.2;
+  
+  // Contexto: después de consolidación en top
+  if (cmdState.phase === 'consolidation' && isHighLevel) probability += 0.15;
+  
+  return {
+    probability: Math.min(probability, 0.95),
+    details,
+    description: distributionPattern ?
+      `🏦 DISTRIBUCIÓN: ${greenCount} verdes débiles → rojas fuertes (fuerza ${redStrength})` :
+      isHighLevel && divergence.detected ?
+      `📉 Divergencia bajista en nivel alto (${trendMA.toFixed(0)}%)` :
+      weaknessSignals >= 2 ?
+      `⚠️ ${weaknessSignals} señales de debilidad detectadas` :
+      'Sin distribución clara'
+  };
+}
+
+function detectAccumulation(trendMA, recentTrend, currentCandle) {
+  if (trendMA === null) return { probability: 0, details: {} };
+  
+  // Acumulación ocurre en fondos (sobreventa)
+  const isLowLevel = trendMA <= CMD_CONFIG.accumulation.bottomThreshold;
+  
+  // Detectar divergencia alcista
+  const divergence = detectDivergence('bullish');
+  
+  // Detectar "spring" (falso quiebre bajista con recuperación)
+  const spring = detectSpring();
+  
+  // Patrón de absorción: muchas velas rojas débiles seguidas de verdes fuertes
+  const recent = history.slice(-5);
+  const redCount = recent.filter(h => h === 'R').length;
+  const greenStrength = recent
+    .map((h, i) => ({ h, i: history.length - 5 + i }))
+    .filter(x => x.h === 'G')
+    .map(x => getCandleStrength(x.i))
+    .reduce((a, b) => a + b, 0);
+  
+  const absorptionPattern = redCount >= 3 && greenStrength >= 6;
+  
+  // Calcular probabilidad
+  let probability = 0;
+  const details = {
+    isLowLevel,
+    divergence,
+    spring,
+    absorptionPattern,
+    redCount,
+    greenStrength
+  };
+  
+  if (isLowLevel) probability += 0.3;
+  if (dvergence.detected) probability += 0.25;
+  if (spring.detected) probability += 0.3;
+  if (absorptionPattern) probability += 0.15;
+  
+  return {
+    probability: Math.min(probability, 0.95),
+    details,
+    description: spring.detected ?
+      `🌱 SPRING detectado: Falso quiebre con recuperación` :
+      absorptionPattern ?
+      `📥 ACUMULACIÓN: ${redCount} rojas débiles → verdes fuertes (fuerza ${greenStrength})` :
+      isLowLevel && divergence.detected ?
+      `📈 Divergencia alcista en nivel bajo (${trendMA.toFixed(0)}%)` :
+      'Sin acumulación clara'
+  };
+}
+
+function detectDivergence(type) {
+  if (history.length < 6) return { detected: false };
+  
+  // Comparar precio (MA) con momentum (fuerza ponderada)
+  const recentMA = [];
+  const recentMomentum = [];
+  
+  for (let i = 5; i > 0; i--) {
+    const slice = history.slice(-i - 10, -i);
+    if (slice.length >= 10) {
+      const ma = (slice.filter(h => h === 'G').length / 10) * 100;
+      recentMA.push(ma);
+      
+      // Calcular momentum ponderado
+      const momentumSlice = history.slice(-i - 3, -i);
+      let momentum = 0;
+      momentumSlice.forEach((h, idx) => {
+        const strength = getCandleStrength(history.length - i - 3 + idx) || 2;
+        momentum += (h === 'G' ? 1 : -1) * strength;
+      });
+      recentMomentum.push(momentum);
+    }
+  }
+  
+  if (recentMA.length < 3) return { detected: false };
+  
+  // Detectar divergencia: MA sube pero momentum baja (bajista)
+  // o MA baja pero momentum sube (alcista)
+  const maTrend = recentMA[recentMA.length - 1] - recentMA[0];
+  const momTrend = recentMomentum[recentMomentum.length - 1] - recentMomentum[0];
+  
+  const detected = type === 'bearish' ? 
+    (maTrend > 2 && momTrend < -2) : 
+    (maTrend < -2 && momTrend > 2);
+  
+  return {
+    detected,
+    maTrend: maTrend.toFixed(1),
+    momTrend: momTrend.toFixed(1),
+    strength: Math.abs(maTrend) + Math.abs(momTrend)
+  };
+}
+
+function detectSpring() {
+  if (history.length < 4) return { detected: false };
+  
+  // Spring: falso quiebre de soporte con recuperación inmediata
+  const recent = history.slice(-4);
+  
+  // Patrón: R-R-R-G con fuerza creciente en la última
+  const isSpringPattern = recent[0] === 'R' && recent[1] === 'R' && 
+    recent[2] === 'R' && recent[3] === 'G';
+  
+  if (!isSpringPattern) return { detected: false };
+  
+  const strengths = recent.map((_, i) => getCandleStrength(history.length - 4 + i));
+  const springStrength = strengths[3] >= 3 && strengths[2] <= 2;
+  
+  return {
+    detected: springStrength,
+    pattern: recent.join(''),
+    strength: strengths[3]
+  };
+}
+
+function countWeaknessSignals() {
+  let signals = 0;
+  const recent = history.slice(-5);
+  
+  // Señales de debilidad en tendencia alcista
+  recent.forEach((h, i) => {
+    const idx = history.length - 5 + i;
+    const strength = getCandleStrength(idx);
+    
+    // Velas verdes con fuerza decreciente
+    if (h === 'G' && strength < 2) signals += 0.5;
+    // Velas rojas con fuerza creciente
+    if (h === 'R' && strength >= 2) signals += 1;
+    // Cambio de color frecuente (indecisión)
+    if (i > 0 && h !== recent[i-1]) signals += 0.3;
+  });
+  
+  return Math.floor(signals);
+}
+
+// ===== CÁLCULO AUTOMÁTICO DE FUERZA =====
+// ===== REEMPLAZAR FUNCIÓN COMPLETA =====
 function calculateAutoStrength() {
-  if (history.length < 2) return 2;
+  if (history.length < 3) return 2;
   
   const last = history[history.length - 1];
   let consecutiveOpposite = 0;
+  let consecutiveSame = 0;
   
-  // Contar velas opuestas consecutivas (desde el final)
   for (let i = history.length - 1; i >= 0; i--) {
-    if (history[i] !== last) consecutiveOpposite++;
-    else if (i < history.length - 1) break;
+    if (history[i] !== last) {
+      if (consecutiveSame === 0) consecutiveOpposite++;
+      else break;
+    } else {
+      consecutiveSame++;
+    }
   }
   
   const trendMA = calcMA(10, true);
   const prevTrendMA = calcPrevMA(10, true);
+  const maDirection = prevTrendMA !== null ? trendMA - prevTrendMA : 0;
   
-  // Detectar extremos
-  const isExtremeBullish = trendMA !== null && trendMA >= EXTREME_THRESHOLDS.overbought;
-  const isExtremeBearish = trendMA !== null && trendMA <= EXTREME_THRESHOLDS.oversold;
-  const isWarningBullish = trendMA !== null && trendMA >= 80;
-  const isWarningBearish = trendMA !== null && trendMA <= 20;
+  // Detectar patrón de mecha (spike + reversión)
+  const recentStrengths = [];
+  for (let i = Math.max(0, history.length - 4); i < history.length; i++) {
+    recentStrengths.push(getCandleStrength(i));
+  }
+  const hasSpike = recentStrengths.length >= 2 && 
+    recentStrengths[recentStrengths.length - 2] >= 3 && 
+    recentStrengths[recentStrengths.length - 1] <= 1.5;
   
-  // Detectar agotamiento
-  let consecutiveSame = 0;
-  for (let i = history.length - 1; i >= 0 && history[i] === last; i--) consecutiveSame++;
+  // Detectar doji (alternancia rápida G-R-G-R)
+  let alternations = 0;
+  for (let i = history.length - 4; i < history.length - 1; i++) {
+    if (i >= 0 && history[i] !== history[i+1]) alternations++;
+  }
+  const isDojiPattern = alternations >= 3;
   
-  // Lógica de fuerza mejorada (de Versión 1)
-  let strength = 2; // Default media
+  // ===== NUEVA LÓGICA DE 5 NIVELES =====
   
-  // Caso 1: Extremo con reversión potencial
-  if ((isExtremeBullish && last === 'R') || (isExtremeBearish && last === 'G')) {
-    strength = 3; // Reversión en extremo = muy fuerte
-  }
-  // Caso 2: 3+ velas opuestas = reversión fuerte
-  else if (consecutiveOpposite >= 3) {
-    strength = 3;
-  }
-  // Caso 3: 2 velas opuestas + momentum favorable
-  else if (consecutiveOpposite === 2) {
-    const maDirection = prevTrendMA !== null ? trendMA - prevTrendMA : 0;
-    if ((last === 'G' && maDirection > 0) || (last === 'R' && maDirection < 0)) {
-      strength = 3; // Reversión con momentum confirmado
-    } else {
-      strength = 2;
-    }
-  }
-  // Caso 4: Agotamiento después de muchas del mismo color
-  else if (consecutiveSame >= 4) {
-    strength = 1; // Probable pausa o retroceso débil
-  }
-  // Caso 5: 1 vela opuesta (posible indecisión)
-  else if (consecutiveOpposite === 1) {
-    strength = 1;
-  }
-  // Caso 6: Continuación con momentum fuerte
-  else if (consecutiveSame >= 2) {
-    const maDirection = prevTrendMA !== null ? trendMA - prevTrendMA : 0;
-    if (Math.abs(maDirection) > 5) strength = 3; // Continuación fuerte
-    else strength = 2;
+  // NIVEL 4: EXTREMO (capitulación)
+  if (consecutiveOpposite >= 4 && trendMA !== null) {
+    const isExtreme = (trendMA >= 90 && last === 'R') || (trendMA <= 10 && last === 'G');
+    if (isExtreme) return 4;
   }
   
-  return strength;
+  // NIVEL 3: FUERTE
+  if (consecutiveOpposite >= 3) return 3;
+  if (consecutiveOpposite === 2 && Math.abs(maDirection) > 3) return 3;
+  if (hasSpike && trendMA !== null && (trendMA >= 85 || trendMA <= 15)) return 3;
+  
+  // NIVEL 2.5: MEDIA+
+  if (consecutiveSame >= 3 && Math.abs(maDirection) > 5) return 2.5;
+  if (consecutiveSame >= 2 && Math.abs(maDirection) > 8) return 2.5;
+  
+  // NIVEL 2: MEDIA
+  if (consecutiveSame >= 2) return 2;
+  if (consecutiveOpposite === 2) return 2;
+  
+  // NIVEL 1.5: DÉBIL+
+  if (isDojiPattern && consecutiveSame >= 1) return 1.5;
+  
+  // NIVEL 1: DÉBIL
+  if (isDojiPattern || consecutiveOpposite === 1) return 1;
+  
+  return 2;
 }
 
 function getStrengthReason(strength) {
   const reasons = {
-    3: "Reversión potente detectada (3+ velas opuestas o extremo de mercado con confirmación)",
-    2: "Momentum estándar / continuación de tendencia / reversión sin confirmación fuerte",
-    1: "Indecisión, agotamiento del movimiento previo, o reversión débil"
+    4: "Capitulación institucional: 4+ velas opuestas en extremo de mercado",
+    3: "Reversión potente: 3+ velas opuestas o spike en extremo",
+    2.5: "Momentum acelerado: Continuación fuerte con MA confirmando",
+    2: "Momentum estándar: Continuación normal de tendencia",
+    1.5: "Doji con sesgo: Indecisión con ligera direccionalidad",
+    1: "Doji puro: Indecisión total, mercado en equilibrio"
   };
-  return reasons[strength] || "Análisis de patrón de velas y contexto MA";
+  return reasons[strength] || "Análisis de patrón de velas";
 }
 
 // ===== FLUJO HÍBRIDO DE CONFIRMACIÓN =====
 
+// ===== REEMPLAZAR FUNCIÓN COMPLETA =====
+// ===== REEMPLAZAR FUNCIÓN COMPLETA =====
 function updateSuggestionPanel() {
   if (strengthOrigin !== 'pending') return;
   
   autoSuggestedStrength = calculateAutoStrength();
   
-  const bars = '▰'.repeat(autoSuggestedStrength);
+  // Convertir a visual (1, 2, 3)
+  const visualStrength = STRENGTH_CONFIG.VISUAL_MAP[autoSuggestedStrength] || 2;
+  const config = STRENGTH_CONFIG.LEVELS[autoSuggestedStrength];
+  
+  const bars = config.icon;
   const box = document.getElementById('suggestion-box');
   const barsEl = document.getElementById('suggestion-bars');
   const textEl = document.getElementById('suggestion-text');
   
   barsEl.textContent = bars;
-  barsEl.className = 'suggestion-strength strength-' + autoSuggestedStrength;
-  textEl.textContent = autoSuggestedStrength === 3 ? 'FUERTE' : autoSuggestedStrength === 2 ? 'MEDIA' : 'DÉBIL';
-  textEl.style.color = autoSuggestedStrength === 3 ? 'var(--green)' : autoSuggestedStrength === 2 ? 'var(--gold)' : '#888';
-  document.getElementById('suggestion-reason').textContent = getStrengthReason(autoSuggestedStrength);
+  barsEl.className = 'suggestion-strength strength-' + visualStrength;
+  barsEl.style.color = config.color;
+  
+  textEl.textContent = config.name;
+  textEl.style.color = config.color;
+  
+  // Mostrar indicador de nivel interno si es intermedio
+  const subIndicator = autoSuggestedStrength % 1 !== 0 || autoSuggestedStrength === 4 ? 
+    ` (${autoSuggestedStrength})` : '';
+  
+  document.getElementById('suggestion-reason').textContent = config.desc + subIndicator;
   
   box.classList.remove('confirmed', 'corrected');
   document.getElementById('correction-notice').classList.remove('active');
@@ -1069,40 +1999,52 @@ function confirmStrength() {
   showColorButtons();
 }
 
+// ===== REEMPLAZAR FUNCIÓN =====
 function showCorrectionOptions() {
   document.getElementById('correction-options').classList.add('active');
   document.querySelectorAll('.correction-btn').forEach(btn => btn.classList.remove('selected'));
-  document.getElementById('corr-' + autoSuggestedStrength).classList.add('selected');
-  document.getElementById('status-bar').textContent = '✏️ SELECCIONA la fuerza correcta abajo';
+  
+  // FIX: Manejar IDs con decimales reemplazando el punto por guión
+  const btnId = 'corr-' + autoSuggestedStrength.toString().replace('.', '-');
+  const btn = document.getElementById(btnId);
+  if (btn) btn.classList.add('selected');
+  
+  document.getElementById('status-bar').textContent = '✏️ SELECCIONA la fuerza correcta abajo (1-6)';
 }
 
+// ===== REEMPLAZAR FUNCIÓN =====
 function correctStrength(newStrength) {
   confirmedStrength = newStrength;
   strengthOrigin = 'corrected';
   
-  const bars = '▰'.repeat(newStrength);
-  document.getElementById('suggestion-bars').textContent = bars;
-  document.getElementById('suggestion-bars').className = 'suggestion-strength strength-' + newStrength;
-  document.getElementById('suggestion-text').textContent = newStrength === 3 ? 'FUERTE' : newStrength === 2 ? 'MEDIA' : 'DÉBIL';
-  document.getElementById('suggestion-text').style.color = newStrength === 3 ? 'var(--green)' : newStrength === 2 ? 'var(--gold)' : '#888';
+  const visualStrength = STRENGTH_CONFIG.VISUAL_MAP[newStrength] || 2;
+  const config = STRENGTH_CONFIG.LEVELS[newStrength];
+  
+  document.getElementById('suggestion-bars').textContent = config.icon;
+  document.getElementById('suggestion-bars').className = 'suggestion-strength strength-' + visualStrength;
+  document.getElementById('suggestion-bars').style.color = config.color;
+  document.getElementById('suggestion-text').textContent = config.name;
+  document.getElementById('suggestion-text').style.color = config.color;
   
   const box = document.getElementById('suggestion-box');
   box.classList.remove('confirmed');
   box.classList.add('corrected');
   
+  const subIndicator = newStrength % 1 !== 0 || newStrength === 4 ? ` (${newStrength})` : '';
   const notice = document.getElementById('correction-notice');
-  notice.textContent = `⚠️ CORREGIDO: Era ${autoSuggestedStrength}/3, ahora ${newStrength}/3`;
+  notice.textContent = `⚠️ CORREGIDO: Era ${autoSuggestedStrength}, ahora ${newStrength}${subIndicator}`;
   notice.classList.add('active');
   
   document.getElementById('status-bar').className = 'status-bar status-corrected';
-  document.getElementById('status-bar').textContent = `✏️ CORREGIDO: ${newStrength}/3 (auto sugería ${autoSuggestedStrength}/3)`;
+  document.getElementById('status-bar').textContent = `✏️ CORREGIDO: ${config.name} (auto sugería ${STRENGTH_CONFIG.LEVELS[autoSuggestedStrength].name})`;
   
   document.querySelectorAll('.correction-btn').forEach(btn => btn.classList.remove('selected'));
-  document.getElementById('corr-' + newStrength).classList.add('selected');
+  
+  // FIX: Usar el mismo formato de ID con replace
+  document.getElementById('corr-' + newStrength.toString().replace('.', '-')).classList.add('selected');
   
   showColorButtons();
 }
-
 function showColorButtons() {
   document.getElementById('green-strength').textContent = 'Fuerza: ' + confirmedStrength + '/3';
   document.getElementById('red-strength').textContent = 'Fuerza: ' + confirmedStrength + '/3';
@@ -1159,7 +2101,7 @@ function resetConfirmationPanel() {
   updateSuggestionPanel();
 }
 
-// ===== FUNCIONES DE ANÁLISIS COMPLETAS (Versión 1 + 2) =====
+// ===== FUNCIONES DE ANÁLISIS =====
 
 function getCandleStrength(index) {
   if (manualStrengths[index]) return manualStrengths[index].strength;
@@ -1174,6 +2116,7 @@ function getCandleOrigin(index) {
   return 'Auto';
 }
 
+// ===== REEMPLAZAR FUNCIÓN COMPLETA =====
 function calculateHistoricalStrength(index) {
   if (index < 2) return 2;
   
@@ -1184,11 +2127,37 @@ function calculateHistoricalStrength(index) {
   const wasBearish = prev === 'R' && prev2 === 'R';
   const wasBullish = prev === 'G' && prev2 === 'G';
   
+  // Detectar capitulación (4) - reversión extrema después de 4+ iguales
+  let consecutiveSame = 0;
+  for (let i = index - 1; i >= 0 && history[i] === current; i--) {
+    consecutiveSame++;
+  }
+  if (consecutiveSame >= 4 && (current === 'G' || current === 'R')) return 4;
+  
+  // Detectar momentum acelerado (2.5) - 3+ iguales
+  if (consecutiveSame >= 3) return 2.5;
+  
+  // Reversión normal (3)
   if ((current === 'G' && wasBearish) || (current === 'R' && wasBullish)) return 3;
+  
+  // Doji con sesgo (1.5) - alternancia rápida
+  if (index >= 3) {
+    const recent = [history[index-3], history[index-2], history[index-1], current];
+    let alternations = 0;
+    for (let i = 0; i < recent.length - 1; i++) {
+      if (recent[i] !== recent[i+1]) alternations++;
+    }
+    if (alternations >= 3) return 1.5;
+  }
+  
+  // Continuación (2)
   if (current === prev) return 2;
+  
+  // Doji puro (1)
   return 1;
 }
 
+// ===== REEMPLAZAR FUNCIÓN COMPLETA =====
 function analyzeCurrentCandle() {
   if (history.length === 0) return { strength: 0, type: 'neutral', isReversal: false, origin: '-' };
   
@@ -1197,27 +2166,49 @@ function analyzeCurrentCandle() {
   const strength = getCandleStrength(idx);
   const origin = getCandleOrigin(idx);
   
+  // NUEVO: Determinar tipo basado en nivel granular
   let isReversal = false;
   let type = 'normal';
   
+  // Nivel 4 o 3 = reversión fuerte
+  if (strength >= 3) {
+    isReversal = true;
+    type = strength === 4 ? 'capitulation' : 'strong-reversal';
+  }
+  // Nivel 2.5 = continuación fuerte
+  else if (strength === 2.5) {
+    type = 'strong-continuation';
+  }
+  // Nivel 2 = normal
+  else if (strength === 2) {
+    type = 'continuation';
+  }
+  // Nivel 1.5 = indecisión con sesgo
+  else if (strength === 1.5) {
+    type = 'biased-doji';
+  }
+  // Nivel 1 = doji puro
+  else {
+    type = 'pure-doji';
+  }
+  
+  // Verificar si es reversión por contexto (3+ opuestas)
   if (history.length >= 3) {
     const prev = history[idx-1];
     const prev2 = history[idx-2];
     const wasOpposite = prev !== current && prev2 !== current;
-    
-    if (wasOpposite) {
-      isReversal = true;
-      type = strength >= 3 ? 'strong-reversal' : 'weak-reversal';
-    } else if (current === prev) {
-      type = strength >= 3 ? 'strong-continuation' : 'continuation';
-    } else {
-      type = strength >= 3 ? 'strong-normal' : 'weak-normal';
-    }
-  } else {
-    type = strength >= 3 ? 'strong' : strength === 2 ? 'medium' : 'weak';
+    if (wasOpposite && strength >= 2) isReversal = true;
   }
   
-  return { strength, type, isReversal: isReversal && strength >= 2, current, origin };
+  return { 
+    strength, 
+    type, 
+    isReversal: isReversal && strength >= 2.5, // Solo 2.5+ cuenta como reversión fuerte
+    current, 
+    origin,
+    isCapitulation: strength === 4,
+    isAccelerated: strength === 2.5
+  };
 }
 
 function analyzeRecentTrend() {
@@ -1291,7 +2282,7 @@ function analyzeRecentTrend() {
   return { trend: 'neutral', sequence: recent, strengths, strength: 0, reason: 'Equilibrio o conflicto de fuerzas', weightedScore };
 }
 
-// ===== FUNCIONES MA COMPLETAS =====
+// ===== FUNCIONES MA =====
 
 function calcMA(period, useOriginal = false) {
   if (history.length < period) return null;
@@ -1469,10 +2460,98 @@ function analyzePattern(lastTwo, originalTwo = null, extremeCondition = null) {
   return scenarios[pattern] || null;
 }
 
-// ===== ACTUALIZACIÓN PRINCIPAL COMPLETA =====
+// ===== NUEVO: ACTUALIZACIÓN PANEL CMD =====
+
+function updateCMDPanel() {
+  const cmd = detectCMDPhase();
+  cmdState = cmd;
+  
+  // Asegurar que allPhases exista (fallback si no está definido)
+  if (!cmd.allPhases) {
+    cmd.allPhases = [
+      { name: 'consolidation', probability: 0 },
+      { name: 'manipulation', probability: 0 },
+      { name: 'distribution', probability: 0 },
+      { name: 'accumulation', probability: 0 }
+    ];
+  }
+  
+  // Actualizar indicador visual de fase
+  const indicator = document.getElementById('cmd-phase-indicator');
+  indicator.className = 'cmd-phase-indicator';
+  if (cmd.phase !== 'none') {
+    indicator.classList.add(cmd.phase);
+  }
+  
+  // Actualizar items
+  const phases = ['consolidation', 'manipulation', 'distribution', 'accumulation'];
+  const phaseNames = {
+    consolidation: 'Consolidación',
+    manipulation: 'Manipulación', 
+    distribution: 'Distribución',
+    accumulation: 'Acumulación'
+  };
+  
+  phases.forEach(phase => {
+    const phaseData = cmd.allPhases.find(p => p.name === phase);
+    const item = document.getElementById('cmd-' + phase);
+    const valEl = document.getElementById(phase + '-val');
+    const probEl = document.getElementById(phase + '-prob');
+    
+    if (phaseData) {
+      valEl.textContent = phaseData.probability > 0.3 ? 
+        (phaseData.description ? phaseData.description.split(':')[0] : 'Detectado') : 
+        '--';
+      probEl.textContent = Math.round(phaseData.probability * 100) + '%';
+      
+      item.classList.toggle('active', cmd.phase === phase);
+    }
+  });
+  
+  // Mostrar alerta si hay fase activa
+  const alert = document.getElementById('cmd-alert');
+  const alertTitle = document.getElementById('cmd-alert-title');
+  const alertText = document.getElementById('cmd-alert-text');
+  
+  if (cmd.phase !== 'none') {
+    alert.classList.add('active');
+    const phaseData = cmd.allPhases.find(p => p.name === cmd.phase);
+    alertTitle.textContent = `🎯 ${phaseNames[cmd.phase].toUpperCase()} DETECTADA (${Math.round(cmd.probability * 100)}%)`;
+    alertText.textContent = phaseData?.description || 'Actividad institucional detectada en el mercado';
+  } else {
+    alert.classList.remove('active');
+  }
+  
+  // Actualizar actividad de ballenas (simulado basado en fuerza de velas)
+  const whaleActivity = document.getElementById('whale-activity');
+  if (cmd.probability > 0.5) {
+    whaleActivity.style.display = 'block';
+    
+    // Calcular distribución simulada basada en la fase
+    let retail, smart, whale;
+    if (cmd.phase === 'manipulation') {
+      retail = 20; smart = 30; whale = 50;
+    } else if (cmd.phase === 'distribution') {
+      retail = 50; smart = 35; whale = 15;
+    } else if (cmd.phase === 'accumulation') {
+      retail = 15; smart = 25; whale = 60;
+    } else {
+      retail = 40; smart = 35; whale = 25;
+    }
+    
+    document.getElementById('whale-retail').style.width = retail + '%';
+    document.getElementById('whale-smart').style.width = smart + '%';
+    document.getElementById('whale-whale').style.width = whale + '%';
+  } else {
+    whaleActivity.style.display = 'none';
+  }
+}
+
+// ===== ACTUALIZACIÓN PRINCIPAL =====
 
 function update() {
   updateSuggestionPanel();
+  updateCMDPanel(); // NUEVO
   
   const adjustedResult = detectCrosses(false);
   const originalResult = detectCrosses(true);
@@ -1536,6 +2615,7 @@ function update() {
     let analysisClass = 'recent-' + recentTrend.trend;
     if (recentTrend.isExtreme) analysisClass = 'recent-extreme';
     else if (recentTrend.warning === 'momentum_change') analysisClass = 'recent-conflict';
+    else if (cmdState.phase !== 'none') analysisClass = 'recent-cmd';
     
     recentAnalysis.className = 'recent-analysis ' + analysisClass;
     recentAnalysis.innerHTML = `<strong>${recentTrend.reason}</strong>${recentTrend.detail?'<br><small>'+recentTrend.detail+'</small>':''}`;
@@ -1594,7 +2674,7 @@ function update() {
     document.getElementById('momentum-note').style.display = 'none';
   }
   
-  // Grid de MA con detección de trampas
+  // Grid de MA
   const maResults = adjustedResult.crosses;
   document.getElementById('ma-grid').innerHTML = maResults.map(r => {
     const isExtreme = r.maFast >= 90 || r.maSlow >= 90 || r.maFast <= 10 || r.maSlow <= 10;
@@ -1617,7 +2697,7 @@ function update() {
     document.getElementById('cross-alert').classList.remove('show');
   }
   
-  // Señal principal con lógica completa
+  // Señal principal con lógica CMD integrada
   const mainSignal = document.getElementById('main-signal');
   const priorityExplanation = document.getElementById('priority-explanation');
   const logicExplanation = document.getElementById('logic-explanation');
@@ -1628,7 +2708,7 @@ function update() {
   const proj = lastTwo.length >= 2 ? analyzePattern(lastTwo, null, extremeCondition) : null;
   
   let finalSignal = 'wait', signalClass = 'signal-wait', signalText = 'ESPERAR';
-  let showReversal = false, showExtreme = false, logicText = '';
+  let showReversal = false, showExtreme = false, showCMD = false, logicText = '';
   
   // PRIORIDAD 0: Extremo
   if (extremeCondition && (extremeCondition.type === 'extreme_bullish' || extremeCondition.type === 'extreme_bearish')) {
@@ -1651,7 +2731,23 @@ function update() {
       }
     }
   }
-  // PRIORIDAD 1: Reversión fuerte
+  // PRIORIDAD 1: FASE CMD (nueva)
+  else if (cmdState.phase === 'distribution' && cmdState.probability > 0.6) {
+    showCMD = true;
+    finalSignal = 'sell'; signalClass = 'signal-distribution'; signalText = 'VENDER';
+    logicText = `🏦 DISTRIBUCIÓN institucional detectada (${Math.round(cmdState.probability * 100)}%). Los "smart money" están vendiendo.`;
+  }
+  else if (cmdState.phase === 'accumulation' && cmdState.probability > 0.6) {
+    showCMD = true;
+    finalSignal = 'buy'; signalClass = 'signal-accumulation'; signalText = 'COMPRAR';
+    logicText = `📥 ACUMULACIÓN institucional detectada (${Math.round(cmdState.probability * 100)}%). Los "smart money" están comprando.`;
+  }
+  else if (cmdState.phase === 'manipulation' && cmdState.probability > 0.7) {
+    showCMD = true;
+    finalSignal = 'wait'; signalClass = 'signal-manipulation'; signalText = '⚠️ MANIPULACIÓN';
+    logicText = `🎭 MANIPULACIÓN detectada (${Math.round(cmdState.probability * 100)}%). Posible falso quiebre. Esperar confirmación.`;
+  }
+  // PRIORIDAD 2: Reversión fuerte
   else if (currentCandle.isReversal && currentCandle.strength >= 3) {
     showReversal = true;
     if (currentCandle.current === 'G') {
@@ -1662,17 +2758,12 @@ function update() {
       logicText = `Reversión bajista FUERTE (fuerza 3/3, ${currentCandle.origin}). Ignora tendencia previa.`;
     }
   }
-  // PRIORIDAD 1.5: Reversión media
-  else if (currentCandle.isReversal && currentCandle.strength === 2) {
-    finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = 'ESPERAR';
-    logicText = `Reversión detectada pero fuerza media (2/3). Esperar confirmación adicional.`;
-  }
-  // PRIORIDAD 2: Conflicto de momentum
+  // PRIORIDAD 3: Conflicto de momentum
   else if (recentTrend.warning === 'momentum_change') {
     finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = 'ESPERAR';
     logicText = `Conflicto de momentum: ${recentTrend.reason}. Esperar confirmación.`;
   }
-  // PRIORIDAD 3: Cruce válido
+  // PRIORIDAD 4: Cruce válido
   else if (activeCross && !activeCross.trap) {
     if (activeCross.crossType === 'golden') {
       finalSignal = 'buy'; signalClass = 'signal-buy'; signalText = 'COMPRAR';
@@ -1682,7 +2773,7 @@ function update() {
       logicText = `Death Cross válido en ${activeCross.pair} (${activeCross.type}). Tendencia bajista confirmada.`;
     }
   }
-  // PRIORIDAD 4: Patrón + contexto
+  // PRIORIDAD 5: Patrón + contexto
   else if (proj && recentTrend.trend !== 'neutral') {
     const momentumConsistent = (recentTrend.trend === 'bullish' && trendMA > prevTrendMA) || 
                                (recentTrend.trend === 'bearish' && trendMA < prevTrendMA) ||
@@ -1705,7 +2796,7 @@ function update() {
   }
   
   // Trampa detectada
-  if (activeCross && activeCross.trap && !showExtreme && recentTrend.warning !== 'momentum_change') {
+  if (activeCross && activeCross.trap && !showExtreme && recentTrend.warning !== 'momentum_change' && !showCMD) {
     signalClass = 'signal-trap';
     signalText = activeCross.crossType === 'golden' ? '¿COMPRA?' : '¿VENTA?';
     logicText = `⚠️ ${activeCross.pair} detectó cruce ${activeCross.crossType} pero es TRAMPA (${activeCross.type}). Tendencia en contra.`;
@@ -1716,39 +2807,110 @@ function update() {
     '<div class="manual-trap-badge">TRAMPA ACTIVA</div>' +
     '<div class="conflict-badge">⚠️ CONFLICTO</div>' +
     '<div class="reversal-badge">🔄 REVERSIÓN FUERTE</div>' +
-    '<div class="extreme-signal-badge">⚠️ EXTREMO</div>';
+    '<div class="extreme-signal-badge">⚠️ EXTREMO</div>' +
+    '<div class="cmd-signal-badge">🎯 FASE CMD</div>';
   
-  priorityExplanation.classList.toggle('active', showReversal || showExtreme || recentTrend.warning === 'momentum_change');
+  priorityExplanation.classList.toggle('active', showReversal || showExtreme || recentTrend.warning === 'momentum_change' || showCMD);
   logicExplanation.classList.toggle('active', true);
   document.getElementById('logic-text').textContent = logicText;
   
-  // Proyecciones completas
+  // Proyecciones con CMD
   updateProjections(trendMA, prevTrendMA, activeCross, recentTrend, currentCandle, extremeCondition, proj);
   
   // Historial
-  document.getElementById('history').innerHTML = history.map((h, i) => {
-    const isTrap = i === manualTrapIndex;
-    const isNew = i === history.length - 1;
-    const s = getCandleStrength(i);
-    const origin = manualStrengths[i]?.origin || 'auto';
-    const indicator = s >= 3 ? '<span class="candle-strength strength-3-ind">3</span>' :
-                      s === 2 ? '<span class="candle-strength strength-2-ind">2</span>' :
-                      '<span class="candle-strength strength-1-ind">1</span>';
-    const manualMark = origin === 'corrected' ? '<span style="position:absolute;top:-3px;right:-3px;width:6px;height:6px;background:var(--orange);border-radius:50%;"></span>' : '';
-    
-    return `<div class="candle candle-${h.toLowerCase()} ${isTrap?'candle-trap':''} ${isNew&&!isTrap?'candle-new':''}" 
-                onclick="openTrapModal(${i})" title="Fuerza: ${s}/3, Origen: ${origin}">
-              ${h}${indicator}${manualMark}
-            </div>`;
-  }).join('');
+// ===== REEMPLAZAR sección de historial en update() =====
+document.getElementById('history').innerHTML = history.map((h, i) => {
+  const isTrap = i === manualTrapIndex;
+  const isNew = i === history.length - 1;
+  const s = getCandleStrength(i);
+  const origin = manualStrengths[i]?.origin || 'auto';
+  
+  // NUEVO: Visualización mejorada para 6 niveles
+  let indicator = '';
+  let extraClass = '';
+  
+  if (s === 4) {
+    indicator = '<span class="candle-strength strength-4-ind">4🔥</span>';
+    extraClass = 'candle-extreme';
+  } else if (s === 3) {
+    indicator = '<span class="candle-strength strength-3-ind">3</span>';
+  } else if (s === 2.5) {
+    indicator = '<span class="candle-strength strength-2-ind">2+</span>';
+    extraClass = 'candle-accelerated';
+  } else if (s === 2) {
+    indicator = '<span class="candle-strength strength-2-ind">2</span>';
+  } else if (s === 1.5) {
+    indicator = '<span class="candle-strength strength-1-ind">1+</span>';
+  } else {
+    indicator = '<span class="candle-strength strength-1-ind">1</span>';
+  }
+  
+  const manualMark = origin === 'corrected' ? '<span style="position:absolute;top:-3px;right:-3px;width:6px;height:6px;background:var(--orange);border-radius:50%;"></span>' : '';
+  
+  // NUEVO: Mostrar valor real en tooltip
+  const strengthLabel = STRENGTH_CONFIG.LEVELS[s]?.name || 'MEDIA';
+  
+  return `<div class="candle candle-${h.toLowerCase()} ${isTrap?'candle-trap':''} ${isNew&&!isTrap?'candle-new':''} ${extraClass}" 
+              onclick="openTrapModal(${i})" 
+              title="Fuerza: ${s} (${strengthLabel}), Origen: ${origin}">
+            ${h}${indicator}${manualMark}
+          </div>`;
+}).join('');
 }
 
+// ===== AGREGAR AL INICIO DE updateProjections() =====
 function updateProjections(trendMA, prevTrendMA, activeCross, recentTrend, currentCandle, extremeCondition, proj) {
   if (!proj) {
     document.getElementById('proj-g-seq').textContent = '--';
     document.getElementById('proj-r-seq').textContent = '--';
     return;
   }
+  
+  // NUEVO: Obtener fuerza granular actual
+  const currentInternalStrength = getCandleStrength(history.length - 1);
+  
+  // NUEVO: Ajustar proyecciones basado en fuerza granular
+  
+  // Si hay capitulación (4), anular proyecciones contrarias
+  if (currentInternalStrength === 4) {
+    const capitulationType = history[history.length - 1] === 'G' ? 'bullish' : 'bearish';
+    
+    if (capitulationType === 'bullish') {
+      // Capitulación bajista terminó, comprar fuerte
+      document.getElementById('proj-g-extreme').textContent = '🔥 CAPITULACIÓN: Reversión alcista inminente';
+      document.getElementById('proj-g-extreme').style.display = 'block';
+      document.getElementById('proj-r-extreme').style.display = 'none';
+    } else {
+      // Capitulación alcista terminó, vender fuerte
+      document.getElementById('proj-r-extreme').textContent = '🔥 CAPITULACIÓN: Reversión bajista inminente';
+      document.getElementById('proj-r-extreme').style.display = 'block';
+      document.getElementById('proj-g-extreme').style.display = 'none';
+    }
+  } else {
+    document.getElementById('proj-g-extreme').style.display = 'none';
+    document.getElementById('proj-r-extreme').style.display = 'none';
+  }
+  
+  // Si hay momentum acelerado (2.5), boost de confianza
+  if (currentInternalStrength === 2.5) {
+    const trendDirection = history[history.length - 1] === 'G' ? 'bullish' : 'bearish';
+    
+    if (trendDirection === 'bullish') {
+      const baseConf = Math.round(proj.ifG.conf * 100);
+      document.getElementById('proj-g-conf').textContent = (baseConf + 15) + '% (Momentum+)';
+    } else {
+      const baseConf = Math.round(proj.ifR.conf * 100);
+      document.getElementById('proj-r-conf').textContent = (baseConf + 15) + '% (Momentum+)';
+    }
+  }
+  
+  // Si hay doji con sesgo (1.5), reducir confianza
+  if (currentInternalStrength === 1.5) {
+    document.getElementById('proj-g-conflict').textContent = '⚠️ Doji sesgado: Esperar claridad';
+    document.getElementById('proj-r-conflict').textContent = '⚠️ Doji sesgado: Esperar claridad';
+  }
+  
+  // ... resto de tu código existente ...
   
   // Proyección VERDE
   const gIsReversal = currentCandle.isReversal && currentCandle.current === 'G' && currentCandle.strength >= 3;
@@ -1759,6 +2921,8 @@ function updateProjections(trendMA, prevTrendMA, activeCross, recentTrend, curre
   
   if (extremeCondition && extremeCondition.type === 'extreme_bullish') {
     gSignal = 'ESPERAR'; gClass = 'proj-signal-extreme'; gBoxClass = 'proj-box proj-green proj-extreme'; gConfidence = '0% - EXTREMO';
+  } else if (cmdState.phase === 'distribution') {
+    gSignal = 'NO COMPRAR'; gClass = 'proj-signal-hold'; gBoxClass = 'proj-box proj-green proj-conflict'; gConfidence = 'Distribución activa';
   } else if (recentTrend.warning === 'momentum_change' && recentTrend.weightedScore < 0) {
     gSignal = 'ESPERAR'; gClass = 'proj-signal-hold'; gBoxClass = 'proj-box proj-green proj-conflict'; gConfidence = 'Conflicto momentum';
   }
@@ -1770,6 +2934,7 @@ function updateProjections(trendMA, prevTrendMA, activeCross, recentTrend, curre
   document.getElementById('proj-g-reversal').textContent = gIsReversal ? 'Prioridad máxima' : '';
   document.getElementById('proj-g-extreme').textContent = (extremeCondition && extremeCondition.type === 'extreme_bullish') ? '⚠️ NO COMPRAR: Sobrecompra extrema' : '';
   document.getElementById('proj-g-conflict').textContent = (recentTrend.warning === 'momentum_change') ? '⚠️ Conflicto: Momentum cambiando' : '';
+  document.getElementById('proj-g-cmd').textContent = (cmdState.phase === 'distribution') ? '🏦 DISTRIBUCIÓN: Smart money vendiendo' : (cmdState.phase === 'accumulation') ? '📥 ACUMULACIÓN: Posible entrada' : '';
   document.getElementById('proj-g-box').className = gBoxClass;
   
   // Proyección ROJO
@@ -1781,6 +2946,8 @@ function updateProjections(trendMA, prevTrendMA, activeCross, recentTrend, curre
   
   if (extremeCondition && extremeCondition.type === 'extreme_bearish') {
     rSignal = 'ESPERAR'; rClass = 'proj-signal-extreme'; rBoxClass = 'proj-box proj-red proj-extreme'; rConfidence = '0% - EXTREMO';
+  } else if (cmdState.phase === 'accumulation') {
+    rSignal = 'NO VENDER'; rClass = 'proj-signal-hold'; rBoxClass = 'proj-box proj-red proj-conflict'; rConfidence = 'Acumulación activa';
   } else if (recentTrend.warning === 'momentum_change' && recentTrend.weightedScore > 0) {
     rSignal = 'ESPERAR'; rClass = 'proj-signal-hold'; rBoxClass = 'proj-box proj-red proj-conflict'; rConfidence = 'Conflicto momentum';
   }
@@ -1792,6 +2959,7 @@ function updateProjections(trendMA, prevTrendMA, activeCross, recentTrend, curre
   document.getElementById('proj-r-reversal').textContent = rIsReversal ? 'Prioridad máxima' : '';
   document.getElementById('proj-r-extreme').textContent = (extremeCondition && extremeCondition.type === 'extreme_bearish') ? '⚠️ NO VENDER: Sobreventa extrema' : '';
   document.getElementById('proj-r-conflict').textContent = (recentTrend.warning === 'momentum_change') ? '⚠️ Conflicto: Momentum cambiando' : '';
+  document.getElementById('proj-r-cmd').textContent = (cmdState.phase === 'accumulation') ? '📥 ACUMULACIÓN: Smart money comprando' : (cmdState.phase === 'distribution') ? '🏦 DISTRIBUCIÓN: Posible salida' : '';
   document.getElementById('proj-r-box').className = rBoxClass;
 }
 
@@ -1827,20 +2995,34 @@ function clearTrap() {
   update();
 }
 
+// ===== REEMPLAZAR FUNCIÓN reset() =====
 function reset() {
   history = [];
   manualStrengths = {};
   manualTrapIndex = null;
   pendingTrapIndex = null;
   originalTrendMA = null;
+  cmdState = { phase: 'none', probability: 0, details: {} };
+  
+  // NUEVO: Resetear fuerza sugerida
+  autoSuggestedStrength = 2;
+  confirmedStrength = null;
+  strengthOrigin = 'pending';
+  
   resetConfirmationPanel();
   document.getElementById('priority-explanation').classList.remove('active');
   document.getElementById('logic-explanation').classList.remove('active');
+  
+  // NUEVO: Limpiar proyecciones especiales
+  document.getElementById('proj-g-extreme').style.display = 'none';
+  document.getElementById('proj-r-extreme').style.display = 'none';
+  
   closeModal();
   update();
 }
 
 // Atajos de teclado
+// ===== REEMPLAZAR EVENTO DE TECLADO COMPLETO =====
 document.addEventListener('keydown', (e) => {
   if (document.getElementById('trap-modal').classList.contains('active')) return;
   
@@ -1849,9 +3031,22 @@ document.addEventListener('keydown', (e) => {
   if (strengthOrigin === 'pending') {
     if (key === 'c' || key === 'enter') confirmStrength();
     if (key === 'e') showCorrectionOptions();
-    if (key === '1') { showCorrectionOptions(); correctStrength(1); }
-    if (key === '2') { showCorrectionOptions(); correctStrength(2); }
-    if (key === '3') { showCorrectionOptions(); correctStrength(3); }
+    
+    // NUEVO: Atajos para 6 niveles
+    if (key === '1') { showCorrectionOptions(); correctStrength(1); }   // Débil
+    if (key === '2') { showCorrectionOptions(); correctStrength(1.5); } // Débil+
+    if (key === '3') { showCorrectionOptions(); correctStrength(2); }   // Media
+    if (key === '4') { showCorrectionOptions(); correctStrength(2.5); } // Media+
+    if (key === '5') { showCorrectionOptions(); correctStrength(3); }   // Fuerte
+    if (key === '6') { showCorrectionOptions(); correctStrength(4); }   // Extrema
+    
+    // Atajos alternativos con shift
+    if (key === '!') { showCorrectionOptions(); correctStrength(1); }
+    if (key === '@') { showCorrectionOptions(); correctStrength(1.5); }
+    if (key === '#') { showCorrectionOptions(); correctStrength(2); }
+    if (key === '$') { showCorrectionOptions(); correctStrength(2.5); }
+    if (key === '%') { showCorrectionOptions(); correctStrength(3); }
+    if (key === '^') { showCorrectionOptions(); correctStrength(4); }
   } else {
     if (key === 'g') addCandle('G');
     if (key === 'r') addCandle('R');
