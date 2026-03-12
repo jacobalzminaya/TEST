@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Detector CMD + MA + Fuerza Híbrida</title>
+  <title>Detector CMD + MA + Fuerza Híbrida + Volume Profile</title>
   <style>
     :root {
       --green: #00ff88;
@@ -17,6 +17,9 @@
       --panel: #1a1a1a;
       --yellow: #ffff00;
       --dark-red: #8b0000;
+      --poc: #ff00ff;
+      --vah: #00d4ff;
+      --val: #ff8800;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -30,6 +33,171 @@
       padding: 8px;
       font-size: 0.9em;
     }
+    
+    /* ===== PANEL VOLUME PROFILE ===== */
+    .vp-panel {
+      width: 100%;
+      max-width: 600px;
+      background: var(--panel);
+      border: 2px solid var(--purple);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 6px;
+      position: relative;
+      overflow: hidden;
+    }
+    .vp-panel::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 4px;
+      background: linear-gradient(90deg, var(--val), var(--poc), var(--vah));
+    }
+    .vp-title {
+      color: var(--purple);
+      font-size: 1.1em;
+      margin-bottom: 12px;
+      font-weight: bold;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .vp-container {
+      display: flex;
+      height: 200px;
+      gap: 10px;
+      position: relative;
+    }
+    .vp-histogram {
+      flex: 1;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 2px;
+      padding: 5px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 6px;
+      position: relative;
+    }
+    .vp-row {
+      display: flex;
+      align-items: center;
+      height: 100%;
+      gap: 5px;
+      position: relative;
+    }
+    .vp-bar-container {
+      flex: 1;
+      height: 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 2px;
+      position: relative;
+      overflow: hidden;
+    }
+    .vp-bar {
+      height: 100%;
+      border-radius: 2px;
+      transition: all 0.3s;
+      position: relative;
+    }
+    .vp-bar.up { background: linear-gradient(90deg, var(--green), #00aa55); }
+    .vp-bar.down { background: linear-gradient(90deg, var(--red), #aa0000); }
+    .vp-bar.poc { 
+      background: linear-gradient(90deg, var(--poc), #cc00cc) !important; 
+      box-shadow: 0 0 10px var(--poc);
+    }
+    .vp-bar.vah-zone { 
+      background: linear-gradient(90deg, var(--vah), #0099cc) !important; 
+      opacity: 0.8;
+    }
+    .vp-bar.val-zone { 
+      background: linear-gradient(90deg, var(--val), #cc6600) !important; 
+      opacity: 0.8;
+    }
+    .vp-price-label {
+      width: 40px;
+      font-size: 0.65em;
+      color: #888;
+      text-align: right;
+    }
+    .vp-legend {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 10px;
+      font-size: 0.75em;
+      flex-wrap: wrap;
+    }
+    .vp-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .vp-legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+    }
+    .vp-legend-color.poc { background: var(--poc); }
+    .vp-legend-color.vah { background: var(--vah); }
+    .vp-legend-color.val { background: var(--val); }
+    .vp-legend-color.up { background: var(--green); }
+    .vp-legend-color.down { background: var(--red); }
+    
+    .vp-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .vp-stat {
+      background: rgba(0,0,0,0.4);
+      padding: 8px;
+      border-radius: 6px;
+      text-align: center;
+      border: 1px solid #333;
+    }
+    .vp-stat.poc-stat { border-color: var(--poc); }
+    .vp-stat.vah-stat { border-color: var(--vah); }
+    .vp-stat.val-stat { border-color: var(--val); }
+    .vp-stat-label {
+      font-size: 0.65em;
+      color: #888;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+    .vp-stat-value {
+      font-size: 1.1em;
+      font-weight: bold;
+      font-family: monospace;
+    }
+    .vp-stat-value.poc { color: var(--poc); text-shadow: 0 0 10px var(--poc); }
+    .vp-stat-value.vah { color: var(--vah); }
+    .vp-stat-value.val { color: var(--val); }
+    
+    .vp-current-position {
+      margin-top: 10px;
+      padding: 8px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 6px;
+      text-align: center;
+      font-size: 0.85em;
+      border: 1px solid #333;
+    }
+    .vp-position-text {
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    .vp-position-detail {
+      font-size: 0.75em;
+      color: #aaa;
+    }
+    .vp-position-poc { color: var(--poc); border-color: var(--poc); background: rgba(255,0,255,0.1); }
+    .vp-position-vah { color: var(--vah); border-color: var(--vah); background: rgba(0,212,255,0.1); }
+    .vp-position-val { color: var(--val); border-color: var(--val); background: rgba(255,136,0,0.1); }
+    .vp-position-inside { color: var(--gold); border-color: var(--gold); background: rgba(255,215,0,0.1); }
+    .vp-position-above { color: var(--green); border-color: var(--green); background: rgba(0,255,136,0.1); }
+    .vp-position-below { color: var(--red); border-color: var(--red); background: rgba(255,68,68,0.1); }
     
     /* ===== NUEVO: PANEL CMD ===== */
     .cmd-panel {
@@ -62,7 +230,7 @@
     }
     .cmd-status {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
       gap: 10px;
       margin-bottom: 8px;
     }
@@ -144,9 +312,9 @@
       margin-bottom: 6px;
       text-align: center;
     }
-    .confirm-title { font-size: 0.85em; margin-bottom: 8px;
-      color: var(--cyan);
+    .confirm-title { 
       font-size: 0.9em;
+      color: var(--cyan);
       margin-bottom: 8px;
       font-weight: bold;
     }
@@ -192,7 +360,7 @@
     .correction-notice.active { display: block; }
     
     .action-buttons {
-      display: none; /* OCULTADO - ahora selección directa */
+      display: none;
     }
     .btn-confirm {
       background: linear-gradient(135deg, var(--green), #00aa55);
@@ -234,8 +402,8 @@
     .correction-title { font-size: 0.8em; color: var(--orange); margin-bottom: 6px; }
     .correction-grid {
       display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      gap: 6px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
     }
     .correction-btn {
       background: #333;
@@ -271,7 +439,6 @@
       pointer-events: none;
       transition: all 0.3s;
     }
-    .color-buttons.active { opacity: 1; pointer-events: all; }
     .color-buttons.active { opacity: 1; pointer-events: all; }
     .btn-green {
       background: linear-gradient(135deg, var(--green), #00aa55);
@@ -691,6 +858,7 @@
     .priority-item { color: #ccc; margin: 3px 0; }
     .priority-item.extreme { color: var(--red); font-weight: bold; }
     .priority-item.cmd { color: var(--yellow); font-weight: bold; }
+    .priority-item.vp { color: var(--purple); font-weight: bold; }
     
     .logic-explanation {
       width: 100%;
@@ -715,13 +883,13 @@
     .history-container { width: 100%; max-width: 600px; margin-bottom: 6px; }
     .history-label { color: #888; font-size: 0.8em; margin-bottom: 6px; text-align: center; }
     .history { 
-  display: flex; 
-  gap: 3px; 
-  justify-content: flex-start; 
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  padding-bottom: 5px;
-}
+      display: flex; 
+      gap: 3px; 
+      justify-content: flex-start; 
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      padding-bottom: 5px;
+    }
     .candle {
       width: 24px; height: 24px;
       border-radius: 4px;
@@ -903,144 +1071,128 @@
     .cmd-phase-indicator.distribution { background: var(--red); box-shadow: 0 0 10px var(--red); }
     .cmd-phase-indicator.accumulation { background: var(--green); box-shadow: 0 0 10px var(--green); }
     @keyframes pulse-manipulation-indicator { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-    /* ===== AGREGAR AL FINAL DEL <style> ===== */
+    
+    .strength-sub-indicators {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
 
-/* Indicadores de fuerza granular */
-.strength-sub-indicators {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  margin-top: 10px;
-  flex-wrap: wrap;
-}
+    .sub-indicator {
+      background: rgba(0,0,0,0.4);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.7em;
+      color: var(--cyan);
+      border: 1px solid var(--cyan);
+      animation: fadeIn 0.3s;
+    }
 
-.sub-indicator {
-  background: rgba(0,0,0,0.4);
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.7em;
-  color: var(--cyan);
-  border: 1px solid var(--cyan);
-  animation: fadeIn 0.3s;
-}
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-5px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+    .strength-bar-container {
+      margin-top: 15px;
+      position: relative;
+    }
 
-/* Barra de fuerza continua */
-.strength-bar-container {
-  margin-top: 15px;
-  position: relative;
-}
+    .strength-bar {
+      height: 8px;
+      background: linear-gradient(90deg, 
+        #888 0%, #888 16.6%, 
+        #aaa 16.6%, #aaa 33.3%, 
+        var(--gold) 33.3%, var(--gold) 50%, 
+        #ffcc00 50%, #ffcc00 66.6%, 
+        var(--green) 66.6%, var(--green) 83.3%, 
+        #00ffcc 83.3%, #00ffcc 100%
+      );
+      border-radius: 4px;
+      position: relative;
+      transition: all 0.3s;
+    }
 
-.strength-bar {
-  height: 8px;
-  background: linear-gradient(90deg, 
-    #888 0%, #888 16.6%, 
-    #aaa 16.6%, #aaa 33.3%, 
-    var(--gold) 33.3%, var(--gold) 50%, 
-    #ffcc00 50%, #ffcc00 66.6%, 
-    var(--green) 66.6%, var(--green) 83.3%, 
-    #00ffcc 83.3%, #00ffcc 100%
-  );
-  border-radius: 4px;
-  position: relative;
-  transition: all 0.3s;
-}
+    .strength-markers {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 2px;
+      font-size: 0.6em;
+      color: #555;
+    }
 
-.strength-markers {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 2px;
-  font-size: 0.6em;
-  color: #555;
-}
+    .strength-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 4px;
+      font-size: 0.6em;
+      color: #666;
+    }
 
-.strength-labels {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 4px;
-  font-size: 0.6em;
-  color: #666;
-}
+    .candle-strength-4::after {
+      content: '🔥';
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      font-size: 8px;
+    }
 
-/* Destacar nivel 4 en historial */
-.candle-strength-4::after {
-  content: '🔥';
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  font-size: 8px;
-}
+    @keyframes pulse-extreme {
+      0%, 100% { box-shadow: 0 0 5px #00ffcc; }
+      50% { box-shadow: 0 0 20px #00ffcc, 0 0 40px #00ffcc; }
+    }
 
-/* Animación para fuerza extrema */
-@keyframes pulse-extreme {
-  0%, 100% { box-shadow: 0 0 5px #00ffcc; }
-  50% { box-shadow: 0 0 20px #00ffcc, 0 0 40px #00ffcc; }
-}
+    .strength-4 {
+      animation: pulse-extreme 1s infinite;
+    }
+    
+    .strength-4-ind { 
+      color: #00ffcc; 
+      text-shadow: 0 0 5px #00ffcc;
+      font-size: 8px;
+    }
 
-.strength-4 {
-  animation: pulse-extreme 1s infinite;
-}
-/* ===== AGREGAR AL FINAL DEL <style> ===== */
+    .candle-extreme {
+      animation: pulse-extreme-candle 1s infinite;
+      box-shadow: 0 0 10px #00ffcc;
+    }
 
-/* Indicador de fuerza 4 (capitulación) */
-.strength-4-ind { 
-  color: #00ffcc; 
-  text-shadow: 0 0 5px #00ffcc;
-  font-size: 8px;
-}
+    @keyframes pulse-extreme-candle {
+      0%, 100% { box-shadow: 0 0 5px #00ffcc; }
+      50% { box-shadow: 0 0 15px #00ffcc, 0 0 25px #00ffcc; }
+    }
 
-.candle-extreme {
-  animation: pulse-extreme-candle 1s infinite;
-  box-shadow: 0 0 10px #00ffcc;
-}
+    .candle-accelerated {
+      border: 1px solid #ffcc00;
+      box-shadow: 0 0 5px #ffcc00;
+    }
 
-@keyframes pulse-extreme-candle {
-  0%, 100% { box-shadow: 0 0 5px #00ffcc; }
-  50% { box-shadow: 0 0 15px #00ffcc, 0 0 25px #00ffcc; }
-}
+    .suggestion-strength {
+      font-size: 2.5em;
+      font-weight: bold;
+      margin-bottom: 5px;
+      letter-spacing: 3px;
+      transition: all 0.3s;
+    }
 
-/* Indicador de fuerza 2.5 (acelerado) */
-.candle-accelerated {
-  border: 1px solid #ffcc00;
-  box-shadow: 0 0 5px #ffcc00;
-}
+    .strength-4-anim {
+      animation: pulse-fire 0.8s infinite;
+    }
 
-/* Mejorar visualización de fuerza en sugerencia */
-.suggestion-strength {
-  font-size: 2.5em;
-  font-weight: bold;
-  margin-bottom: 5px;
-  letter-spacing: 3px;
-  transition: all 0.3s;
-}
-
-/* Animación para nivel 4 */
-.strength-4-anim {
-  animation: pulse-fire 0.8s infinite;
-}
-
-@keyframes pulse-fire {
-  0%, 100% { transform: scale(1); text-shadow: 0 0 10px #00ffcc; }
-  50% { transform: scale(1.1); text-shadow: 0 0 20px #00ffcc, 0 0 40px #00ffcc; }
-}
-.cmd-status {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr; /* Cambiar de 3 a 4 */
-  gap: 10px;
-  margin-bottom: 8px;
-}
-#short-trend-box {
-  border-color: var(--blue) !important;
-}
-#short-trend-box .trend-label {
-  color: var(--blue);
-}
+    @keyframes pulse-fire {
+      0%, 100% { transform: scale(1); text-shadow: 0 0 10px #00ffcc; }
+      50% { transform: scale(1.1); text-shadow: 0 0 20px #00ffcc, 0 0 40px #00ffcc; }
+    }
+    
+    #short-trend-box {
+      border-color: var(--blue) !important;
+    }
+    #short-trend-box .trend-label {
+      color: var(--blue);
+    }
   </style>
-<base target="_blank">
 </head>
 <body>
 
@@ -1059,7 +1211,62 @@
     </div>
   </div>
 
-  <!-- ===== NUEVO: PANEL CMD (Consolidación, Manipulación, Distribución) ===== -->
+  <!-- ===== NUEVO: PANEL VOLUME PROFILE ===== -->
+  <div class="vp-panel" id="vp-panel">
+    <div class="vp-title">
+      <span>📊</span>
+      <span>VOLUME PROFILE - ZONAS DE VALOR</span>
+    </div>
+    
+    <div class="vp-container" id="vp-histogram">
+      <!-- El histograma se genera dinámicamente -->
+    </div>
+    
+    <div class="vp-legend">
+      <div class="vp-legend-item">
+        <div class="vp-legend-color poc"></div>
+        <span>POC (Control)</span>
+      </div>
+      <div class="vp-legend-item">
+        <div class="vp-legend-color vah"></div>
+        <span>VAH (Alta)</span>
+      </div>
+      <div class="vp-legend-item">
+        <div class="vp-legend-color val"></div>
+        <span>VAL (Baja)</span>
+      </div>
+      <div class="vp-legend-item">
+        <div class="vp-legend-color up"></div>
+        <span>Volumen Alcista</span>
+      </div>
+      <div class="vp-legend-item">
+        <div class="vp-legend-color down"></div>
+        <span>Volumen Bajista</span>
+      </div>
+    </div>
+    
+    <div class="vp-stats">
+      <div class="vp-stat poc-stat">
+        <div class="vp-stat-label">Point of Control</div>
+        <div class="vp-stat-value poc" id="vp-poc-value">--</div>
+      </div>
+      <div class="vp-stat vah-stat">
+        <div class="vp-stat-label">Value Area High</div>
+        <div class="vp-stat-value vah" id="vp-vah-value">--</div>
+      </div>
+      <div class="vp-stat val-stat">
+        <div class="vp-stat-label">Value Area Low</div>
+        <div class="vp-stat-value val" id="vp-val-value">--</div>
+      </div>
+    </div>
+    
+    <div class="vp-current-position" id="vp-position">
+      <div class="vp-position-text" id="vp-position-text">Posición: --</div>
+      <div class="vp-position-detail" id="vp-position-detail">Esperando datos...</div>
+    </div>
+  </div>
+
+  <!-- ===== NUEVO: PANEL CMD ===== -->
   <div class="cmd-panel" id="cmd-panel">
     <div class="cmd-phase-indicator" id="cmd-phase-indicator"></div>
     <div class="cmd-title">
@@ -1086,7 +1293,7 @@
         <div class="cmd-value" id="distribution-val">--</div>
         <div class="cmd-probability" id="distribution-prob">0%</div>
       </div>
-        <div class="cmd-item" id="cmd-accumulation">
+      <div class="cmd-item" id="cmd-accumulation">
         <div class="cmd-icon">📥</div>
         <div class="cmd-label">Acumulación</div>
         <div class="cmd-value" id="accumulation-val">--</div>
@@ -1135,55 +1342,48 @@
       </div>
     </div>
     
-    <!-- REEMPLAZAR DENTRO DE correction-options -->
-<div class="correction-options" id="correction-options">
-  <div class="correction-title">Selecciona la fuerza correcta (6 niveles):</div>
-  <div class="correction-grid" style="grid-template-columns: repeat(3, 1fr); gap: 8px;">
-    
-    <!-- Nivel 1: Débil -->
-    <button class="correction-btn" onclick="correctStrength(1)" id="corr-1">
-      <div style="font-size:1.2em;color:#888;">▰</div>
-      <div style="font-weight:bold;font-size:0.9em;">DÉBIL</div>
-      <div style="font-size:0.65em;">Doji puro</div>
-    </button>
-    
-    <!-- Nivel 1.5: Débil+ (NUEVO) -->
-    <button class="correction-btn" onclick="correctStrength(1.5)" id="corr-1-5">
-      <div style="font-size:1.2em;color:#aaa;">▰+</div>
-      <div style="font-weight:bold;font-size:0.9em;">DÉBIL+</div>
-      <div style="font-size:0.65em;">Doji sesgado</div>
-    </button>
-    
-    <!-- Nivel 2: Media -->
-    <button class="correction-btn selected" onclick="correctStrength(2)" id="corr-2">
-      <div style="font-size:1.2em;color:var(--gold);">▰▰</div>
-      <div style="font-weight:bold;font-size:0.9em;">MEDIA</div>
-      <div style="font-size:0.65em;">Normal</div>
-    </button>
-    
-    <!-- Nivel 2.5: Media+ (NUEVO) -->
-    <button class="correction-btn" onclick="correctStrength(2.5)" id="corr-2-5">
-      <div style="font-size:1.2em;color:#ffcc00;">▰▰+</div>
-      <div style="font-weight:bold;font-size:0.9em;">MEDIA+</div>
-      <div style="font-size:0.65em;">Momentum↑</div>
-    </button>
-    
-    <!-- Nivel 3: Fuerte -->
-    <button class="correction-btn" onclick="correctStrength(3)" id="corr-3">
-      <div style="font-size:1.2em;color:var(--green);">▰▰▰</div>
-      <div style="font-weight:bold;font-size:0.9em;">FUERTE</div>
-      <div style="font-size:0.65em;">Reversión</div>
-    </button>
-    
-    <!-- Nivel 4: Extrema (NUEVO) -->
-    <button class="correction-btn" onclick="correctStrength(4)" id="corr-4">
-      <div style="font-size:1.2em;color:#00ffcc;">▰▰▰🔥</div>
-      <div style="font-weight:bold;font-size:0.9em;">EXTREMA</div>
-      <div style="font-size:0.65em;">Capitulación</div>
-    </button>
-    
-  </div>
-</div>
+    <div class="correction-options" id="correction-options">
+      <div class="correction-title">Selecciona la fuerza correcta (6 niveles):</div>
+      <div class="correction-grid" style="grid-template-columns: repeat(3, 1fr); gap: 8px;">
+        
+        <button class="correction-btn" onclick="correctStrength(1)" id="corr-1">
+          <div style="font-size:1.2em;color:#888;">▰</div>
+          <div style="font-weight:bold;font-size:0.9em;">DÉBIL</div>
+          <div style="font-size:0.65em;">Doji puro</div>
+        </button>
+        
+        <button class="correction-btn" onclick="correctStrength(1.5)" id="corr-1-5">
+          <div style="font-size:1.2em;color:#aaa;">▰+</div>
+          <div style="font-weight:bold;font-size:0.9em;">DÉBIL+</div>
+          <div style="font-size:0.65em;">Doji sesgado</div>
+        </button>
+        
+        <button class="correction-btn selected" onclick="correctStrength(2)" id="corr-2">
+          <div style="font-size:1.2em;color:var(--gold);">▰▰</div>
+          <div style="font-weight:bold;font-size:0.9em;">MEDIA</div>
+          <div style="font-size:0.65em;">Normal</div>
+        </button>
+        
+        <button class="correction-btn" onclick="correctStrength(2.5)" id="corr-2-5">
+          <div style="font-size:1.2em;color:#ffcc00;">▰▰+</div>
+          <div style="font-weight:bold;font-size:0.9em;">MEDIA+</div>
+          <div style="font-size:0.65em;">Momentum↑</div>
+        </button>
+        
+        <button class="correction-btn" onclick="correctStrength(3)" id="corr-3">
+          <div style="font-size:1.2em;color:var(--green);">▰▰▰</div>
+          <div style="font-weight:bold;font-size:0.9em;">FUERTE</div>
+          <div style="font-size:0.65em;">Reversión</div>
+        </button>
+        
+        <button class="correction-btn" onclick="correctStrength(4)" id="corr-4">
+          <div style="font-size:1.2em;color:#00ffcc;">▰▰▰🔥</div>
+          <div style="font-weight:bold;font-size:0.9em;">EXTREMA</div>
+          <div style="font-size:0.65em;">Capitulación</div>
+        </button>
+        
+      </div>
+    </div>
     
     <div class="color-buttons" id="color-buttons">
       <button class="btn-green" onclick="addCandle('G')">
@@ -1196,10 +1396,9 @@
       </button>
     </div>
     
-    <!-- REEMPLAZAR EL HINT EXISTENTE -->
-<div class="hint">
-  Atajos: <kbd>1-6</kbd>=Fuerza (1=Débil, 6=Extrema) | <kbd>G/R</kbd>=Color | Click en número para seleccionar fuerza
-</div>
+    <div class="hint">
+      Atajos: <kbd>1-6</kbd>=Fuerza (1=Débil, 6=Extrema) | <kbd>G/R</kbd>=Color | Click en número para seleccionar fuerza
+    </div>
   </div>
 
   <!-- ===== TODOS LOS PANELES AVANZADOS ===== -->
@@ -1289,10 +1488,11 @@
   <div class="priority-explanation" id="priority-explanation">
     <div class="priority-title">⚡ Prioridad de Señales:</div>
     <div class="priority-item extreme">1. EXTREMO (>90% o <10%) - Esperar reversión</div>
-    <div class="priority-item cmd">2. FASE CMD - Distribución/Acumulación institucional</div>
-    <div class="priority-item">3. Vela fuerte de reversión (fuerza 3/3, ignora tendencia)</div>
-    <div class="priority-item">4. Cruce MA activo válido (no trampa)</div>
-    <div class="priority-item">5. Patrón de velas + contexto ponderado</div>
+    <div class="priority-item vp">2. VOLUME PROFILE - POC/VAH/VAL como soporte/resistencia</div>
+    <div class="priority-item cmd">3. FASE CMD - Distribución/Acumulación institucional</div>
+    <div class="priority-item">4. Vela fuerte de reversión (fuerza 3/3, ignora tendencia)</div>
+    <div class="priority-item">5. Cruce MA activo válido (no trampa)</div>
+    <div class="priority-item">6. Patrón de velas + contexto ponderado</div>
   </div>
 
   <div class="logic-explanation" id="logic-explanation">
@@ -1327,6 +1527,8 @@
 
   <div class="controls">
     <button class="btn-reset" onclick="reset()">↺ REINICIAR TODO</button>
+
+  
   </div>
   <button class="btn-clear-trap" id="btn-clear-trap" onclick="clearTrap()" style="display:none;">
     🗑 Limpiar Trampa y Restaurar
@@ -1339,8 +1541,12 @@
       ✓ = Confirmado por usuario | ✏️ = Corregido manualmente | ● = Trampa excluida
     </div>
   </div>
+<!-- Dentro de tu body, donde quieras el monitor -->
+<div id="vp-monitor-container" style="position: fixed; right: 10px; top: 10px; width: 350px; height: 500px; z-index: 1000;"></div>
+
 
 <script>
+  
 // ===== CONFIGURACIÓN COMPLETA =====
 const MA_CONFIG = {
   crosses: [
@@ -1360,36 +1566,44 @@ const EXTREME_THRESHOLDS = {
   oversold: 10
 };
 
+// ===== NUEVO: CONFIGURACIÓN VOLUME PROFILE =====
+const VP_CONFIG = {
+  rows: 20,              // Número de niveles de precio a mostrar
+  valueAreaPercent: 70,  // Porcentaje del volumen total para el Value Area
+  minHistory: 10,        // Mínimo de velas para calcular VP
+  lookbackPeriod: 30     // Período de lookback para el perfil
+};
+
 // ===== NUEVO: CONFIGURACIÓN CMD =====
 const CMD_CONFIG = {
   consolidation: {
-    minPeriods: 8,        // Mínimo de velas para considerar consolidación
-    maxRange: 15,         // Rango máximo de oscilación en MA10 (%)
-    minTouches: 3,        // Mínimo de toques a soportes/resistencias
-    volumeDrop: 0.6       // Factor de caída de volumen (simulado)
+    minPeriods: 8,
+    maxRange: 15,
+    minTouches: 3,
+    volumeDrop: 0.6
   },
   manipulation: {
-    spikeThreshold: 2.5,  // Multiplicador de fuerza para detectar spike
-    fakeoutReversal: 0.7, // Probabilidad de reversión inmediata
-    wickRatio: 0.6,       // Ratio mecha/cuerpo para detectar rechazo
-    institutionalWick: 3  // Velas con mechas largas y cuerpo pequeño
+    spikeThreshold: 2.5,
+    fakeoutReversal: 0.7,
+    wickRatio: 0.6,
+    institutionalWick: 3
   },
   distribution: {
-    topThreshold: 75,     // Nivel alto para distribución
-    volumePattern: 'climax', // Patrón de volumen en climax
-    divergencePeriods: 5, // Periodos para detectar divergencia
-    weaknessSignals: 3    // Señales de debilidad requeridas
+    topThreshold: 75,
+    volumePattern: 'climax',
+    divergencePeriods: 5,
+    weaknessSignals: 3
   },
   accumulation: {
-    bottomThreshold: 25,  // Nivel bajo para acumulación
-    springDetection: true, // Detectar "springs" (falsos quiebres)
-    absorption: true      // Detectar absorción de ventas
+    bottomThreshold: 25,
+    springDetection: true,
+    absorption: true
   }
 };
 
 // ===== VARIABLES GLOBALES =====
 let history = [];
-let manualStrengths = {};  // {index: {strength, origin, autoSuggested}}
+let manualStrengths = {};
 let manualTrapIndex = null;
 let pendingTrapIndex = null;
 let originalTrendMA = null;
@@ -1397,14 +1611,25 @@ let originalTrendMA = null;
 // Estado de confirmación híbrida
 let autoSuggestedStrength = 2;
 let confirmedStrength = null;
-let strengthOrigin = 'pending'; // 'pending', 'confirmed', 'corrected'
+let strengthOrigin = 'pending';
 
 // ===== NUEVO: VARIABLES CMD =====
 let cmdState = {
-  phase: 'none',           // 'consolidation', 'manipulation', 'distribution', 'accumulation', 'none'
+  phase: 'none',
   probability: 0,
   details: {},
   lastUpdate: null
+};
+
+// ===== NUEVO: VARIABLES VOLUME PROFILE =====
+let volumeProfile = {
+  poc: null,           // Point of Control (nivel con mayor volumen)
+  vah: null,           // Value Area High
+  val: null,           // Value Area Low
+  histogram: [],       // Array de {price, volume, upVolume, downVolume}
+  totalVolume: 0,
+  valueAreaVolume: 0,
+  currentPriceLevel: null
 };
 
 // ===== AGREGAR DESPUÉS DE EXTREME_THRESHOLDS =====
@@ -1420,6 +1645,282 @@ const STRENGTH_CONFIG = {
   VISUAL_MAP: { 1: 1, 1.5: 1, 2: 2, 2.5: 2, 3: 3, 4: 3 }
 };
 
+// ===== NUEVO: SISTEMA DE VOLUME PROFILE =====
+
+function calculateVolumeProfile() {
+  if (history.length < VP_CONFIG.minHistory) {
+    volumeProfile = {
+      poc: null, vah: null, val: null,
+      histogram: [], totalVolume: 0, valueAreaVolume: 0,
+      currentPriceLevel: null
+    };
+    return volumeProfile;
+  }
+  
+  // Generar niveles de precio sintéticos basados en el historial
+  const lookback = Math.min(history.length, VP_CONFIG.lookbackPeriod);
+  const startIdx = history.length - lookback;
+  
+  // Crear niveles de precio basados en la secuencia de velas
+  // Simulamos que cada vela tiene un rango de precio basado en su fuerza
+  const priceLevels = [];
+  let currentPrice = 50; // Precio base del 50%
+  
+  // Generar datos de precios históricos basados en velas
+  for (let i = 0; i < lookback; i++) {
+    const idx = startIdx + i;
+    const candle = history[idx];
+    const strength = getCandleStrength(idx) || 2;
+    
+    // Simular movimiento de precio basado en la vela
+    const move = (candle === 'G' ? 1 : -1) * (strength * 2);
+    const open = currentPrice;
+    const close = currentPrice + move;
+    const high = Math.max(open, close) + (Math.random() * strength);
+    const low = Math.min(open, close) - (Math.random() * strength);
+    
+    // Volumen basado en fuerza y fase CMD
+    let volume = strength * 10;
+    if (cmdState.phase === 'distribution' || cmdState.phase === 'accumulation') {
+      volume *= 1.5; // Mayor volumen en fases institucionales
+    }
+    
+    priceLevels.push({
+      index: i,
+      open, high, low, close,
+      volume: Math.floor(volume),
+      upVolume: candle === 'G' ? Math.floor(volume * 0.7) : Math.floor(volume * 0.3),
+      downVolume: candle === 'R' ? Math.floor(volume * 0.7) : Math.floor(volume * 0.3),
+      candle
+    });
+    
+    currentPrice = close;
+  }
+  
+  // Encontrar rango de precios
+  const allPrices = priceLevels.flatMap(p => [p.high, p.low]);
+  const minPrice = Math.min(...allPrices);
+  const maxPrice = Math.max(...allPrices);
+  const priceRange = maxPrice - minPrice;
+  
+  // Crear histograma
+  const rowHeight = priceRange / VP_CONFIG.rows;
+  const histogram = [];
+  
+  for (let i = 0; i < VP_CONFIG.rows; i++) {
+    const rowLow = minPrice + (i * rowHeight);
+    const rowHigh = rowLow + rowHeight;
+    const rowPrice = (rowLow + rowHigh) / 2;
+    
+    let volume = 0;
+    let upVolume = 0;
+    let downVolume = 0;
+    
+    // Distribuir volumen de velas en niveles
+    priceLevels.forEach(candle => {
+      const overlap = Math.max(0, Math.min(candle.high, rowHigh) - Math.max(candle.low, rowLow));
+      if (overlap > 0) {
+        const ratio = overlap / (candle.high - candle.low);
+        const vol = candle.volume * ratio;
+        volume += vol;
+        upVolume += candle.upVolume * ratio;
+        downVolume += candle.downVolume * ratio;
+      }
+    });
+    
+    histogram.push({
+      price: rowPrice,
+      priceLow: rowLow,
+      priceHigh: rowHigh,
+      volume: Math.floor(volume),
+      upVolume: Math.floor(upVolume),
+      downVolume: Math.floor(downVolume),
+      isPOC: false,
+      isVAH: false,
+      isVAL: false
+    });
+  }
+  
+  // Encontrar POC (nivel con mayor volumen)
+  const maxVolume = Math.max(...histogram.map(h => h.volume));
+  const pocIndex = histogram.findIndex(h => h.volume === maxVolume);
+  histogram[pocIndex].isPOC = true;
+  
+  // Calcular Value Area (70% del volumen total)
+  const totalVolume = histogram.reduce((sum, h) => sum + h.volume, 0);
+  const targetVolume = totalVolume * (VP_CONFIG.valueAreaPercent / 100);
+  
+  // Expandir desde POC hasta alcanzar el 70% del volumen
+  let vaVolume = histogram[pocIndex].volume;
+  let vahIndex = pocIndex;
+  let valIndex = pocIndex;
+  
+  while (vaVolume < targetVolume && (vahIndex < histogram.length - 1 || valIndex > 0)) {
+    const volAbove = vahIndex < histogram.length - 1 ? histogram[vahIndex + 1].volume : 0;
+    const volBelow = valIndex > 0 ? histogram[valIndex - 1].volume : 0;
+    
+    if (volAbove >= volBelow && vahIndex < histogram.length - 1) {
+      vahIndex++;
+      vaVolume += histogram[vahIndex].volume;
+    } else if (valIndex > 0) {
+      valIndex--;
+      vaVolume += histogram[valIndex].volume;
+    } else if (vahIndex < histogram.length - 1) {
+      vahIndex++;
+      vaVolume += histogram[vahIndex].volume;
+    } else {
+      break;
+    }
+  }
+  
+  // Marcar niveles VAH y VAL
+  histogram[vahIndex].isVAH = true;
+  histogram[valIndex].isVAL = true;
+  
+  // Determinar posición del precio actual
+  const lastCandle = priceLevels[priceLevels.length - 1];
+  const currentPriceLevel = lastCandle.close;
+  
+  // Encontrar en qué nivel está el precio actual
+  let currentLevelIndex = histogram.findIndex(h => 
+    currentPriceLevel >= h.priceLow && currentPriceLevel <= h.priceHigh
+  );
+  
+  // Determinar posición relativa
+  let position = 'unknown';
+  if (currentLevelIndex !== -1) {
+    if (currentLevelIndex === pocIndex) position = 'poc';
+    else if (currentLevelIndex >= valIndex && currentLevelIndex <= vahIndex) position = 'inside';
+    else if (currentLevelIndex > vahIndex) position = 'above';
+    else position = 'below';
+  }
+  
+  volumeProfile = {
+    poc: histogram[pocIndex].price,
+    vah: histogram[vahIndex].price,
+    val: histogram[valIndex].price,
+    histogram: histogram,
+    totalVolume: totalVolume,
+    valueAreaVolume: vaVolume,
+    currentPriceLevel: currentPriceLevel,
+    currentPosition: position,
+    pocIndex, vahIndex, valIndex,
+    currentLevelIndex
+  };
+  
+  return volumeProfile;
+}
+
+function updateVolumeProfileDisplay() {
+  const container = document.getElementById('vp-histogram');
+  const pocEl = document.getElementById('vp-poc-value');
+  const vahEl = document.getElementById('vp-vah-value');
+  const valEl = document.getElementById('vp-val-value');
+  const positionEl = document.getElementById('vp-position');
+  const positionText = document.getElementById('vp-position-text');
+  const positionDetail = document.getElementById('vp-position-detail');
+  
+  if (history.length < VP_CONFIG.minHistory) {
+    container.innerHTML = '<div style="text-align:center;color:#666;padding:20px;">Necesitas al menos ' + VP_CONFIG.minHistory + ' velas para calcular el Volume Profile</div>';
+    pocEl.textContent = '--';
+    vahEl.textContent = '--';
+    valEl.textContent = '--';
+    positionEl.className = 'vp-current-position';
+    positionText.textContent = 'Posición: --';
+    positionDetail.textContent = 'Esperando datos...';
+    return;
+  }
+  
+  const vp = volumeProfile;
+  const maxVol = Math.max(...vp.histogram.map(h => h.volume));
+  
+  // Generar HTML del histograma
+  let html = '';
+  
+  // Mostrar de arriba hacia abajo (precios altos a bajos)
+  for (let i = vp.histogram.length - 1; i >= 0; i--) {
+    const row = vp.histogram[i];
+    const volPercent = (row.volume / maxVol) * 100;
+    const upPercent = row.volume > 0 ? (row.upVolume / row.volume) * 100 : 50;
+    const downPercent = 100 - upPercent;
+    
+    let barClass = '';
+    let rowClass = '';
+    
+    if (row.isPOC) {
+      barClass = 'poc';
+      rowClass = 'poc-row';
+    } else if (row.isVAH) {
+      barClass = 'vah-zone';
+      rowClass = 'vah-row';
+    } else if (row.isVAL) {
+      barClass = 'val-zone';
+      rowClass = 'val-row';
+    } else if (upPercent > 60) {
+      barClass = 'up';
+    } else if (downPercent > 60) {
+      barClass = 'down';
+    }
+    
+    const isCurrent = i === vp.currentLevelIndex;
+    const currentMarker = isCurrent ? '→ ' : '';
+    const currentStyle = isCurrent ? 'background:rgba(255,255,255,0.1);border-radius:4px;' : '';
+    
+    html += `
+      <div class="vp-row ${rowClass}" style="${currentStyle}">
+        <div class="vp-price-label">${currentMarker}${row.price.toFixed(1)}%</div>
+        <div class="vp-bar-container">
+          <div class="vp-bar ${barClass}" style="width: ${volPercent}%;"></div>
+        </div>
+        <div style="width:30px;font-size:0.6em;color:#666;">${row.volume}</div>
+      </div>
+    `;
+  }
+  
+  container.innerHTML = html;
+  
+  // Actualizar estadísticas
+  pocEl.textContent = vp.poc.toFixed(1) + '%';
+  vahEl.textContent = vp.vah.toFixed(1) + '%';
+  valEl.textContent = vp.val.toFixed(1) + '%';
+  
+  // Actualizar posición actual
+  const positionNames = {
+    'poc': 'EN POC (Point of Control)',
+    'inside': 'DENTRO DEL VALUE AREA',
+    'above': 'POR ENCIMA DE VAH',
+    'below': 'POR DEBAJO DE VAL',
+    'unknown': 'DESCONOCIDA'
+  };
+  
+  const positionClasses = {
+    'poc': 'vp-position-poc',
+    'inside': 'vp-position-inside',
+    'above': 'vp-position-above',
+    'below': 'vp-position-below',
+    'unknown': ''
+  };
+  
+  positionEl.className = 'vp-current-position ' + (positionClasses[vp.currentPosition] || '');
+  positionText.textContent = 'Posición: ' + positionNames[vp.currentPosition];
+  
+  let detailText = '';
+  switch(vp.currentPosition) {
+    case 'poc':
+      detailText = 'Nivel de máximo volumen - Soporte/Resistencia fuerte';
+      break;
+    case 'inside':
+      detailText = `Entre VAL (${vp.val.toFixed(1)}%) y VAH (${vp.vah.toFixed(1)}%) - Zona de equilibrio`;
+      break;
+    case 'above':
+      detailText = `Por encima de VAH (${vp.vah.toFixed(1)}%) - Posible sobrecompra`;
+      break;
+    case 'below':
+      detailText = `Por debajo de VAL (${vp.val.toFixed(1)}%) - Posible sobreventa`;
+      break;
+  }
+  positionDetail.textContent = detailText;
+}
 
 // ===== NUEVO: DETECTOR CMD COMPLETO =====
 
@@ -1430,19 +1931,11 @@ function detectCMDPhase() {
   const recentTrend = analyzeRecentTrend();
   const currentCandle = analyzeCurrentCandle();
   
-  // 1. DETECTAR CONSOLIDACIÓN
   const consolidation = detectConsolidation(trendMA, recentTrend);
-  
-  // 2. DETECTAR MANIPULACIÓN
   const manipulation = detectManipulation(trendMA, recentTrend, currentCandle);
-  
-  // 3. DETECTAR DISTRIBUCIÓN
   const distribution = detectDistribution(trendMA, recentTrend, currentCandle);
-  
-  // 4. DETECTAR ACUMULACIÓN
   const accumulation = detectAccumulation(trendMA, recentTrend, currentCandle);
   
-  // Determinar fase dominante
   const phases = [
     { name: 'consolidation', ...consolidation },
     { name: 'manipulation', ...manipulation },
@@ -1466,7 +1959,6 @@ function detectConsolidation(trendMA, recentTrend) {
     return { probability: 0, details: {} };
   }
   
-  // Calcular rango de oscilación reciente
   const recent = history.slice(-CMD_CONFIG.consolidation.minPeriods);
   const maValues = [];
   
@@ -1484,7 +1976,6 @@ function detectConsolidation(trendMA, recentTrend) {
   const minMA = Math.min(...maValues);
   const range = maxMA - minMA;
   
-  // Detectar toques a soportes/resistencias (cambios de dirección)
   let touches = 0;
   let lastDir = 0;
   for (let i = 1; i < maValues.length; i++) {
@@ -1495,7 +1986,6 @@ function detectConsolidation(trendMA, recentTrend) {
     }
   }
   
-  // Calcular probabilidad
   let probability = 0;
   const details = {
     range: range.toFixed(1),
@@ -1507,8 +1997,6 @@ function detectConsolidation(trendMA, recentTrend) {
   if (touches >= CMD_CONFIG.consolidation.minTouches) probability += 0.3;
   if (recentTrend.trend === 'neutral') probability += 0.2;
   if (Math.abs(recentTrend.weightedScore) < 2) probability += 0.1;
-  
-  // Detectar si estamos en rango estrecho por mucho tiempo
   if (range < 10 && history.length > 15) probability += 0.2;
   
   return { 
@@ -1526,66 +2014,53 @@ function detectManipulation(trendMA, recentTrend, currentCandle) {
   const lastThree = history.slice(-3);
   const strengths = lastThree.map((_, i) => getCandleStrength(history.length - 3 + i));
   
-  // ===== NUEVO: Análisis granular de fuerza =====
   const avgStrength = strengths.reduce((a, b) => a + b, 0) / strengths.length;
   const maxStrength = Math.max(...strengths);
   const minStrength = Math.min(...strengths);
   
-  // Detectar CAPITULACIÓN (nivel 4) - Stop hunt institucional
   const capitulationDetected = maxStrength === 4 || 
     (maxStrength >= 3 && minStrength <= 1 && avgStrength < 2);
   
-  // Detectar SPIKE con momentum acelerado (2.5) - Manipulación veloz
   const acceleratedSpike = strengths.includes(2.5) && strengths.filter(s => s >= 2).length >= 2;
-  
-  // Detectar doji con sesgo (1.5) - Indecisión forzada
   const biasedDojiTrap = strengths.includes(1.5) && 
     (strengths[strengths.length - 1] === 1.5 || strengths[strengths.length - 2] === 1.5);
   
-  // Spike clásico (nivel 3 vs media baja)
   const spikeDetected = maxStrength >= 3 && avgStrength < 2.3;
   
-  // Detectar falsos quiebres (trampas) - MEJORADO con niveles 4 y 2.5
   const lastTwo = history.slice(-2);
   const prevThree = history.slice(-4, -1);
   
   let fakeoutDetected = false;
   let fakeoutType = '';
-  let fakeoutIntensity = 0; // 1=normal, 2=capitulación
+  let fakeoutIntensity = 0;
   
-  // Falso quiebre alcista seguido de reversión
   if (prevThree.every(h => h === 'G') && lastTwo[0] === 'G' && lastTwo[1] === 'R') {
     const prevStrengths = prevThree.map((_, i) => getCandleStrength(history.length - 4 + i));
     const lastStrength = getCandleStrength(history.length - 1);
     
-    // Trampa normal: previas fuerza 2+, última fuerza 2+
     if (prevStrengths.every(s => s >= 2) && lastStrength >= 2) {
       fakeoutDetected = true;
       fakeoutType = 'bull_trap';
       fakeoutIntensity = 1;
     }
     
-    // Trampa de CAPITULACIÓN: previas fuerza 3/4, última fuerza 1/1.5
     if (prevStrengths.some(s => s >= 3) && lastStrength <= 1.5) {
       fakeoutDetected = true;
       fakeoutType = 'bull_trap_capitulation';
-      fakeoutIntensity = 2; // Más peligrosa
+      fakeoutIntensity = 2;
     }
   }
   
-  // Falso quiebre bajista seguido de reversión
   if (prevThree.every(h => h === 'R') && lastTwo[0] === 'R' && lastTwo[1] === 'G') {
     const prevStrengths = prevThree.map((_, i) => getCandleStrength(history.length - 4 + i));
     const lastStrength = getCandleStrength(history.length - 1);
     
-    // Trampa normal
     if (prevStrengths.every(s => s >= 2) && lastStrength >= 2) {
       fakeoutDetected = true;
       fakeoutType = 'bear_trap';
       fakeoutIntensity = 1;
     }
     
-    // Trampa de CAPITULACIÓN
     if (prevStrengths.some(s => s >= 3) && lastStrength <= 1.5) {
       fakeoutDetected = true;
       fakeoutType = 'bear_trap_capitulation';
@@ -1593,15 +2068,10 @@ function detectManipulation(trendMA, recentTrend, currentCandle) {
     }
   }
   
-  // Detectar mechas largas (rechazo institucional) - MEJORADO
   const longWickPattern = detectLongWickPattern();
-  
-  // ===== NUEVO: Patrón de absorción institucional =====
-  // Fuerza 2.5 que no rompe + doji 1.5 = acumulación/distribución oculta
   const hiddenInstitutional = (strengths.includes(2.5) && strengths.includes(1.5)) ||
     (strengths.filter(s => s === 2.5).length >= 2);
   
-  // Calcular probabilidad mejorada
   let probability = 0;
   const details = {
     spikeDetected,
@@ -1619,22 +2089,18 @@ function detectManipulation(trendMA, recentTrend, currentCandle) {
     minStrength
   };
   
-  // Puntuación por severidad
-  if (capitulationDetected) probability += 0.5;          // Máxima prioridad
+  if (capitulationDetected) probability += 0.5;
   else if (spikeDetected) probability += 0.35;
   
-  if (fakeoutIntensity === 2) probability += 0.5;         // Capitulación
-  else if (fakeoutDetected) probability += 0.4;        // Trampa normal
+  if (fakeoutIntensity === 2) probability += 0.5;
+  else if (fakeoutDetected) probability += 0.4;
   
   if (acceleratedSpike) probability += 0.25;
   if (biasedDojiTrap) probability += 0.2;
   if (longWickPattern.detected) probability += 0.25;
   if (hiddenInstitutional) probability += 0.15;
-  
-  // Contexto: manipulación ocurre frecuentemente en consolidación
   if (cmdState.phase === 'consolidation') probability += 0.15;
   
-  // Bonus: si hay divergencia entre fuerza 4 y tendencia
   if (capitulationDetected && trendMA !== null) {
     const lastCandle = history[history.length - 1];
     const isBullishCapitulation = lastCandle === 'G' && trendMA <= 20;
@@ -1642,7 +2108,6 @@ function detectManipulation(trendMA, recentTrend, currentCandle) {
     if (isBullishCapitulation || isBearishCapitulation) probability += 0.1;
   }
   
-  // Generar descripción detallada
   let description = 'Sin manipulación clara';
   
   if (fakeoutIntensity === 2) {
@@ -1676,11 +2141,9 @@ function detectManipulation(trendMA, recentTrend, currentCandle) {
 function detectLongWickPattern() {
   if (history.length < 3) return { detected: false };
   
-  // Simular detección de mechas basado en fuerza y secuencia
   const recent = history.slice(-3);
   const strengths = recent.map((_, i) => getCandleStrength(history.length - 3 + i));
   
-  // Patrón: fuerza 3 seguida de fuerza 1 (spike y rechazo)
   const spikeAndRejection = strengths[0] >= 3 && strengths[1] <= 1;
   const doubleRejection = strengths.every(s => s === 1) && 
     recent[0] !== recent[1] && recent[1] !== recent[2];
@@ -1694,16 +2157,10 @@ function detectLongWickPattern() {
 function detectDistribution(trendMA, recentTrend, currentCandle) {
   if (trendMA === null) return { probability: 0, details: {} };
   
-  // Distribución ocurre en tops (sobrecompra)
   const isHighLevel = trendMA >= CMD_CONFIG.distribution.topThreshold;
-  
-  // Detectar divergencia: precio sube pero momentum cae
   const divergence = detectDivergence('bearish');
-  
-  // Detectar señales de debilidad en velas recientes
   const weaknessSignals = countWeaknessSignals();
   
-  // Patrón de distribución: muchas velas verdes débiles seguidas de rojas fuertes
   const recent = history.slice(-CMD_CONFIG.distribution.divergencePeriods);
   const greenCount = recent.filter(h => h === 'G').length;
   const redStrength = recent
@@ -1714,7 +2171,6 @@ function detectDistribution(trendMA, recentTrend, currentCandle) {
   
   const distributionPattern = greenCount >= 3 && redStrength >= 6;
   
-  // Calcular probabilidad
   let probability = 0;
   const details = {
     isHighLevel,
@@ -1729,8 +2185,6 @@ function detectDistribution(trendMA, recentTrend, currentCandle) {
   if (divergence.detected) probability += 0.25;
   if (weaknessSignals >= CMD_CONFIG.distribution.weaknessSignals) probability += 0.25;
   if (distributionPattern) probability += 0.2;
-  
-  // Contexto: después de consolidación en top
   if (cmdState.phase === 'consolidation' && isHighLevel) probability += 0.15;
   
   return {
@@ -1749,16 +2203,10 @@ function detectDistribution(trendMA, recentTrend, currentCandle) {
 function detectAccumulation(trendMA, recentTrend, currentCandle) {
   if (trendMA === null) return { probability: 0, details: {} };
   
-  // Acumulación ocurre en fondos (sobreventa)
   const isLowLevel = trendMA <= CMD_CONFIG.accumulation.bottomThreshold;
-  
-  // Detectar divergencia alcista
   const divergence = detectDivergence('bullish');
-  
-  // Detectar "spring" (falso quiebre bajista con recuperación)
   const spring = detectSpring();
   
-  // Patrón de absorción: muchas velas rojas débiles seguidas de verdes fuertes
   const recent = history.slice(-5);
   const redCount = recent.filter(h => h === 'R').length;
   const greenStrength = recent
@@ -1769,7 +2217,6 @@ function detectAccumulation(trendMA, recentTrend, currentCandle) {
   
   const absorptionPattern = redCount >= 3 && greenStrength >= 6;
   
-  // Calcular probabilidad
   let probability = 0;
   const details = {
     isLowLevel,
@@ -1801,7 +2248,6 @@ function detectAccumulation(trendMA, recentTrend, currentCandle) {
 function detectDivergence(type) {
   if (history.length < 6) return { detected: false };
   
-  // Comparar precio (MA) con momentum (fuerza ponderada)
   const recentMA = [];
   const recentMomentum = [];
   
@@ -1811,7 +2257,6 @@ function detectDivergence(type) {
       const ma = (slice.filter(h => h === 'G').length / 10) * 100;
       recentMA.push(ma);
       
-      // Calcular momentum ponderado
       const momentumSlice = history.slice(-i - 3, -i);
       let momentum = 0;
       momentumSlice.forEach((h, idx) => {
@@ -1824,8 +2269,6 @@ function detectDivergence(type) {
   
   if (recentMA.length < 3) return { detected: false };
   
-  // Detectar divergencia: MA sube pero momentum baja (bajista)
-  // o MA baja pero momentum sube (alcista)
   const maTrend = recentMA[recentMA.length - 1] - recentMA[0];
   const momTrend = recentMomentum[recentMomentum.length - 1] - recentMomentum[0];
   
@@ -1844,10 +2287,8 @@ function detectDivergence(type) {
 function detectSpring() {
   if (history.length < 4) return { detected: false };
   
-  // Spring: falso quiebre de soporte con recuperación inmediata
   const recent = history.slice(-4);
   
-  // Patrón: R-R-R-G con fuerza creciente en la última
   const isSpringPattern = recent[0] === 'R' && recent[1] === 'R' && 
     recent[2] === 'R' && recent[3] === 'G';
   
@@ -1867,16 +2308,12 @@ function countWeaknessSignals() {
   let signals = 0;
   const recent = history.slice(-5);
   
-  // Señales de debilidad en tendencia alcista
   recent.forEach((h, i) => {
     const idx = history.length - 5 + i;
     const strength = getCandleStrength(idx);
     
-    // Velas verdes con fuerza decreciente
     if (h === 'G' && strength < 2) signals += 0.5;
-    // Velas rojas con fuerza creciente
     if (h === 'R' && strength >= 2) signals += 1;
-    // Cambio de color frecuente (indecisión)
     if (i > 0 && h !== recent[i-1]) signals += 0.3;
   });
   
@@ -1884,7 +2321,7 @@ function countWeaknessSignals() {
 }
 
 // ===== CÁLCULO AUTOMÁTICO DE FUERZA =====
-// ===== REEMPLAZAR FUNCIÓN COMPLETA =====
+
 function calculateAutoStrength() {
   if (history.length < 3) return 2;
   
@@ -1905,7 +2342,6 @@ function calculateAutoStrength() {
   const prevTrendMA = calcPrevMA(10, true);
   const maDirection = prevTrendMA !== null ? trendMA - prevTrendMA : 0;
   
-  // Detectar patrón de mecha (spike + reversión)
   const recentStrengths = [];
   for (let i = Math.max(0, history.length - 4); i < history.length; i++) {
     recentStrengths.push(getCandleStrength(i));
@@ -1914,38 +2350,29 @@ function calculateAutoStrength() {
     recentStrengths[recentStrengths.length - 2] >= 3 && 
     recentStrengths[recentStrengths.length - 1] <= 1.5;
   
-  // Detectar doji (alternancia rápida G-R-G-R)
   let alternations = 0;
   for (let i = history.length - 4; i < history.length - 1; i++) {
     if (i >= 0 && history[i] !== history[i+1]) alternations++;
   }
   const isDojiPattern = alternations >= 3;
   
-  // ===== NUEVA LÓGICA DE 5 NIVELES =====
-  
-  // NIVEL 4: EXTREMO (capitulación)
   if (consecutiveOpposite >= 4 && trendMA !== null) {
     const isExtreme = (trendMA >= 90 && last === 'R') || (trendMA <= 10 && last === 'G');
     if (isExtreme) return 4;
   }
   
-  // NIVEL 3: FUERTE
   if (consecutiveOpposite >= 3) return 3;
   if (consecutiveOpposite === 2 && Math.abs(maDirection) > 3) return 3;
   if (hasSpike && trendMA !== null && (trendMA >= 85 || trendMA <= 15)) return 3;
   
-  // NIVEL 2.5: MEDIA+
   if (consecutiveSame >= 3 && Math.abs(maDirection) > 5) return 2.5;
   if (consecutiveSame >= 2 && Math.abs(maDirection) > 8) return 2.5;
   
-  // NIVEL 2: MEDIA
   if (consecutiveSame >= 2) return 2;
   if (consecutiveOpposite === 2) return 2;
   
-  // NIVEL 1.5: DÉBIL+
   if (isDojiPattern && consecutiveSame >= 1) return 1.5;
   
-  // NIVEL 1: DÉBIL
   if (isDojiPattern || consecutiveOpposite === 1) return 1;
   
   return 2;
@@ -1965,14 +2392,11 @@ function getStrengthReason(strength) {
 
 // ===== FLUJO HÍBRIDO DE CONFIRMACIÓN =====
 
-// ===== REEMPLAZAR FUNCIÓN COMPLETA =====
-// ===== REEMPLAZAR FUNCIÓN COMPLETA =====
 function updateSuggestionPanel() {
   if (strengthOrigin !== 'pending') return;
   
   autoSuggestedStrength = calculateAutoStrength();
   
-  // Convertir a visual (1, 2, 3)
   const visualStrength = STRENGTH_CONFIG.VISUAL_MAP[autoSuggestedStrength] || 2;
   const config = STRENGTH_CONFIG.LEVELS[autoSuggestedStrength];
   
@@ -1988,7 +2412,6 @@ function updateSuggestionPanel() {
   textEl.textContent = config.name;
   textEl.style.color = config.color;
   
-  // Mostrar indicador de nivel interno si es intermedio
   const subIndicator = autoSuggestedStrength % 1 !== 0 || autoSuggestedStrength === 4 ? 
     ` (${autoSuggestedStrength})` : '';
   
@@ -2001,8 +2424,7 @@ function updateSuggestionPanel() {
   document.getElementById('status-bar').className = 'status-bar status-pending';
   document.getElementById('status-bar').textContent = '⏳ PENDIENTE: Confirma o corrige la fuerza sugerida';
   
-  // Siempre mostrar opciones de fuerza, nunca ocultar
-document.getElementById('correction-options').style.display = 'block';
+  document.getElementById('correction-options').style.display = 'block';
   document.getElementById('color-buttons').classList.remove('active');
   document.getElementById('step-confirm').style.display = 'block';
 }
@@ -2015,17 +2437,14 @@ function confirmStrength() {
   document.getElementById('status-bar').className = 'status-bar status-confirmed';
   document.getElementById('status-bar').textContent = '✓ CONFIRMADO: Usando fuerza ' + confirmedStrength + '/3 (sugerencia correcta)';
   
-  // Siempre mostrar opciones de fuerza, nunca ocultar
-document.getElementById('correction-options').style.display = 'block';
+  document.getElementById('correction-options').style.display = 'block';
   showColorButtons();
 }
 
-// ===== REEMPLAZAR FUNCIÓN =====
 function showCorrectionOptions() {
   document.getElementById('correction-options').classList.add('active');
   document.querySelectorAll('.correction-btn').forEach(btn => btn.classList.remove('selected'));
   
-  // FIX: Manejar IDs con decimales reemplazando el punto por guión
   const btnId = 'corr-' + autoSuggestedStrength.toString().replace('.', '-');
   const btn = document.getElementById(btnId);
   if (btn) btn.classList.add('selected');
@@ -2033,7 +2452,6 @@ function showCorrectionOptions() {
   document.getElementById('status-bar').textContent = '✏️ SELECCIONA la fuerza correcta abajo (1-6)';
 }
 
-// ===== REEMPLAZAR FUNCIÓN =====
 function correctStrength(newStrength) {
   confirmedStrength = newStrength;
   strengthOrigin = 'corrected';
@@ -2061,16 +2479,15 @@ function correctStrength(newStrength) {
   
   document.querySelectorAll('.correction-btn').forEach(btn => btn.classList.remove('selected'));
   
-  // FIX: Usar el mismo formato de ID con replace
   document.getElementById('corr-' + newStrength.toString().replace('.', '-')).classList.add('selected');
   
   showColorButtons();
 }
+
 function showColorButtons() {
   document.getElementById('green-strength').textContent = 'Fuerza: ' + confirmedStrength;
   document.getElementById('red-strength').textContent = 'Fuerza: ' + confirmedStrength;
   document.getElementById('color-buttons').classList.add('active');
-  // No ocultar step-confirm para mantener contexto visible
 }
 
 function addCandle(color) {
@@ -2112,8 +2529,7 @@ function resetConfirmationPanel() {
   
   document.getElementById('suggestion-box').classList.remove('confirmed', 'corrected');
   document.getElementById('correction-notice').classList.remove('active');
-  // Siempre mostrar opciones de fuerza, nunca ocultar
-document.getElementById('correction-options').style.display = 'block';
+  document.getElementById('correction-options').style.display = 'block';
   document.getElementById('color-buttons').classList.remove('active');
   document.getElementById('step-confirm').style.display = 'block';
   document.querySelectorAll('.correction-btn').forEach(btn => btn.classList.remove('selected'));
@@ -2136,7 +2552,6 @@ function getCandleOrigin(index) {
   return 'Auto';
 }
 
-// ===== REEMPLAZAR FUNCIÓN COMPLETA =====
 function calculateHistoricalStrength(index) {
   if (index < 2) return 2;
   
@@ -2147,20 +2562,16 @@ function calculateHistoricalStrength(index) {
   const wasBearish = prev === 'R' && prev2 === 'R';
   const wasBullish = prev === 'G' && prev2 === 'G';
   
-  // Detectar capitulación (4) - reversión extrema después de 4+ iguales
   let consecutiveSame = 0;
   for (let i = index - 1; i >= 0 && history[i] === current; i--) {
     consecutiveSame++;
   }
   if (consecutiveSame >= 4 && (current === 'G' || current === 'R')) return 4;
   
-  // Detectar momentum acelerado (2.5) - 3+ iguales
   if (consecutiveSame >= 3) return 2.5;
   
-  // Reversión normal (3)
   if ((current === 'G' && wasBearish) || (current === 'R' && wasBullish)) return 3;
   
-  // Doji con sesgo (1.5) - alternancia rápida
   if (index >= 3) {
     const recent = [history[index-3], history[index-2], history[index-1], current];
     let alternations = 0;
@@ -2170,24 +2581,19 @@ function calculateHistoricalStrength(index) {
     if (alternations >= 3) return 1.5;
   }
   
-  // Continuación (2)
   if (current === prev) return 2;
   
-  // Doji puro (1)
   return 1;
 }
 
-// ===== REEMPLAZAR FUNCIÓN COMPLETA =====
 function analyzeCurrentCandle() {
-  // FIX: Siempre analizar la última vela insertada, no esperar
   if (history.length === 0) return { strength: 0, type: 'neutral', isReversal: false, origin: '-' };
   
   const idx = history.length - 1;
   const current = history[idx];
   
-  // FIX: Usar getCandleStrength con fallback seguro
   let strength = getCandleStrength(idx);
-  if (!strength || strength === undefined) strength = 2; // Default seguro
+  if (!strength || strength === undefined) strength = 2;
   
   const origin = getCandleOrigin(idx);
   
@@ -2207,12 +2613,10 @@ function analyzeCurrentCandle() {
     type = 'pure-doji';
   }
   
-  // FIX: Verificar reversión por contexto inmediato (no esperar más velas)
   if (history.length >= 3) {
     const prev = history[idx-1];
     const prev2 = history[idx-2];
     const wasOpposite = prev !== current && prev2 !== current;
-    // FIX: Cualquier vela opuesta después de 2 iguales = reversión potencial
     if (wasOpposite) {
       isReversal = true;
       if (strength < 2.5) type = 'weak-reversal';
@@ -2222,7 +2626,7 @@ function analyzeCurrentCandle() {
   return { 
     strength, 
     type, 
-    isReversal: isReversal && strength >= 2, // FIX: 2+ cuenta como reversión
+    isReversal: isReversal && strength >= 2,
     current, 
     origin,
     isCapitulation: strength === 4,
@@ -2324,7 +2728,6 @@ function calcPrevMA(period, useOriginal = false) {
   return (slice.filter(h => h === 'G').length / period) * 100;
 }
 
-// ===== NUEVO: FUNCIÓN calcShortMA =====
 function calcShortMA() {
   if (history.length < 3) return null;
   let data = history;
@@ -2497,7 +2900,6 @@ function updateCMDPanel() {
   const cmd = detectCMDPhase();
   cmdState = cmd;
   
-  // Asegurar que allPhases exista (fallback si no está definido)
   if (!cmd.allPhases) {
     cmd.allPhases = [
       { name: 'consolidation', probability: 0 },
@@ -2507,14 +2909,12 @@ function updateCMDPanel() {
     ];
   }
   
-  // Actualizar indicador visual de fase
   const indicator = document.getElementById('cmd-phase-indicator');
   indicator.className = 'cmd-phase-indicator';
   if (cmd.phase !== 'none') {
     indicator.classList.add(cmd.phase);
   }
   
-  // Actualizar items
   const phases = ['consolidation', 'manipulation', 'distribution', 'accumulation'];
   const phaseNames = {
     consolidation: 'Consolidación',
@@ -2539,7 +2939,6 @@ function updateCMDPanel() {
     }
   });
   
-  // Mostrar alerta si hay fase activa
   const alert = document.getElementById('cmd-alert');
   const alertTitle = document.getElementById('cmd-alert-title');
   const alertText = document.getElementById('cmd-alert-text');
@@ -2553,12 +2952,10 @@ function updateCMDPanel() {
     alert.classList.remove('active');
   }
   
-  // Actualizar actividad de ballenas (simulado basado en fuerza de velas)
   const whaleActivity = document.getElementById('whale-activity');
   if (cmd.probability > 0.5) {
     whaleActivity.style.display = 'block';
     
-    // Calcular distribución simulada basada en la fase
     let retail, smart, whale;
     if (cmd.phase === 'manipulation') {
       retail = 20; smart = 30; whale = 50;
@@ -2582,12 +2979,15 @@ function updateCMDPanel() {
 
 function update() {
   updateSuggestionPanel();
-  updateCMDPanel(); // NUEVO
+  updateCMDPanel();
+  
+  // NUEVO: Calcular y mostrar Volume Profile
+  calculateVolumeProfile();
+  updateVolumeProfileDisplay();
   
   const adjustedResult = detectCrosses(false);
   const originalResult = detectCrosses(true);
   
-  // CORRECCIÓN: Mover declaración de shortMA aquí al inicio de update()
   const shortMA = calcShortMA();
   const prevShortMA = history.length > 3 ? 
     (history.slice(-4, -1).filter(h => h === 'G').length / 3) * 100 : null;
@@ -2602,7 +3002,6 @@ function update() {
     originalTrendMA = originalResult.trendMA;
   }
   
-  // Alerta de extremo
   const extremeAlert = document.getElementById('extreme-alert');
   if (extremeCondition && (extremeCondition.type === 'extreme_bullish' || extremeCondition.type === 'extreme_bearish')) {
     extremeAlert.classList.add('active');
@@ -2611,7 +3010,6 @@ function update() {
     extremeAlert.classList.remove('active');
   }
   
-  // Análisis de vela actual
   const currentAnalysis = document.getElementById('current-analysis');
   if (currentCandle.strength > 0) {
     currentAnalysis.classList.add('active');
@@ -2634,7 +3032,6 @@ function update() {
     currentAnalysis.classList.remove('active');
   }
   
-  // Tendencia reciente
   const recentSequence = document.getElementById('recent-sequence');
   const recentAnalysis = document.getElementById('recent-analysis');
   
@@ -2657,7 +3054,6 @@ function update() {
     recentAnalysis.innerHTML = `<strong>${recentTrend.reason}</strong>${recentTrend.detail?'<br><small>'+recentTrend.detail+'</small>':''}`;
   }
   
-  // Momentum
   const momentumBox = document.getElementById('momentum-box');
   if (trendMA !== null) {
     momentumBox.style.display = 'block';
@@ -2673,7 +3069,6 @@ function update() {
     momentumBox.style.display = 'none';
   }
   
-  // Banner de trampa
   const trapBanner = document.getElementById('trap-banner');
   const btnClearTrap = document.getElementById('btn-clear-trap');
   
@@ -2687,7 +3082,6 @@ function update() {
     originalTrendMA = null;
   }
   
-  // Tendencia Global
   const trendBox = document.getElementById('trend-box');
   const trendValue = document.getElementById('trend-value');
   
@@ -2710,7 +3104,6 @@ function update() {
     document.getElementById('momentum-note').style.display = 'none';
   }
   
-  // Actualizar Tendencia Corta (MA3)
   const shortTrendBox = document.getElementById('short-trend-box');
   const shortTrendValue = document.getElementById('short-trend-value');
 
@@ -2745,7 +3138,6 @@ function update() {
     shortTrendValue.textContent = 'SIN DATOS';
   }
   
-  // Grid de MA
   const maResults = adjustedResult.crosses;
   document.getElementById('ma-grid').innerHTML = maResults.map(r => {
     const isExtreme = r.maFast >= 90 || r.maSlow >= 90 || r.maFast <= 10 || r.maSlow <= 10;
@@ -2756,7 +3148,6 @@ function update() {
     </div>`;
   }).join('');
   
-  // Cruce activo
   const activeCross = maResults.find(r => r.crossed && !r.trap) || maResults.find(r => r.crossed);
   if (activeCross && !extremeCondition) {
     document.getElementById('cross-alert').classList.add('show');
@@ -2768,7 +3159,6 @@ function update() {
     document.getElementById('cross-alert').classList.remove('show');
   }
   
-  // Señal principal con lógica CMD integrada
   const mainSignal = document.getElementById('main-signal');
   const priorityExplanation = document.getElementById('priority-explanation');
   const logicExplanation = document.getElementById('logic-explanation');
@@ -2779,7 +3169,10 @@ function update() {
   const proj = lastTwo.length >= 2 ? analyzePattern(lastTwo, null, extremeCondition) : null;
   
   let finalSignal = 'wait', signalClass = 'signal-wait', signalText = 'ESPERAR';
-  let showReversal = false, showExtreme = false, showCMD = false, logicText = '';
+  let showReversal = false, showExtreme = false, showCMD = false, showVP = false, logicText = '';
+  
+  // NUEVO: Integrar Volume Profile en la lógica de señales
+  const vp = volumeProfile;
   
   // PRIORIDAD 0: Extremo
   if (extremeCondition && (extremeCondition.type === 'extreme_bullish' || extremeCondition.type === 'extreme_bearish')) {
@@ -2802,72 +3195,112 @@ function update() {
       }
     }
   }
-  // PRIORIDAD 1: FASE CMD (nueva)
-  else if (cmdState.phase === 'distribution' && cmdState.probability > 0.6) {
-    showCMD = true;
-    finalSignal = 'sell'; signalClass = 'signal-distribution'; signalText = 'VENDER';
-    logicText = `🏦 DISTRIBUCIÓN institucional detectada (${Math.round(cmdState.probability * 100)}%). Los "smart money" están vendiendo.`;
-  }
-  else if (cmdState.phase === 'accumulation' && cmdState.probability > 0.6) {
-    showCMD = true;
-    finalSignal = 'buy'; signalClass = 'signal-accumulation'; signalText = 'COMPRAR';
-    logicText = `📥 ACUMULACIÓN institucional detectada (${Math.round(cmdState.probability * 100)}%). Los "smart money" están comprando.`;
-  }
-  else if (cmdState.phase === 'manipulation' && cmdState.probability > 0.7) {
-    showCMD = true;
-    finalSignal = 'wait'; signalClass = 'signal-manipulation'; signalText = '⚠️ MANIPULACIÓN';
-    logicText = `🎭 MANIPULACIÓN detectada (${Math.round(cmdState.probability * 100)}%). Posible falso quiebre. Esperar confirmación.`;
-  }
-  // PRIORIDAD 2: Reversión fuerte
-  else if (currentCandle.isReversal && currentCandle.strength >= 3) {
-    showReversal = true;
-    if (currentCandle.current === 'G') {
-      finalSignal = 'buy'; signalClass = 'signal-strong-reversal'; signalText = 'COMPRAR';
-      logicText = `Reversión alcista FUERTE (fuerza 3/3, ${currentCandle.origin}). Ignora tendencia previa.`;
-    } else {
-      finalSignal = 'sell'; signalClass = 'signal-strong-reversal'; signalText = 'VENDER';
-      logicText = `Reversión bajista FUERTE (fuerza 3/3, ${currentCandle.origin}). Ignora tendencia previa.`;
-    }
-  }
-  // PRIORIDAD 3: Conflicto de momentum
-  else if (recentTrend.warning === 'momentum_change') {
-    finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = 'ESPERAR';
-    logicText = `Conflicto de momentum: ${recentTrend.reason}. Esperar confirmación.`;
-  }
-  // PRIORIDAD 4: Cruce válido
-  else if (activeCross && !activeCross.trap) {
-    if (activeCross.crossType === 'golden') {
-      finalSignal = 'buy'; signalClass = 'signal-buy'; signalText = 'COMPRAR';
-      logicText = `Golden Cross válido en ${activeCross.pair} (${activeCross.type}). Tendencia alcista confirmada.`;
-    } else {
-      finalSignal = 'sell'; signalClass = 'signal-sell'; signalText = 'VENDER';
-      logicText = `Death Cross válido en ${activeCross.pair} (${activeCross.type}). Tendencia bajista confirmada.`;
-    }
-  }
-  // PRIORIDAD 5: Patrón + contexto
-  else if (proj && recentTrend.trend !== 'neutral') {
-    const momentumConsistent = (recentTrend.trend === 'bullish' && trendMA > prevTrendMA) || 
-                               (recentTrend.trend === 'bearish' && trendMA < prevTrendMA) ||
-                               Math.abs(trendMA - prevTrendMA) < 5;
+  // NUEVO: PRIORIDAD 1: Volume Profile - POC como soporte/resistencia clave
+  else if (vp.poc !== null && history.length >= VP_CONFIG.minHistory) {
+    const priceVsPOC = vp.currentPriceLevel - vp.poc;
+    const nearPOC = Math.abs(priceVsPOC) < 5; // Dentro de 5% del POC
     
-    if (!momentumConsistent && Math.abs(trendMA - prevTrendMA) > 10) {
-      finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = 'ESPERAR';
-      logicText = `Patrón detectado pero momentum en contra (MA cambió ${(trendMA - prevTrendMA).toFixed(1)}%). Esperar.`;
-    } else if (recentTrend.trend === 'bullish' && proj.ifG.sig === 'COMPRA') {
-      finalSignal = 'buy'; signalClass = 'signal-buy'; signalText = 'COMPRAR';
-      logicText = `Patrón ${proj.ifG.pat} en contexto alcista ponderado. Confianza: ${Math.round(proj.ifG.conf * 100)}%`;
-    } else if (recentTrend.trend === 'bearish' && proj.ifR.sig === 'VENTA') {
+    if (nearPOC && currentCandle.strength >= 3) {
+      // Reversión fuerte en el POC
+      showVP = true;
+      if (currentCandle.current === 'G') {
+        finalSignal = 'buy'; signalClass = 'signal-strong-reversal'; signalText = 'COMPRAR';
+        logicText = `🎯 REVERSIÓN EN POC (${vp.poc.toFixed(1)}%): Vela verde fuerza ${currentCandle.strength}/3. Soporte fuerte confirmado.`;
+      } else {
+        finalSignal = 'sell'; signalClass = 'signal-strong-reversal'; signalText = 'VENDER';
+        logicText = `🎯 REVERSIÓN EN POC (${vp.poc.toFixed(1)}%): Vela roja fuerza ${currentCandle.strength}/3. Resistencia fuerte confirmada.`;
+      }
+    } else if (vp.currentPosition === 'above' && currentCandle.current === 'R' && currentCandle.strength >= 2) {
+      // Por encima del área de valor, reversión bajista
+      showVP = true;
       finalSignal = 'sell'; signalClass = 'signal-sell'; signalText = 'VENDER';
-      logicText = `Patrón ${proj.ifR.pat} en contexto bajista ponderado. Confianza: ${Math.round(proj.ifR.conf * 100)}%`;
-    } else {
-      logicText = `Patrón detectado pero en conflicto con tendencia ponderada. Esperando confirmación.`;
+      logicText = `📊 POR ENCIMA DE VAH (${vp.vah.toFixed(1)}%) + reversión. Regreso al POC (${vp.poc.toFixed(1)}%) probable.`;
+    } else if (vp.currentPosition === 'below' && currentCandle.current === 'G' && currentCandle.strength >= 2) {
+      // Por debajo del área de valor, reversión alcista
+      showVP = true;
+      finalSignal = 'buy'; signalClass = 'signal-buy'; signalText = 'COMPRAR';
+      logicText = `📊 POR DEBAJO DE VAL (${vp.val.toFixed(1)}%) + reversión. Regreso al POC (${vp.poc.toFixed(1)}%) probable.`;
+    } else if (vp.currentPosition === 'inside' && currentCandle.strength >= 2.5) {
+      // Dentro del value area con momentum
+      showVP = true;
+      if (currentCandle.current === 'G') {
+        finalSignal = 'buy'; signalClass = 'signal-buy'; signalText = 'COMPRAR';
+        logicText = `📊 DENTRO DEL VALUE AREA: Momentum alcista hacia VAH (${vp.vah.toFixed(1)}%).`;
+      } else {
+        finalSignal = 'sell'; signalClass = 'signal-sell'; signalText = 'VENDER';
+        logicText = `📊 DENTRO DEL VALUE AREA: Momentum bajista hacia VAL (${vp.val.toFixed(1)}%).`;
+      }
     }
-  } else {
-    logicText = `Sin señales claras. MA10: ${trendMA ? trendMA.toFixed(0) + '%' : 'N/A'} (cambio: ${prevTrendMA ? (trendMA - prevTrendMA).toFixed(1) : '0'}%)`;
   }
   
-  // Trampa detectada
-  if (activeCross && activeCross.trap && !showExtreme && recentTrend.warning !== 'momentum_change' && !showCMD) {
+  // Si no hay señal de VP, continuar con lógica existente
+  if (finalSignal === 'wait') {
+    // PRIORIDAD 2: FASE CMD
+    if (cmdState.phase === 'distribution' && cmdState.probability > 0.6) {
+      showCMD = true;
+      finalSignal = 'sell'; signalClass = 'signal-distribution'; signalText = 'VENDER';
+      logicText = `🏦 DISTRIBUCIÓN institucional detectada (${Math.round(cmdState.probability * 100)}%). Los "smart money" están vendiendo.`;
+    }
+    else if (cmdState.phase === 'accumulation' && cmdState.probability > 0.6) {
+      showCMD = true;
+      finalSignal = 'buy'; signalClass = 'signal-accumulation'; signalText = 'COMPRAR';
+      logicText = `📥 ACUMULACIÓN institucional detectada (${Math.round(cmdState.probability * 100)}%). Los "smart money" están comprando.`;
+    }
+    else if (cmdState.phase === 'manipulation' && cmdState.probability > 0.7) {
+      showCMD = true;
+      finalSignal = 'wait'; signalClass = 'signal-manipulation'; signalText = '⚠️ MANIPULACIÓN';
+      logicText = `🎭 MANIPULACIÓN detectada (${Math.round(cmdState.probability * 100)}%). Posible falso quiebre. Esperar confirmación.`;
+    }
+    // PRIORIDAD 3: Reversión fuerte
+    else if (currentCandle.isReversal && currentCandle.strength >= 3) {
+      showReversal = true;
+      if (currentCandle.current === 'G') {
+        finalSignal = 'buy'; signalClass = 'signal-strong-reversal'; signalText = 'COMPRAR';
+        logicText = `Reversión alcista FUERTE (fuerza 3/3, ${currentCandle.origin}). Ignora tendencia previa.`;
+      } else {
+        finalSignal = 'sell'; signalClass = 'signal-strong-reversal'; signalText = 'VENDER';
+        logicText = `Reversión bajista FUERTE (fuerza 3/3, ${currentCandle.origin}). Ignora tendencia previa.`;
+      }
+    }
+    // PRIORIDAD 4: Conflicto de momentum
+    else if (recentTrend.warning === 'momentum_change') {
+      finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = 'ESPERAR';
+      logicText = `Conflicto de momentum: ${recentTrend.reason}. Esperar confirmación.`;
+    }
+    // PRIORIDAD 5: Cruce válido
+    else if (activeCross && !activeCross.trap) {
+      if (activeCross.crossType === 'golden') {
+        finalSignal = 'buy'; signalClass = 'signal-buy'; signalText = 'COMPRAR';
+        logicText = `Golden Cross válido en ${activeCross.pair} (${activeCross.type}). Tendencia alcista confirmada.`;
+      } else {
+        finalSignal = 'sell'; signalClass = 'signal-sell'; signalText = 'VENDER';
+        logicText = `Death Cross válido en ${activeCross.pair} (${activeCross.type}). Tendencia bajista confirmada.`;
+      }
+    }
+    // PRIORIDAD 6: Patrón + contexto
+    else if (proj && recentTrend.trend !== 'neutral') {
+      const momentumConsistent = (recentTrend.trend === 'bullish' && trendMA > prevTrendMA) || 
+                                 (recentTrend.trend === 'bearish' && trendMA < prevTrendMA) ||
+                                 Math.abs(trendMA - prevTrendMA) < 5;
+      
+      if (!momentumConsistent && Math.abs(trendMA - prevTrendMA) > 10) {
+        finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = 'ESPERAR';
+        logicText = `Patrón detectado pero momentum en contra (MA cambió ${(trendMA - prevTrendMA).toFixed(1)}%). Esperar.`;
+      } else if (recentTrend.trend === 'bullish' && proj.ifG.sig === 'COMPRA') {
+        finalSignal = 'buy'; signalClass = 'signal-buy'; signalText = 'COMPRAR';
+        logicText = `Patrón ${proj.ifG.pat} en contexto alcista ponderado. Confianza: ${Math.round(proj.ifG.conf * 100)}%`;
+      } else if (recentTrend.trend === 'bearish' && proj.ifR.sig === 'VENTA') {
+        finalSignal = 'sell'; signalClass = 'signal-sell'; signalText = 'VENDER';
+        logicText = `Patrón ${proj.ifR.pat} en contexto bajista ponderado. Confianza: ${Math.round(proj.ifR.conf * 100)}%`;
+      } else {
+        logicText = `Patrón detectado pero en conflicto con tendencia ponderada. Esperando confirmación.`;
+      }
+    } else {
+      logicText = `Sin señales claras. MA10: ${trendMA ? trendMA.toFixed(0) + '%' : 'N/A'} (cambio: ${prevTrendMA ? (trendMA - prevTrendMA).toFixed(1) : '0'}%)`;
+    }
+  }
+  
+  if (activeCross && activeCross.trap && !showExtreme && recentTrend.warning !== 'momentum_change' && !showCMD && !showVP) {
     signalClass = 'signal-trap';
     signalText = activeCross.crossType === 'golden' ? '¿COMPRA?' : '¿VENTA?';
     logicText = `⚠️ ${activeCross.pair} detectó cruce ${activeCross.crossType} pero es TRAMPA (${activeCross.type}). Tendencia en contra.`;
@@ -2881,21 +3314,18 @@ function update() {
     '<div class="extreme-signal-badge">⚠️ EXTREMO</div>' +
     '<div class="cmd-signal-badge">🎯 FASE CMD</div>';
   
-  priorityExplanation.classList.toggle('active', showReversal || showExtreme || recentTrend.warning === 'momentum_change' || showCMD);
+  priorityExplanation.classList.toggle('active', showReversal || showExtreme || recentTrend.warning === 'momentum_change' || showCMD || showVP);
   logicExplanation.classList.toggle('active', true);
   document.getElementById('logic-text').textContent = logicText;
   
-  // Proyecciones con CMD
   updateProjections(trendMA, prevTrendMA, activeCross, recentTrend, currentCandle, extremeCondition, proj);
   
-  // Historial
   document.getElementById('history').innerHTML = history.map((h, i) => {
     const isTrap = i === manualTrapIndex;
     const isNew = i === history.length - 1;
     const s = getCandleStrength(i);
     const origin = manualStrengths[i]?.origin || 'auto';
     
-    // NUEVO: Visualización mejorada para 6 niveles
     let indicator = '';
     let extraClass = '';
     
@@ -2917,7 +3347,6 @@ function update() {
     
     const manualMark = origin === 'corrected' ? '<span style="position:absolute;top:-3px;right:-3px;width:6px;height:6px;background:var(--orange);border-radius:50%;"></span>' : '';
     
-    // NUEVO: Mostrar valor real en tooltip
     const strengthLabel = STRENGTH_CONFIG.LEVELS[s]?.name || 'MEDIA';
     
     return `<div class="candle candle-${h.toLowerCase()} ${isTrap?'candle-trap':''} ${isNew&&!isTrap?'candle-new':''} ${extraClass}" 
@@ -2928,7 +3357,6 @@ function update() {
   }).join('');
 }
 
-// ===== AGREGAR AL INICIO DE updateProjections() =====
 function updateProjections(trendMA, prevTrendMA, activeCross, recentTrend, currentCandle, extremeCondition, proj) {
   if (!proj) {
     document.getElementById('proj-g-seq').textContent = '--';
@@ -2936,22 +3364,16 @@ function updateProjections(trendMA, prevTrendMA, activeCross, recentTrend, curre
     return;
   }
   
-  // NUEVO: Obtener fuerza granular actual
   const currentInternalStrength = getCandleStrength(history.length - 1);
   
-  // NUEVO: Ajustar proyecciones basado en fuerza granular
-  
-  // Si hay capitulación (4), anular proyecciones contrarias
   if (currentInternalStrength === 4) {
     const capitulationType = history[history.length - 1] === 'G' ? 'bullish' : 'bearish';
     
     if (capitulationType === 'bullish') {
-      // Capitulación bajista terminó, comprar fuerte
       document.getElementById('proj-g-extreme').textContent = '🔥 CAPITULACIÓN: Reversión alcista inminente';
       document.getElementById('proj-g-extreme').style.display = 'block';
       document.getElementById('proj-r-extreme').style.display = 'none';
     } else {
-      // Capitulación alcista terminó, vender fuerte
       document.getElementById('proj-r-extreme').textContent = '🔥 CAPITULACIÓN: Reversión bajista inminente';
       document.getElementById('proj-r-extreme').style.display = 'block';
       document.getElementById('proj-g-extreme').style.display = 'none';
@@ -2961,7 +3383,6 @@ function updateProjections(trendMA, prevTrendMA, activeCross, recentTrend, curre
     document.getElementById('proj-r-extreme').style.display = 'none';
   }
   
-  // Si hay momentum acelerado (2.5), boost de confianza
   if (currentInternalStrength === 2.5) {
     const trendDirection = history[history.length - 1] === 'G' ? 'bullish' : 'bearish';
     
@@ -2974,13 +3395,11 @@ function updateProjections(trendMA, prevTrendMA, activeCross, recentTrend, curre
     }
   }
   
-  // Si hay doji con sesgo (1.5), reducir confianza
   if (currentInternalStrength === 1.5) {
     document.getElementById('proj-g-conflict').textContent = '⚠️ Doji sesgado: Esperar claridad';
     document.getElementById('proj-r-conflict').textContent = '⚠️ Doji sesgado: Esperar claridad';
   }
   
-  // Proyección VERDE
   const gIsReversal = currentCandle.isReversal && currentCandle.current === 'G' && currentCandle.strength >= 3;
   document.getElementById('proj-g-seq').textContent = proj.ifG.pat;
   
@@ -3005,7 +3424,6 @@ function updateProjections(trendMA, prevTrendMA, activeCross, recentTrend, curre
   document.getElementById('proj-g-cmd').textContent = (cmdState.phase === 'distribution') ? '🏦 DISTRIBUCIÓN: Smart money vendiendo' : (cmdState.phase === 'accumulation') ? '📥 ACUMULACIÓN: Posible entrada' : '';
   document.getElementById('proj-g-box').className = gBoxClass;
   
-  // Proyección ROJO
   const rIsReversal = currentCandle.isReversal && currentCandle.current === 'R' && currentCandle.strength >= 3;
   document.getElementById('proj-r-seq').textContent = proj.ifR.pat;
   
@@ -3063,7 +3481,6 @@ function clearTrap() {
   update();
 }
 
-// ===== REEMPLAZAR FUNCIÓN reset() =====
 function reset() {
   history = [];
   manualStrengths = {};
@@ -3072,7 +3489,13 @@ function reset() {
   originalTrendMA = null;
   cmdState = { phase: 'none', probability: 0, details: {} };
   
-  // NUEVO: Resetear fuerza sugerida
+  // NUEVO: Resetear Volume Profile
+  volumeProfile = {
+    poc: null, vah: null, val: null,
+    histogram: [], totalVolume: 0, valueAreaVolume: 0,
+    currentPriceLevel: null
+  };
+  
   autoSuggestedStrength = 2;
   confirmedStrength = null;
   strengthOrigin = 'pending';
@@ -3081,7 +3504,6 @@ function reset() {
   document.getElementById('priority-explanation').classList.remove('active');
   document.getElementById('logic-explanation').classList.remove('active');
   
-  // NUEVO: Limpiar proyecciones especiales
   document.getElementById('proj-g-extreme').style.display = 'none';
   document.getElementById('proj-r-extreme').style.display = 'none';
   
@@ -3089,8 +3511,6 @@ function reset() {
   update();
 }
 
-// Atajos de teclado
-// ===== REEMPLAZAR EVENTO DE TECLADO COMPLETO =====
 document.addEventListener('keydown', (e) => {
   if (document.getElementById('trap-modal').classList.contains('active')) return;
   
@@ -3100,15 +3520,13 @@ document.addEventListener('keydown', (e) => {
     if (key === 'c' || key === 'enter') confirmStrength();
     if (key === 'e') showCorrectionOptions();
     
-    // NUEVO: Atajos para 6 niveles
-    if (key === '1') { showCorrectionOptions(); correctStrength(1); }   // Débil
-    if (key === '2') { showCorrectionOptions(); correctStrength(1.5); } // Débil+
-    if (key === '3') { showCorrectionOptions(); correctStrength(2); }   // Media
-    if (key === '4') { showCorrectionOptions(); correctStrength(2.5); } // Media+
-    if (key === '5') { showCorrectionOptions(); correctStrength(3); }   // Fuerte
-    if (key === '6') { showCorrectionOptions(); correctStrength(4); }   // Extrema
+    if (key === '1') { showCorrectionOptions(); correctStrength(1); }
+    if (key === '2') { showCorrectionOptions(); correctStrength(1.5); }
+    if (key === '3') { showCorrectionOptions(); correctStrength(2); }
+    if (key === '4') { showCorrectionOptions(); correctStrength(2.5); }
+    if (key === '5') { showCorrectionOptions(); correctStrength(3); }
+    if (key === '6') { showCorrectionOptions(); correctStrength(4); }
     
-    // Atajos alternativos con shift
     if (key === '!') { showCorrectionOptions(); correctStrength(1); }
     if (key === '@') { showCorrectionOptions(); correctStrength(1.5); }
     if (key === '#') { showCorrectionOptions(); correctStrength(2); }
@@ -3121,8 +3539,317 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// Iniciar
 update();
+// ===== MONITOR EMBEBIDO (INLINE) =====
+(function initEmbeddedMonitor() {
+  
+  // Crear el HTML del monitor dentro del contenedor
+  const container = document.getElementById('vp-monitor-container');
+  if (!container) {
+    console.error('No se encontró el contenedor #vp-monitor-container');
+    return;
+  }
+  
+  container.innerHTML = `
+    <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 8px; height: 100%; display: flex; flex-direction: column; font-size: 0.8em; color: #fff; font-family: sans-serif; overflow: hidden;">
+      
+      <!-- Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #161b22; border-bottom: 1px solid #30363d;">
+        <div style="font-weight: 600; color: #ffd700; display: flex; align-items: center; gap: 6px;">
+          <span>📊</span>
+          <span>Volume Profile</span>
+        </div>
+        <div style="width: 8px; height: 8px; border-radius: 50%; background: #00c851; box-shadow: 0 0 8px #00c851;" id="vp-monitor-status"></div>
+      </div>
+      
+      <!-- Precio actual -->
+      <div style="display: flex; justify-content: space-between; padding: 10px 15px; background: rgba(0,0,0,0.3); border-bottom: 1px solid #30363d;">
+        <div>
+          <div style="font-size: 1.3em; font-weight: bold; font-family: monospace;" id="vp-monitor-price">--</div>
+          <div style="font-size: 0.75em; color: #888;" id="vp-monitor-range">--</div>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 0.65em; color: #666;">Velas</div>
+          <div style="font-size: 1.1em; font-weight: bold;" id="vp-monitor-count">0</div>
+        </div>
+      </div>
+      
+      <!-- Chart + VP -->
+      <div style="flex: 1; display: flex; position: relative; min-height: 0;">
+        
+        <!-- Velas -->
+        <div style="flex: 1; position: relative; padding: 10px 5px; display: flex; flex-direction: column;" id="vp-candles-area">
+          <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none;" id="vp-grid"></div>
+          <div style="position: relative; flex: 1; display: flex; align-items: flex-end; justify-content: flex-end; gap: 2px; padding-right: 8px;" id="vp-candles"></div>
+          <div style="position: absolute; left: 0; right: 0; border-top: 2px solid #ffd700; z-index: 10; display: none;" id="vp-poc-line">
+            <span style="position: absolute; left: 5px; top: -10px; background: #ffd700; color: #000; font-size: 0.6em; padding: 1px 5px; border-radius: 3px; font-weight: bold;">POC</span>
+          </div>
+        </div>
+        
+        <!-- Volume Profile -->
+        <div style="width: 100px; border-left: 1px solid #30363d; background: rgba(0,0,0,0.2); position: relative; display: flex; flex-direction: column; padding: 10px 0;" id="vp-bars-area">
+          <div style="position: absolute; left: -40px; top: 0; bottom: 0; width: 35px; display: flex; flex-direction: column; justify-content: space-between; padding: 10px 0; pointer-events: none;" id="vp-price-labels"></div>
+          <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;" id="vp-bars"></div>
+          <div style="position: absolute; left: 0; right: 0; height: 18px; background: rgba(255,215,0,0.1); border-top: 1px solid #ffd700; border-bottom: 1px solid #ffd700; display: none; align-items: center; padding: 0 8px; z-index: 20;" id="vp-current-band">
+            <span style="position: absolute; right: 5px; background: #ffd700; color: #000; font-size: 0.6em; padding: 1px 5px; border-radius: 3px; font-weight: bold;" id="vp-current-label">--</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Stats -->
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: #30363d; border-top: 1px solid #30363d;">
+        <div style="background: #161b22; padding: 8px; text-align: center;">
+          <div style="font-size: 0.6em; color: #888; text-transform: uppercase;">POC</div>
+          <div style="font-size: 1em; font-weight: bold; color: #ffd700; font-family: monospace;" id="vp-stat-poc">--</div>
+        </div>
+        <div style="background: #161b22; padding: 8px; text-align: center;">
+          <div style="font-size: 0.6em; color: #888; text-transform: uppercase;">VAH</div>
+          <div style="font-size: 1em; font-weight: bold; color: #00d4ff; font-family: monospace;" id="vp-stat-vah">--</div>
+        </div>
+        <div style="background: #161b22; padding: 8px; text-align: center;">
+          <div style="font-size: 0.6em; color: #888; text-transform: uppercase;">VAL</div>
+          <div style="font-size: 1em; font-weight: bold; color: #ff8800; font-family: monospace;" id="vp-stat-val">--</div>
+        </div>
+      </div>
+      
+      <!-- Alerta -->
+      <div style="padding: 8px; background: rgba(0,0,0,0.3); border-top: 1px solid #30363d; font-size: 0.75em; text-align: center; color: #888;" id="vp-alert">
+        Analizando...
+      </div>
+    </div>
+  `;
+  
+  // Configuración
+  const CONFIG = { rows: 20, valueAreaPercent: 70, maxCandles: 12 };
+  
+  // Función para calcular VP (reutiliza tu lógica existente)
+  function calculateVP(history) {
+    if (history.length < 5) return null;
+    
+    const lookback = Math.min(history.length, 30);
+    const priceLevels = [];
+    let price = 50;
+    
+    for (let i = history.length - lookback; i < history.length; i++) {
+      const candle = history[i];
+      const prev = i > 0 ? history[i-1] : candle;
+      const strength = candle === prev ? 2.5 : 3;
+      const move = (candle === 'G' ? 1 : -1) * (strength * 1.2 + Math.random() * 2);
+      const close = Math.max(10, Math.min(90, price + move));
+      const high = Math.max(price, close) + Math.random() * 3;
+      const low = Math.min(price, close) - Math.random() * 3;
+      
+      priceLevels.push({
+        open: price, high, low, close,
+        volume: strength * 20 + Math.random() * 50,
+        upVol: candle === 'G' ? 0.7 : 0.3,
+        candle
+      });
+      price = close;
+    }
+    
+    const prices = priceLevels.flatMap(p => [p.high, p.low]);
+    const minP = Math.min(...prices) - 2;
+    const maxP = Math.max(...prices) + 2;
+    const range = maxP - minP;
+    const rowH = range / CONFIG.rows;
+    
+    const histogram = [];
+    for (let i = 0; i < CONFIG.rows; i++) {
+      const low = minP + (i * rowH);
+      const high = low + rowH;
+      const mid = (low + high) / 2;
+      
+      let vol = 0, upV = 0, downV = 0;
+      priceLevels.forEach(c => {
+        const overlap = Math.max(0, Math.min(c.high, high) - Math.max(c.low, low));
+        if (overlap > 0) {
+          const ratio = overlap / (c.high - c.low + 0.001);
+          const v = c.volume * ratio;
+          vol += v;
+          upV += v * c.upVol;
+          downV += v * (1 - c.upVol);
+        }
+      });
+      
+      histogram.push({ price: mid, low, high, volume: vol, upVolume: upV, downVolume: downV });
+    }
+    
+    const maxVol = Math.max(...histogram.map(h => h.volume));
+    const pocIdx = histogram.findIndex(h => h.volume === maxVol);
+    histogram[pocIdx].isPOC = true;
+    
+    const totalVol = histogram.reduce((s, h) => s + h.volume, 0);
+    let vaVol = histogram[pocIdx].volume;
+    let vahIdx = pocIdx, valIdx = pocIdx;
+    
+    while (vaVol < totalVol * 0.7 && (vahIdx < CONFIG.rows - 1 || valIdx > 0)) {
+      const up = vahIdx < CONFIG.rows - 1 ? histogram[vahIdx + 1].volume : 0;
+      const down = valIdx > 0 ? histogram[valIdx - 1].volume : 0;
+      
+      if (up >= down && vahIdx < CONFIG.rows - 1) {
+        vahIdx++;
+        vaVol += histogram[vahIdx].volume;
+        histogram[vahIdx].inVA = true;
+      } else if (valIdx > 0) {
+        valIdx--;
+        vaVol += histogram[valIdx].volume;
+        histogram[valIdx].inVA = true;
+      } else break;
+    }
+    
+    histogram[vahIdx].isVAH = true;
+    histogram[valIdx].isVAL = true;
+    
+    const lastPrice = priceLevels[priceLevels.length - 1].close;
+    const currentIdx = histogram.findIndex(h => lastPrice >= h.low && lastPrice <= h.high);
+    
+    let position = 'unknown';
+    if (currentIdx === pocIdx) position = 'poc';
+    else if (currentIdx >= valIdx && currentIdx <= vahIdx) position = 'inside';
+    else if (currentIdx > vahIdx) position = 'above';
+    else if (currentIdx < valIdx) position = 'below';
+    
+    return {
+      histogram: histogram.reverse(),
+      poc: histogram[CONFIG.rows - 1 - pocIdx].price,
+      vah: histogram[CONFIG.rows - 1 - vahIdx].price,
+      val: histogram[CONFIG.rows - 1 - valIdx].price,
+      currentPrice: lastPrice,
+      currentIdx: CONFIG.rows - 1 - currentIdx,
+      pocIdx: CONFIG.rows - 1 - pocIdx,
+      minPrice: minP, maxPrice: maxP,
+      position, lastCandle: history[history.length - 1]
+    };
+  }
+  
+  // Función para renderizar
+  function renderMonitor() {
+    const vp = calculateVP(history);
+    if (!vp) return;
+    
+    // Precio
+    const priceColor = vp.lastCandle === 'G' ? '#00c851' : '#ff4444';
+    document.getElementById('vp-monitor-price').style.color = priceColor;
+    document.getElementById('vp-monitor-price').textContent = vp.currentPrice.toFixed(2) + '%';
+    document.getElementById('vp-monitor-range').textContent = `Rango: ${vp.minPrice.toFixed(0)}% - ${vp.maxPrice.toFixed(0)}%`;
+    document.getElementById('vp-monitor-count').textContent = history.length;
+    
+    // Stats
+    document.getElementById('vp-stat-poc').textContent = vp.poc.toFixed(1) + '%';
+    document.getElementById('vp-stat-vah').textContent = vp.vah.toFixed(1) + '%';
+    document.getElementById('vp-stat-val').textContent = vp.val.toFixed(1) + '%';
+    
+    // Velas
+    const candlesDiv = document.getElementById('vp-candles');
+    const recent = history.slice(-CONFIG.maxCandles);
+    const priceRange = vp.maxPrice - vp.minPrice;
+    
+    candlesDiv.innerHTML = recent.map((c, i) => {
+      const idx = history.length - recent.length + i;
+      const prevC = idx > 0 ? history[idx-1] : c;
+      const strength = c === prevC ? 2.5 : 3;
+      const move = (c === 'G' ? 1 : -1) * strength;
+      const open = vp.currentPrice - (recent.length - 1 - i) * move * 0.5;
+      const close = open + move;
+      const high = Math.max(open, close) + 2;
+      const low = Math.min(open, close) - 2;
+      
+      const getY = (p) => 100 - ((p - vp.minPrice) / priceRange * 100);
+      const bodyTop = getY(Math.max(open, close));
+      const bodyBottom = getY(Math.min(open, close));
+      const wickTop = getY(high);
+      const wickBottom = getY(low);
+      const bodyHeight = Math.max(3, bodyBottom - bodyTop);
+      
+      const color = c === 'G' ? '#00c851' : '#ff4444';
+      
+      return `
+        <div style="width: 6px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;">
+          <div style="width: 1px; background: ${color}; opacity: 0.5; height: ${wickTop}%;"></div>
+          <div style="width: 100%; background: ${color}; height: ${bodyHeight}%; border-radius: 1px;"></div>
+          <div style="width: 1px; background: ${color}; opacity: 0.5; height: ${100 - wickBottom}%;"></div>
+        </div>
+      `;
+    }).join('');
+    
+    // Grid
+    const grid = document.getElementById('vp-grid');
+    grid.innerHTML = '';
+    for (let i = 0; i <= 5; i++) {
+      grid.innerHTML += `<div style="position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(255,255,255,0.05); top: ${(i/5)*100}%;"></div>`;
+    }
+    
+    // Línea POC
+    const pocY = ((vp.maxPrice - vp.poc) / priceRange * 100);
+    const pocLine = document.getElementById('vp-poc-line');
+    pocLine.style.display = 'block';
+    pocLine.style.top = pocY + '%';
+    
+    // Barras VP
+    const maxVol = Math.max(...vp.histogram.map(h => h.volume));
+    const barsDiv = document.getElementById('vp-bars');
+    
+    barsDiv.innerHTML = vp.histogram.map(row => {
+      const width = (row.volume / maxVol) * 100;
+      const upRatio = row.volume > 0 ? row.upVolume / row.volume : 0.5;
+      
+      let bg = '';
+      if (row.isPOC) bg = 'background: #ffd700 !important; box-shadow: 0 0 10px #ffd700;';
+      else if (row.isVAH) bg = `background: linear-gradient(90deg, #00d4ff ${upRatio*100}%, rgba(0,212,255,0.5) ${upRatio*100}%);`;
+      else if (row.isVAL) bg = `background: linear-gradient(90deg, rgba(255,136,0,0.5) ${upRatio*100}%, #ff8800 ${upRatio*100}%);`;
+      else bg = `background: linear-gradient(90deg, #00c851 ${upRatio*100}%, #ff4444 ${upRatio*100}%);`;
+      
+      return `
+        <div style="height: 12px; display: flex; align-items: center; padding: 0 6px;">
+          <div style="height: 6px; border-radius: 0 2px 2px 0; transition: all 0.3s; ${bg}; width: ${Math.max(3, width)}%;"></div>
+        </div>
+      `;
+    }).join('');
+    
+    // Labels de precios
+    const labelsDiv = document.getElementById('vp-price-labels');
+    labelsDiv.innerHTML = '';
+    for (let i = 0; i < CONFIG.rows; i += 4) {
+      const row = vp.histogram[i];
+      const highlight = row.isPOC || row.isVAH || row.isVAL ? 'color: #ffd700; font-weight: bold;' : 'color: #666;';
+      labelsDiv.innerHTML += `<div style="font-size: 0.6em; text-align: right; font-family: monospace; ${highlight}">${row.price.toFixed(0)}%</div>`;
+    }
+    
+    // Banda de precio actual
+    const currentY = (vp.currentIdx / CONFIG.rows) * 100;
+    const currentBand = document.getElementById('vp-current-band');
+    currentBand.style.display = 'flex';
+    currentBand.style.top = `calc(${currentY}% - 9px)`;
+    document.getElementById('vp-current-label').textContent = vp.currentPrice.toFixed(1) + '%';
+    
+    // Alerta
+    const alerts = {
+      'poc': { text: '🎯 EN POC - Máxima liquidez', color: '#ffd700', bg: 'rgba(255,215,0,0.1)' },
+      'inside': { text: '📊 DENTRO VALUE AREA', color: '#888', bg: 'rgba(0,0,0,0.3)' },
+      'above': { text: '⚠️ SOBRE VAH - Sobrecompra', color: '#00c851', bg: 'rgba(0,200,81,0.1)' },
+      'below': { text: '⚠️ BAJO VAL - Sobreventa', color: '#ff4444', bg: 'rgba(255,68,68,0.1)' }
+    };
+    const alert = alerts[vp.position] || alerts['inside'];
+    const alertDiv = document.getElementById('vp-alert');
+    alertDiv.textContent = alert.text;
+    alertDiv.style.color = alert.color;
+    alertDiv.style.background = alert.bg;
+  }
+  
+  // Hook al update existente
+  const originalUpdate = update;
+  update = function() {
+    originalUpdate();
+    renderMonitor();
+  };
+  
+  // Render inicial
+  if (history.length > 0) renderMonitor();
+  
+  console.log('✅ Monitor VP embebido activo');
+})();
+
 </script>
 
 </body>
