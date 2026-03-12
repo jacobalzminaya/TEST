@@ -1023,6 +1023,7 @@
   margin-bottom: 15px;
 }
   </style>
+<base target="_blank">
 </head>
 <body>
 
@@ -2055,15 +2056,17 @@ function showColorButtons() {
 }
 
 function addCandle(color) {
-  if (confirmedStrength === null) {
-    alert('Primero debes CONFIRMAR o CORREGIR la fuerza sugerida');
+  if (confirmedStrength === null || confirmedStrength === undefined) {
+    alert('Primero debes CONFIRMAR o CORREGIR la fuerza sugerida (Fuerza actual: ' + autoSuggestedStrength + ')');
     return;
   }
+  // Forzar conversión a número por si acaso
+  const finalStrength = Number(confirmedStrength) || 2;
   
   const index = history.length;
   history.push(color);
   manualStrengths[index] = {
-    strength: confirmedStrength,
+    strength: finalStrength,
     origin: strengthOrigin,
     autoSuggested: autoSuggestedStrength
   };
@@ -2090,6 +2093,8 @@ function resetConfirmationPanel() {
   strengthOrigin = 'pending';
   confirmedStrength = null;
   autoSuggestedStrength = 2;
+  // Forzar actualización inmediata del panel
+  updateSuggestionPanel();
   
   document.getElementById('suggestion-box').classList.remove('confirmed', 'corrected');
   document.getElementById('correction-notice').classList.remove('active');
@@ -2104,8 +2109,9 @@ function resetConfirmationPanel() {
 // ===== FUNCIONES DE ANÁLISIS =====
 
 function getCandleStrength(index) {
-  if (manualStrengths[index]) return manualStrengths[index].strength;
-  return calculateHistoricalStrength(index);
+  if (manualStrengths[index] && manualStrengths[index].strength !== undefined) return manualStrengths[index].strength;
+  const calculated = calculateHistoricalStrength(index);
+  return calculated || 2; // Default a 2 si hay error
 }
 
 function getCandleOrigin(index) {
@@ -2579,7 +2585,7 @@ function update() {
   const currentAnalysis = document.getElementById('current-analysis');
   if (currentCandle.strength > 0) {
     currentAnalysis.classList.add('active');
-    const bars = '▰'.repeat(currentCandle.strength) + '▱'.repeat(3 - currentCandle.strength);
+    const displayStrength = Math.min(currentCandle.strength, 3); const bars = '▰'.repeat(displayStrength) + '▱'.repeat(Math.max(0, 3 - displayStrength));
     document.getElementById('current-strength').innerHTML = `<span style="color:${currentCandle.strength>=3?'var(--green)':currentCandle.strength===2?'var(--gold)':'#888'}">${bars}</span>`;
     document.getElementById('current-origin').innerHTML = currentCandle.origin;
     
