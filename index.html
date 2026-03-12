@@ -2324,6 +2324,18 @@ function calcPrevMA(period, useOriginal = false) {
   return (slice.filter(h => h === 'G').length / period) * 100;
 }
 
+// ===== NUEVO: FUNCIÓN calcShortMA =====
+function calcShortMA() {
+  if (history.length < 3) return null;
+  let data = history;
+  if (manualTrapIndex !== null && manualTrapIndex < history.length) {
+    data = history.filter((_, idx) => idx !== manualTrapIndex);
+    if (data.length < 3) return null;
+  }
+  const slice = data.slice(-3);
+  return (slice.filter(h => h === 'G').length / 3) * 100;
+}
+
 function detectExtreme(trendMA, recentTrend) {
   if (trendMA === null) return null;
   
@@ -2565,21 +2577,7 @@ function updateCMDPanel() {
     whaleActivity.style.display = 'none';
   }
 }
-// Calcular tendencia corta (MA3)
-function calcShortMA() {
-  if (history.length < 3) return null;
-  let data = history;
-  if (manualTrapIndex !== null && manualTrapIndex < history.length) {
-    data = history.filter((_, idx) => idx !== manualTrapIndex);
-    if (data.length < 3) return null;
-  }
-  const slice = data.slice(-3);
-  return (slice.filter(h => h === 'G').length / 3) * 100;
-}
 
-const shortMA = calcShortMA();
-const prevShortMA = history.length > 3 ? 
-  (history.slice(-4, -1).filter(h => h === 'G').length / 3) * 100 : null;
 // ===== ACTUALIZACIÓN PRINCIPAL =====
 
 function update() {
@@ -2588,6 +2586,11 @@ function update() {
   
   const adjustedResult = detectCrosses(false);
   const originalResult = detectCrosses(true);
+  
+  // CORRECCIÓN: Mover declaración de shortMA aquí al inicio de update()
+  const shortMA = calcShortMA();
+  const prevShortMA = history.length > 3 ? 
+    (history.slice(-4, -1).filter(h => h === 'G').length / 3) * 100 : null;
   
   const trendMA = adjustedResult.trendMA;
   const prevTrendMA = adjustedResult.prevTrendMA;
@@ -2707,40 +2710,40 @@ function update() {
     document.getElementById('momentum-note').style.display = 'none';
   }
   
-// Actualizar Tendencia Corta
-const shortTrendBox = document.getElementById('short-trend-box');
-const shortTrendValue = document.getElementById('short-trend-value');
+  // Actualizar Tendencia Corta (MA3)
+  const shortTrendBox = document.getElementById('short-trend-box');
+  const shortTrendValue = document.getElementById('short-trend-value');
 
-if (shortMA !== null) {
-  const shortDiff = prevShortMA !== null ? shortMA - prevShortMA : 0;
-  let shortText = 'NEUTRAL →';
-  let shortClass = 'neutral';
-  let shortColor = 'var(--gold)';
-  let shortNote = '';
-  
-  if (shortMA > 66) {
-    shortText = shortDiff > 10 ? 'ALCISTA ↑↑' : 'ALCISTA ↑';
-    shortClass = 'bullish';
-    shortColor = 'var(--green)';
-    shortNote = shortDiff > 0 ? `(+${shortDiff.toFixed(1)}%)` : 'Estable';
-  } else if (shortMA < 34) {
-    shortText = shortDiff < -10 ? 'BAJISTA ↓↓' : 'BAJISTA ↓';
-    shortClass = 'bearish';
-    shortColor = 'var(--red)';
-    shortNote = shortDiff < 0 ? `(${shortDiff.toFixed(1)}%)` : 'Estable';
+  if (shortMA !== null) {
+    const shortDiff = prevShortMA !== null ? shortMA - prevShortMA : 0;
+    let shortText = 'NEUTRAL →';
+    let shortClass = 'neutral';
+    let shortColor = 'var(--gold)';
+    let shortNote = '';
+    
+    if (shortMA > 66) {
+      shortText = shortDiff > 10 ? 'ALCISTA ↑↑' : 'ALCISTA ↑';
+      shortClass = 'bullish';
+      shortColor = 'var(--green)';
+      shortNote = shortDiff > 0 ? `(+${shortDiff.toFixed(1)}%)` : 'Estable';
+    } else if (shortMA < 34) {
+      shortText = shortDiff < -10 ? 'BAJISTA ↓↓' : 'BAJISTA ↓';
+      shortClass = 'bearish';
+      shortColor = 'var(--red)';
+      shortNote = shortDiff < 0 ? `(${shortDiff.toFixed(1)}%)` : 'Estable';
+    } else {
+      shortNote = shortDiff > 5 ? `Subiendo (+${shortDiff.toFixed(1)}%)` : 
+                  shortDiff < -5 ? `Bajando (${shortDiff.toFixed(1)}%)` : 'Sin dirección';
+    }
+    
+    shortTrendBox.className = 'trend-box ' + shortClass;
+    shortTrendValue.textContent = shortText;
+    shortTrendValue.style.color = shortColor;
+    document.getElementById('short-momentum-note').textContent = shortNote;
   } else {
-    shortNote = shortDiff > 5 ? `Subiendo (+${shortDiff.toFixed(1)}%)` : 
-                shortDiff < -5 ? `Bajando (${shortDiff.toFixed(1)}%)` : 'Sin dirección';
+    shortTrendBox.className = 'trend-box neutral';
+    shortTrendValue.textContent = 'SIN DATOS';
   }
-  
-  shortTrendBox.className = 'trend-box ' + shortClass;
-  shortTrendValue.textContent = shortText;
-  shortTrendValue.style.color = shortColor;
-  document.getElementById('short-momentum-note').textContent = shortNote;
-} else {
-  shortTrendBox.className = 'trend-box neutral';
-  shortTrendValue.textContent = 'SIN DATOS';
-}
   
   // Grid de MA
   const maResults = adjustedResult.crosses;
@@ -2886,44 +2889,43 @@ if (shortMA !== null) {
   updateProjections(trendMA, prevTrendMA, activeCross, recentTrend, currentCandle, extremeCondition, proj);
   
   // Historial
-// ===== REEMPLAZAR sección de historial en update() =====
-document.getElementById('history').innerHTML = history.map((h, i) => {
-  const isTrap = i === manualTrapIndex;
-  const isNew = i === history.length - 1;
-  const s = getCandleStrength(i);
-  const origin = manualStrengths[i]?.origin || 'auto';
-  
-  // NUEVO: Visualización mejorada para 6 niveles
-  let indicator = '';
-  let extraClass = '';
-  
-  if (s === 4) {
-    indicator = '<span class="candle-strength strength-4-ind">4🔥</span>';
-    extraClass = 'candle-extreme';
-  } else if (s === 3) {
-    indicator = '<span class="candle-strength strength-3-ind">3</span>';
-  } else if (s === 2.5) {
-    indicator = '<span class="candle-strength strength-2-ind">2+</span>';
-    extraClass = 'candle-accelerated';
-  } else if (s === 2) {
-    indicator = '<span class="candle-strength strength-2-ind">2</span>';
-  } else if (s === 1.5) {
-    indicator = '<span class="candle-strength strength-1-ind">1+</span>';
-  } else {
-    indicator = '<span class="candle-strength strength-1-ind">1</span>';
-  }
-  
-  const manualMark = origin === 'corrected' ? '<span style="position:absolute;top:-3px;right:-3px;width:6px;height:6px;background:var(--orange);border-radius:50%;"></span>' : '';
-  
-  // NUEVO: Mostrar valor real en tooltip
-  const strengthLabel = STRENGTH_CONFIG.LEVELS[s]?.name || 'MEDIA';
-  
-  return `<div class="candle candle-${h.toLowerCase()} ${isTrap?'candle-trap':''} ${isNew&&!isTrap?'candle-new':''} ${extraClass}" 
+  document.getElementById('history').innerHTML = history.map((h, i) => {
+    const isTrap = i === manualTrapIndex;
+    const isNew = i === history.length - 1;
+    const s = getCandleStrength(i);
+    const origin = manualStrengths[i]?.origin || 'auto';
+    
+    // NUEVO: Visualización mejorada para 6 niveles
+    let indicator = '';
+    let extraClass = '';
+    
+    if (s === 4) {
+      indicator = '<span class="candle-strength strength-4-ind">4🔥</span>';
+      extraClass = 'candle-extreme';
+    } else if (s === 3) {
+      indicator = '<span class="candle-strength strength-3-ind">3</span>';
+    } else if (s === 2.5) {
+      indicator = '<span class="candle-strength strength-2-ind">2+</span>';
+      extraClass = 'candle-accelerated';
+    } else if (s === 2) {
+      indicator = '<span class="candle-strength strength-2-ind">2</span>';
+    } else if (s === 1.5) {
+      indicator = '<span class="candle-strength strength-1-ind">1+</span>';
+    } else {
+      indicator = '<span class="candle-strength strength-1-ind">1</span>';
+    }
+    
+    const manualMark = origin === 'corrected' ? '<span style="position:absolute;top:-3px;right:-3px;width:6px;height:6px;background:var(--orange);border-radius:50%;"></span>' : '';
+    
+    // NUEVO: Mostrar valor real en tooltip
+    const strengthLabel = STRENGTH_CONFIG.LEVELS[s]?.name || 'MEDIA';
+    
+    return `<div class="candle candle-${h.toLowerCase()} ${isTrap?'candle-trap':''} ${isNew&&!isTrap?'candle-new':''} ${extraClass}" 
               onclick="openTrapModal(${i})" 
               title="Fuerza: ${s} (${strengthLabel}), Origen: ${origin}">
             ${h}${indicator}${manualMark}
           </div>`;
-}).join('');
+  }).join('');
 }
 
 // ===== AGREGAR AL INICIO DE updateProjections() =====
@@ -2977,8 +2979,6 @@ function updateProjections(trendMA, prevTrendMA, activeCross, recentTrend, curre
     document.getElementById('proj-g-conflict').textContent = '⚠️ Doji sesgado: Esperar claridad';
     document.getElementById('proj-r-conflict').textContent = '⚠️ Doji sesgado: Esperar claridad';
   }
-  
-  // ... resto de tu código existente ...
   
   // Proyección VERDE
   const gIsReversal = currentCandle.isReversal && currentCandle.current === 'G' && currentCandle.strength >= 3;
