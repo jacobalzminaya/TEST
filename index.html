@@ -27,18 +27,19 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 15px;
+      padding: 8px;
+      font-size: 0.9em;
     }
     
     /* ===== NUEVO: PANEL CMD ===== */
     .cmd-panel {
       width: 100%;
-      max-width: 500px;
+      max-width: 600px;
       background: var(--panel);
-      border: 3px solid #444;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 15px;
+      border: 2px solid #444;
+      border-radius: 10px;
+      padding: 8px;
+      margin-bottom: 6px;
       position: relative;
       overflow: hidden;
     }
@@ -51,7 +52,7 @@
     .cmd-title {
       color: var(--gold);
       font-size: 1.1em;
-      margin-bottom: 15px;
+      margin-bottom: 8px;
       font-weight: bold;
       text-align: center;
       display: flex;
@@ -63,11 +64,11 @@
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
       gap: 10px;
-      margin-bottom: 15px;
+      margin-bottom: 8px;
     }
     .cmd-item {
       background: rgba(0,0,0,0.4);
-      padding: 12px;
+      padding: 8px;
       border-radius: 8px;
       text-align: center;
       border: 2px solid #333;
@@ -83,17 +84,17 @@
     .cmd-item.distribution.active { border-color: var(--red); color: var(--red); background: rgba(255,68,68,0.1); }
     .cmd-item.accumulation.active { border-color: var(--green); color: var(--green); background: rgba(0,255,136,0.1); }
     
-    .cmd-icon { font-size: 1.5em; margin-bottom: 5px; }
-    .cmd-label { font-size: 0.75em; font-weight: bold; text-transform: uppercase; }
-    .cmd-value { font-size: 0.9em; margin-top: 5px; opacity: 0.8; }
-    .cmd-probability { font-size: 0.7em; margin-top: 3px; color: #888; }
+    .cmd-icon { font-size: 1.1em; margin-bottom: 5px; }
+    .cmd-label { font-size: 0.65em; font-weight: bold; text-transform: uppercase; }
+    .cmd-value { font-size: 0.8em; margin-top: 5px; opacity: 0.8; }
+    .cmd-probability { font-size: 0.65em; margin-top: 3px; color: #888; }
     
     .cmd-alert {
       background: linear-gradient(90deg, rgba(255,0,0,0.2), transparent);
       border-left: 4px solid var(--red);
-      padding: 12px;
+      padding: 8px;
       border-radius: 6px;
-      margin-top: 10px;
+      margin-top: 6px;
       display: none;
       animation: pulse-cmd 2s infinite;
     }
@@ -104,18 +105,18 @@
     
     .whale-activity {
       margin-top: 15px;
-      padding: 10px;
+      padding: 8px;
       background: rgba(0,0,0,0.3);
       border-radius: 6px;
       border: 1px solid #333;
     }
-    .whale-title { font-size: 0.8em; color: var(--cyan); margin-bottom: 8px; }
+    .whale-title { font-size: 0.8em; color: var(--cyan); margin-bottom: 6px; }
     .whale-bar {
       height: 8px;
       background: #333;
       border-radius: 4px;
       overflow: hidden;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
       display: flex;
     }
     .whale-segment {
@@ -135,27 +136,31 @@
     /* ===== PANEL HÍBRIDO DE CONFIRMACIÓN ===== */
     .confirm-panel {
       width: 100%;
-      max-width: 500px;
+      max-width: 600px;
       background: var(--panel);
-      border: 3px solid var(--cyan);
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 15px;
+      border: 2px solid var(--cyan);
+      border-radius: 10px;
+      padding: 8px;
+      margin-bottom: 6px;
       text-align: center;
     }
-    .confirm-title {
+    .confirm-title { font-size: 0.85em; margin-bottom: 8px;
       color: var(--cyan);
       font-size: 0.9em;
-      margin-bottom: 15px;
+      margin-bottom: 8px;
       font-weight: bold;
     }
     .suggestion-box {
       background: rgba(0,0,0,0.4);
-      border-radius: 10px;
-      padding: 20px;
-      margin-bottom: 15px;
+      border-radius: 8px;
+      padding: 6px;
+      margin-bottom: 6px;
       border: 2px solid #444;
       transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
     }
     .suggestion-box.confirmed {
       border-color: var(--green);
@@ -165,18 +170,18 @@
       border-color: var(--orange);
       background: rgba(255,136,0,0.1);
     }
-    .suggestion-label { font-size: 0.8em; color: #888; margin-bottom: 8px; }
+    .suggestion-label { font-size: 0.8em; color: #888; margin-bottom: 6px; }
     .suggestion-strength {
-      font-size: 2.5em;
+      font-size: 1.5em;
       font-weight: bold;
-      margin-bottom: 5px;
-      letter-spacing: 5px;
+      letter-spacing: 3px;
+      min-width: 80px;
     }
     .strength-3 { color: var(--green); text-shadow: 0 0 20px var(--green); }
     .strength-2 { color: var(--gold); }
     .strength-1 { color: #888; }
-    .suggestion-text { font-size: 1.2em; font-weight: bold; margin-bottom: 8px; }
-    .suggestion-reason { font-size: 0.75em; color: #aaa; line-height: 1.4; }
+    .suggestion-text { font-size: 1em; font-weight: bold; }
+    .suggestion-reason { font-size: 0.7em; color: #aaa; line-height: 1.3; text-align: left; flex: 1; }
     .correction-notice {
       display: none;
       font-size: 0.8em;
@@ -187,17 +192,14 @@
     .correction-notice.active { display: block; }
     
     .action-buttons {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 10px;
+      display: none; /* OCULTADO - ahora selección directa */
     }
     .btn-confirm {
       background: linear-gradient(135deg, var(--green), #00aa55);
       color: #000;
       border: none;
       border-radius: 8px;
-      padding: 15px;
+      padding: 8px;
       font-size: 1.1em;
       font-weight: bold;
       cursor: pointer;
@@ -209,7 +211,7 @@
       color: #000;
       border: none;
       border-radius: 8px;
-      padding: 15px;
+      padding: 12px;
       font-size: 1.1em;
       font-weight: bold;
       cursor: pointer;
@@ -220,7 +222,7 @@
     .correction-options {
       display: none;
       margin-top: 15px;
-      padding-top: 15px;
+      padding-top: 8px;
       border-top: 1px solid #444;
       animation: slideDown 0.3s;
     }
@@ -229,28 +231,29 @@
       from { opacity: 0; transform: translateY(-10px); }
       to { opacity: 1; transform: translateY(0); }
     }
-    .correction-title { font-size: 0.8em; color: var(--orange); margin-bottom: 10px; }
+    .correction-title { font-size: 0.8em; color: var(--orange); margin-bottom: 6px; }
     .correction-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
     }
     .correction-btn {
       background: #333;
       border: 2px solid #555;
       color: #fff;
-      border-radius: 8px;
-      padding: 12px;
+      border-radius: 6px;
+      padding: 8px 4px;
       cursor: pointer;
-      font-size: 0.9em;
+      font-size: 0.7em;
       transition: all 0.2s;
+      line-height: 1.2;
     }
     .correction-btn:hover { border-color: #fff; transform: scale(1.05); }
     .correction-btn.selected { border-color: var(--gold); background: rgba(255,215,0,0.2); }
     
     .status-bar {
       margin-top: 15px;
-      padding: 10px;
+      padding: 6px;
       border-radius: 6px;
       font-size: 0.85em;
       font-weight: bold;
@@ -262,20 +265,21 @@
     .color-buttons {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 15px;
-      margin-top: 15px;
+      gap: 10px;
+      margin-top: 10px;
       opacity: 0.3;
       pointer-events: none;
       transition: all 0.3s;
     }
     .color-buttons.active { opacity: 1; pointer-events: all; }
+    .color-buttons.active { opacity: 1; pointer-events: all; }
     .btn-green {
       background: linear-gradient(135deg, var(--green), #00aa55);
       color: #000;
       border: none;
-      border-radius: 10px;
-      padding: 25px;
-      font-size: 1.5em;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 1.1em;
       font-weight: bold;
       cursor: pointer;
       transition: all 0.2s;
@@ -285,9 +289,9 @@
       background: linear-gradient(135deg, var(--red), #aa0000);
       color: #fff;
       border: none;
-      border-radius: 10px;
-      padding: 25px;
-      font-size: 1.5em;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 1.1em;
       font-weight: bold;
       cursor: pointer;
       transition: all 0.2s;
@@ -313,7 +317,7 @@
       text-align: center;
       max-width: 300px;
     }
-    .trap-modal-title { color: var(--orange); font-size: 1.2em; margin-bottom: 15px; }
+    .trap-modal-title { color: var(--orange); font-size: 1.1em; margin-bottom: 8px; }
     .trap-modal-text { font-size: 0.9em; margin-bottom: 20px; color: #ccc; }
     .trap-modal-buttons { display: flex; gap: 10px; justify-content: center; }
     .trap-btn { padding: 12px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
@@ -325,8 +329,8 @@
       max-width: 500px;
       background: linear-gradient(90deg, var(--purple), transparent);
       border-left: 4px solid var(--purple);
-      padding: 12px;
-      margin-bottom: 15px;
+      padding: 8px;
+      margin-bottom: 8px;
       display: none;
       animation: pulse 2s infinite;
     }
@@ -338,8 +342,8 @@
       max-width: 500px;
       background: linear-gradient(90deg, var(--red), transparent);
       border-left: 4px solid var(--red);
-      padding: 15px;
-      margin-bottom: 15px;
+      padding: 12px;
+      margin-bottom: 8px;
       display: none;
       animation: pulse-red 1.5s infinite;
     }
@@ -350,17 +354,17 @@
     
     .cross-detector {
       width: 100%;
-      max-width: 500px;
+      max-width: 600px;
       background: var(--panel);
       border: 2px solid var(--gold);
-      border-radius: 10px;
-      padding: 15px;
-      margin-bottom: 15px;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 6px;
     }
-    .cross-title { color: var(--gold); font-size: 0.9em; margin-bottom: 10px; text-align: center; }
+    .cross-title { color: var(--gold); font-size: 0.8em; margin-bottom: 6px; text-align: center; }
     .cross-active {
       background: linear-gradient(90deg, var(--gold), transparent);
-      padding: 12px;
+      padding: 8px;
       border-radius: 6px;
       text-align: center;
       font-size: 1.3em;
@@ -371,8 +375,8 @@
     .cross-type-golden { color: var(--green); }
     .cross-type-death { color: var(--red); }
     
-    .ma-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
-    .ma-item { background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; text-align: center; font-size: 0.8em; }
+    .ma-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+    .ma-item { background: rgba(0,0,0,0.3); padding: 6px 4px; border-radius: 4px; text-align: center; font-size: 0.75em; }
     .ma-item.active { border: 1px solid var(--gold); background: rgba(255,215,0,0.1); }
     .ma-item.trap { border: 1px solid var(--purple); opacity: 0.7; }
     .ma-item.extreme { border: 2px solid var(--red); background: rgba(255,68,68,0.2); }
@@ -389,21 +393,21 @@
       background: var(--panel);
       border: 2px solid var(--cyan);
       border-radius: 10px;
-      padding: 15px;
-      margin-bottom: 15px;
+      padding: 12px;
+      margin-bottom: 8px;
       display: none;
     }
     .current-candle-analysis.active { display: block; }
-    .current-title { color: var(--cyan); font-size: 0.9em; margin-bottom: 10px; text-align: center; font-weight: bold; }
+    .current-title { color: var(--cyan); font-size: 0.8em; margin-bottom: 6px; text-align: center; font-weight: bold; }
     .current-stats {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
-      margin-bottom: 10px;
+      margin-bottom: 6px;
     }
     .stat-box { background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; text-align: center; }
     .stat-label { font-size: 0.7em; color: #888; }
-    .stat-value { font-size: 1.2em; font-weight: bold; }
+    .stat-value { font-size: 1.1em; font-weight: bold; }
     .current-verdict {
       text-align: center;
       padding: 10px;
@@ -416,11 +420,11 @@
     
     .trend-box {
       width: 100%;
-      max-width: 500px;
+      max-width: 600px;
       background: var(--panel);
-      padding: 12px;
-      border-radius: 8px;
-      margin-bottom: 15px;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 6px;
       text-align: center;
       border: 2px solid transparent;
       position: relative;
@@ -444,8 +448,8 @@
       0%, 100% { box-shadow: 0 0 5px currentColor; } 
       50% { box-shadow: 0 0 20px currentColor; } 
     }
-    .trend-label { color: #888; font-size: 0.8em; margin-bottom: 5px; }
-    .trend-value { font-size: 1.2em; font-weight: bold; }
+    .trend-label { color: #888; font-size: 0.75em; margin-bottom: 5px; }
+    .trend-value { font-size: 1.1em; font-weight: bold; }
     .trend-original { font-size: 0.75em; color: #666; text-decoration: line-through; margin-top: 5px; }
     .trend-badge {
       position: absolute;
@@ -479,19 +483,19 @@
     
     .main-signal {
       width: 100%;
-      max-width: 500px;
-      padding: 40px 20px;
-      border-radius: 12px;
+      max-width: 600px;
+      padding: 15px 10px;
+      border-radius: 10px;
       text-align: center;
-      font-size: 2.2em;
+      font-size: 1.5em;
       font-weight: bold;
-      margin-bottom: 15px;
+      margin-bottom: 6px;
       border: 3px solid;
       position: relative;
     }
     .signal-buy { background: rgba(0,255,136,0.1); border-color: var(--green); color: var(--green); }
     .signal-sell { background: rgba(255,68,68,0.1); border-color: var(--red); color: var(--red); }
-    .signal-wait { background: rgba(255,215,0,0.05); border-color: var(--gold); color: var(--gold); font-size: 1.8em; }
+    .signal-wait { background: rgba(255,215,0,0.05); border-color: var(--gold); color: var(--gold); font-size: 1.5em; }
     .signal-conflict {
       background: repeating-linear-gradient(45deg, rgba(255,215,0,0.1), rgba(255,215,0,0.1) 10px, rgba(255,0,255,0.1) 10px, rgba(255,0,255,0.1) 20px);
       border-color: var(--orange);
@@ -612,15 +616,15 @@
     
     .projections {
       width: 100%;
-      max-width: 500px;
+      max-width: 600px;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 15px;
+      gap: 8px;
+      margin-bottom: 6px;
     }
     .proj-box {
       background: var(--panel);
-      padding: 15px;
+      padding: 12px;
       border-radius: 8px;
       cursor: pointer;
       transition: all 0.2s;
@@ -641,9 +645,9 @@
       0%, 100% { opacity: 1; } 
       50% { opacity: 0.8; } 
     }
-    .proj-label { font-size: 0.8em; color: #888; margin-bottom: 8px; }
-    .proj-sequence { font-size: 1.5em; letter-spacing: 4px; margin-bottom: 8px; }
-    .proj-signal { font-size: 1.1em; font-weight: bold; }
+    .proj-label { font-size: 0.8em; color: #888; margin-bottom: 6px; }
+    .proj-sequence { font-size: 1.2em; letter-spacing: 4px; margin-bottom: 6px; }
+    .proj-signal { font-size: 1em; font-weight: bold; }
     .proj-signal-buy { color: var(--green); }
     .proj-signal-sell { color: var(--red); }
     .proj-signal-hold { color: var(--gold); }
@@ -678,7 +682,7 @@
       border: 1px solid var(--orange);
       border-radius: 8px;
       padding: 10px;
-      margin-bottom: 15px;
+      margin-bottom: 8px;
       font-size: 0.75em;
       display: none;
     }
@@ -695,7 +699,7 @@
       border: 1px solid var(--green);
       border-radius: 8px;
       padding: 10px;
-      margin-bottom: 15px;
+      margin-bottom: 8px;
       font-size: 0.75em;
       display: none;
     }
@@ -703,21 +707,28 @@
     .logic-title { color: var(--green); font-weight: bold; margin-bottom: 5px; }
     .logic-item { color: #ccc; margin: 3px 0; }
     
-    .controls { display: flex; gap: 10px; margin-bottom: 15px; }
-    button { padding: 18px 35px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.1em; }
+    .controls { display: flex; gap: 10px; margin-bottom: 8px; }
+    button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.1em; }
     .btn-reset { background: #333; color: #fff; }
     .btn-clear-trap { background: var(--purple); color: #fff; font-size: 0.9em; padding: 10px 20px; }
     
-    .history-container { width: 100%; max-width: 500px; margin-bottom: 10px; }
-    .history-label { color: #888; font-size: 0.8em; margin-bottom: 8px; text-align: center; }
-    .history { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; }
+    .history-container { width: 100%; max-width: 600px; margin-bottom: 6px; }
+    .history-label { color: #888; font-size: 0.8em; margin-bottom: 6px; text-align: center; }
+    .history { 
+  display: flex; 
+  gap: 3px; 
+  justify-content: flex-start; 
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 5px;
+}
     .candle {
-      width: 32px; height: 32px;
+      width: 24px; height: 24px;
       border-radius: 4px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 12px;
+      font-size: 10px;
       font-weight: bold;
       cursor: pointer;
       transition: all 0.2s;
@@ -757,25 +768,25 @@
       width: 100%;
       max-width: 500px;
       background: var(--panel);
-      padding: 12px;
+      padding: 8px;
       border-radius: 8px;
-      margin-bottom: 15px;
+      margin-bottom: 8px;
       border: 2px solid #333;
     }
-    .recent-title { color: var(--blue); font-size: 0.8em; margin-bottom: 8px; font-weight: bold; }
+    .recent-title { color: var(--blue); font-size: 0.75em; margin-bottom: 6px; font-weight: bold; }
     .recent-sequence {
       display: flex;
       gap: 4px;
       justify-content: center;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     .recent-candle {
-      width: 24px; height: 24px;
+      width: 20px; height: 20px;
       border-radius: 3px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 10px;
+      font-size: 9px;
       font-weight: bold;
       position: relative;
     }
@@ -815,7 +826,7 @@
       background: var(--panel);
       padding: 10px;
       border-radius: 8px;
-      margin-bottom: 15px;
+      margin-bottom: 8px;
       font-size: 0.8em;
       border: 1px solid #333;
     }
@@ -1020,7 +1031,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr 1fr 1fr; /* Cambiar de 3 a 4 */
   gap: 10px;
-  margin-bottom: 15px;
+  margin-bottom: 8px;
 }
   </style>
 <base target="_blank">
@@ -1110,18 +1121,11 @@
     </div>
     
     <div id="step-confirm">
-      <div class="action-buttons">
-        <button class="btn-confirm" onclick="confirmStrength()">
-          ✓ CONFIRMAR<br>
-          <span style="font-size:0.7em;opacity:0.8;">Está correcto</span>
-        </button>
-        <button class="btn-correct" onclick="showCorrectionOptions()">
-          ✏️ CORREGIR<br>
-          <span style="font-size:0.7em;opacity:0.8;">Está equivocado</span>
-        </button>
+      <div style="font-size:0.8em;color:var(--cyan);margin-bottom:8px;font-weight:bold;">
+        🎯 SELECCIONA LA FUERZA DE LA VELA:
       </div>
-      <div class="status-bar status-pending" id="status-bar">
-        ⏳ PENDIENTE: Confirma o corrige la fuerza sugerida
+      <div class="status-bar status-pending" id="status-bar" style="margin-bottom:10px;">
+        Sugerencia: <span id="suggested-strength-display">MEDIA (2)</span> | Click para cambiar
       </div>
     </div>
     
@@ -1188,7 +1192,7 @@
     
     <!-- REEMPLAZAR EL HINT EXISTENTE -->
 <div class="hint">
-  Atajos: <kbd>C</kbd>=Confirmar | <kbd>E</kbd>=Corregir | <kbd>1-6</kbd>=Fuerza (1=Débil, 6=Extrema) | <kbd>G/R</kbd>=Color
+  Atajos: <kbd>1-6</kbd>=Fuerza (1=Débil, 6=Extrema) | <kbd>G/R</kbd>=Color | Click en número para seleccionar fuerza
 </div>
   </div>
 
@@ -1983,7 +1987,8 @@ function updateSuggestionPanel() {
   document.getElementById('status-bar').className = 'status-bar status-pending';
   document.getElementById('status-bar').textContent = '⏳ PENDIENTE: Confirma o corrige la fuerza sugerida';
   
-  document.getElementById('correction-options').classList.remove('active');
+  // Siempre mostrar opciones de fuerza, nunca ocultar
+document.getElementById('correction-options').style.display = 'block';
   document.getElementById('color-buttons').classList.remove('active');
   document.getElementById('step-confirm').style.display = 'block';
 }
@@ -1996,7 +2001,8 @@ function confirmStrength() {
   document.getElementById('status-bar').className = 'status-bar status-confirmed';
   document.getElementById('status-bar').textContent = '✓ CONFIRMADO: Usando fuerza ' + confirmedStrength + '/3 (sugerencia correcta)';
   
-  document.getElementById('correction-options').classList.remove('active');
+  // Siempre mostrar opciones de fuerza, nunca ocultar
+document.getElementById('correction-options').style.display = 'block';
   showColorButtons();
 }
 
@@ -2047,26 +2053,22 @@ function correctStrength(newStrength) {
   showColorButtons();
 }
 function showColorButtons() {
-  document.getElementById('green-strength').textContent = 'Fuerza: ' + confirmedStrength + '/3';
-  document.getElementById('red-strength').textContent = 'Fuerza: ' + confirmedStrength + '/3';
+  document.getElementById('green-strength').textContent = 'Fuerza: ' + confirmedStrength;
+  document.getElementById('red-strength').textContent = 'Fuerza: ' + confirmedStrength;
   document.getElementById('color-buttons').classList.add('active');
-  setTimeout(() => {
-    document.getElementById('step-confirm').style.display = 'none';
-  }, 300);
+  // No ocultar step-confirm para mantener contexto visible
 }
 
 function addCandle(color) {
-  if (confirmedStrength === null || confirmedStrength === undefined) {
-    alert('Primero debes CONFIRMAR o CORREGIR la fuerza sugerida (Fuerza actual: ' + autoSuggestedStrength + ')');
+  if (confirmedStrength === null) {
+    alert('Primero debes CONFIRMAR o CORREGIR la fuerza sugerida');
     return;
   }
-  // Forzar conversión a número por si acaso
-  const finalStrength = Number(confirmedStrength) || 2;
   
   const index = history.length;
   history.push(color);
   manualStrengths[index] = {
-    strength: finalStrength,
+    strength: confirmedStrength,
     origin: strengthOrigin,
     autoSuggested: autoSuggestedStrength
   };
@@ -2093,12 +2095,11 @@ function resetConfirmationPanel() {
   strengthOrigin = 'pending';
   confirmedStrength = null;
   autoSuggestedStrength = 2;
-  // Forzar actualización inmediata del panel
-  updateSuggestionPanel();
   
   document.getElementById('suggestion-box').classList.remove('confirmed', 'corrected');
   document.getElementById('correction-notice').classList.remove('active');
-  document.getElementById('correction-options').classList.remove('active');
+  // Siempre mostrar opciones de fuerza, nunca ocultar
+document.getElementById('correction-options').style.display = 'block';
   document.getElementById('color-buttons').classList.remove('active');
   document.getElementById('step-confirm').style.display = 'block';
   document.querySelectorAll('.correction-btn').forEach(btn => btn.classList.remove('selected'));
@@ -2109,9 +2110,8 @@ function resetConfirmationPanel() {
 // ===== FUNCIONES DE ANÁLISIS =====
 
 function getCandleStrength(index) {
-  if (manualStrengths[index] && manualStrengths[index].strength !== undefined) return manualStrengths[index].strength;
-  const calculated = calculateHistoricalStrength(index);
-  return calculated || 2; // Default a 2 si hay error
+  if (manualStrengths[index]) return manualStrengths[index].strength;
+  return calculateHistoricalStrength(index);
 }
 
 function getCandleOrigin(index) {
@@ -2585,7 +2585,7 @@ function update() {
   const currentAnalysis = document.getElementById('current-analysis');
   if (currentCandle.strength > 0) {
     currentAnalysis.classList.add('active');
-    const displayStrength = Math.min(currentCandle.strength, 3); const bars = '▰'.repeat(displayStrength) + '▱'.repeat(Math.max(0, 3 - displayStrength));
+    const bars = '▰'.repeat(currentCandle.strength) + '▱'.repeat(3 - currentCandle.strength);
     document.getElementById('current-strength').innerHTML = `<span style="color:${currentCandle.strength>=3?'var(--green)':currentCandle.strength===2?'var(--gold)':'#888'}">${bars}</span>`;
     document.getElementById('current-origin').innerHTML = currentCandle.origin;
     
