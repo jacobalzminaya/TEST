@@ -1033,6 +1033,12 @@
   gap: 10px;
   margin-bottom: 8px;
 }
+#short-trend-box {
+  border-color: var(--blue) !important;
+}
+#short-trend-box .trend-label {
+  color: var(--blue);
+}
   </style>
 <base target="_blank">
 </head>
@@ -1254,13 +1260,21 @@
     <div style="text-align: center; margin-top: 5px; font-size: 0.75em; color: #888;" id="momentum-detail"></div>
   </div>
 
-  <div class="trend-box neutral" id="trend-box">
-    <div class="trend-badge">AJUSTADA</div>
-    <div class="extreme-badge">EXTREMO</div>
-    <div class="trend-label">TENDENCIA GLOBAL (MA10 + Momentum de Dirección)</div>
-    <div class="trend-value" id="trend-value">NEUTRAL</div>
-    <div class="trend-original" id="trend-original"></div>
-    <div class="momentum-note" id="momentum-note"></div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 600px; margin-bottom: 8px;">
+    <div class="trend-box neutral" id="trend-box">
+      <div class="trend-badge">AJUSTADA</div>
+      <div class="extreme-badge">EXTREMO</div>
+      <div class="trend-label">TENDENCIA GLOBAL (MA10)</div>
+      <div class="trend-value" id="trend-value">NEUTRAL</div>
+      <div class="trend-original" id="trend-original"></div>
+      <div class="momentum-note" id="momentum-note"></div>
+    </div>
+    
+    <div class="trend-box neutral" id="short-trend-box">
+      <div class="trend-label">TENDENCIA CORTA (MA3)</div>
+      <div class="trend-value" id="short-trend-value">NEUTRAL</div>
+      <div class="momentum-note" id="short-momentum-note"></div>
+    </div>
   </div>
 
   <div class="main-signal signal-wait" id="main-signal">
@@ -2165,51 +2179,50 @@ function calculateHistoricalStrength(index) {
 
 // ===== REEMPLAZAR FUNCIÓN COMPLETA =====
 function analyzeCurrentCandle() {
+  // FIX: Siempre analizar la última vela insertada, no esperar
   if (history.length === 0) return { strength: 0, type: 'neutral', isReversal: false, origin: '-' };
   
   const idx = history.length - 1;
   const current = history[idx];
-  const strength = getCandleStrength(idx);
+  
+  // FIX: Usar getCandleStrength con fallback seguro
+  let strength = getCandleStrength(idx);
+  if (!strength || strength === undefined) strength = 2; // Default seguro
+  
   const origin = getCandleOrigin(idx);
   
-  // NUEVO: Determinar tipo basado en nivel granular
   let isReversal = false;
   let type = 'normal';
   
-  // Nivel 4 o 3 = reversión fuerte
   if (strength >= 3) {
     isReversal = true;
     type = strength === 4 ? 'capitulation' : 'strong-reversal';
-  }
-  // Nivel 2.5 = continuación fuerte
-  else if (strength === 2.5) {
+  } else if (strength === 2.5) {
     type = 'strong-continuation';
-  }
-  // Nivel 2 = normal
-  else if (strength === 2) {
+  } else if (strength === 2) {
     type = 'continuation';
-  }
-  // Nivel 1.5 = indecisión con sesgo
-  else if (strength === 1.5) {
+  } else if (strength === 1.5) {
     type = 'biased-doji';
-  }
-  // Nivel 1 = doji puro
-  else {
+  } else {
     type = 'pure-doji';
   }
   
-  // Verificar si es reversión por contexto (3+ opuestas)
+  // FIX: Verificar reversión por contexto inmediato (no esperar más velas)
   if (history.length >= 3) {
     const prev = history[idx-1];
     const prev2 = history[idx-2];
     const wasOpposite = prev !== current && prev2 !== current;
-    if (wasOpposite && strength >= 2) isReversal = true;
+    // FIX: Cualquier vela opuesta después de 2 iguales = reversión potencial
+    if (wasOpposite) {
+      isReversal = true;
+      if (strength < 2.5) type = 'weak-reversal';
+    }
   }
   
   return { 
     strength, 
     type, 
-    isReversal: isReversal && strength >= 2.5, // Solo 2.5+ cuenta como reversión fuerte
+    isReversal: isReversal && strength >= 2, // FIX: 2+ cuenta como reversión
     current, 
     origin,
     isCapitulation: strength === 4,
@@ -2552,7 +2565,21 @@ function updateCMDPanel() {
     whaleActivity.style.display = 'none';
   }
 }
+// Calcular tendencia corta (MA3)
+function calcShortMA() {
+  if (history.length < 3) return null;
+  let data = history;
+  if (manualTrapIndex !== null && manualTrapIndex < history.length) {
+    data = history.filter((_, idx) => idx !== manualTrapIndex);
+    if (data.length < 3) return null;
+  }
+  const slice = data.slice(-3);
+  return (slice.filter(h => h === 'G').length / 3) * 100;
+}
 
+const shortMA = calcShortMA();
+const prevShortMA = history.length > 3 ? 
+  (history.slice(-4, -1).filter(h => h === 'G').length / 3) * 100 : null;
 // ===== ACTUALIZACIÓN PRINCIPAL =====
 
 function update() {
@@ -2679,6 +2706,41 @@ function update() {
     trendValue.textContent = 'SIN DATOS';
     document.getElementById('momentum-note').style.display = 'none';
   }
+  
+// Actualizar Tendencia Corta
+const shortTrendBox = document.getElementById('short-trend-box');
+const shortTrendValue = document.getElementById('short-trend-value');
+
+if (shortMA !== null) {
+  const shortDiff = prevShortMA !== null ? shortMA - prevShortMA : 0;
+  let shortText = 'NEUTRAL →';
+  let shortClass = 'neutral';
+  let shortColor = 'var(--gold)';
+  let shortNote = '';
+  
+  if (shortMA > 66) {
+    shortText = shortDiff > 10 ? 'ALCISTA ↑↑' : 'ALCISTA ↑';
+    shortClass = 'bullish';
+    shortColor = 'var(--green)';
+    shortNote = shortDiff > 0 ? `(+${shortDiff.toFixed(1)}%)` : 'Estable';
+  } else if (shortMA < 34) {
+    shortText = shortDiff < -10 ? 'BAJISTA ↓↓' : 'BAJISTA ↓';
+    shortClass = 'bearish';
+    shortColor = 'var(--red)';
+    shortNote = shortDiff < 0 ? `(${shortDiff.toFixed(1)}%)` : 'Estable';
+  } else {
+    shortNote = shortDiff > 5 ? `Subiendo (+${shortDiff.toFixed(1)}%)` : 
+                shortDiff < -5 ? `Bajando (${shortDiff.toFixed(1)}%)` : 'Sin dirección';
+  }
+  
+  shortTrendBox.className = 'trend-box ' + shortClass;
+  shortTrendValue.textContent = shortText;
+  shortTrendValue.style.color = shortColor;
+  document.getElementById('short-momentum-note').textContent = shortNote;
+} else {
+  shortTrendBox.className = 'trend-box neutral';
+  shortTrendValue.textContent = 'SIN DATOS';
+}
   
   // Grid de MA
   const maResults = adjustedResult.crosses;
