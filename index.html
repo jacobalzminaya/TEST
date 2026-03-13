@@ -1607,7 +1607,7 @@ let manualStrengths = {};
 let manualTrapIndex = null;
 let pendingTrapIndex = null;
 let originalTrendMA = null;
-
+let pendingStrength = null;  // NUEVO: Para trackear fuerza seleccionada
 // Estado de confirmación híbrida
 let autoSuggestedStrength = 2;
 let confirmedStrength = null;
@@ -1809,6 +1809,371 @@ function calculateVolumeProfile() {
   };
   
   return volumeProfile;
+}
+
+// ===== NUEVO: Sistema de señales claras de Volume Profile =====
+function generateVPSignals() {
+  if (history.length < VP_CONFIG.minHistory) {
+    return {
+      signal: 'wait',
+      reason: 'Necesitas al menos ' + VP_CONFIG.minHistory + ' velas para generar señales del Volume Profile',
+      details: [],
+      projection: null
+    };
+  }
+  
+  const vp = volumeProfile;
+  const currentCandle = analyzeCurrentCandle();
+  const lastCandle = history[history.length - 1];
+  
+  let signal = 'wait';
+  let reason = '';
+  let details = [];
+  let projection = null;
+  
+  // CASO 1: En el POC con reversión fuerte
+  if (vp.currentPosition === 'poc' && currentCandle.strength >= 3) {
+    if (lastCandle === 'G') {
+      signal = 'buy';
+      reason = '🎯 COMPRAR en POC: El precio rebotó en el nivel de máximo volumen (' + vp.poc.toFixed(1) + '%). Este es el "precio justo" donde hay más liquidez.';
+      details = [
+        'POC actúa como soporte fuerte',
+        'Máximo volumen = interés institucional',
+        'Reversión confirmada con fuerza ' + currentCandle.strength + '/3'
+      ];
+      projection = {
+        target: 'VAH (' + vp.vah.toFixed(1) + '%)',
+        description: 'Si el momentum continúa, el precio subirá hacia VAH (' + vp.vah.toFixed(1) + '%).',
+        stopLoss: 'Justo debajo del POC (' + (vp.poc - 2).toFixed(1) + '%)'
+      };
+    } else {
+      signal = 'sell';
+      reason = '🎯 VENDER en POC: El precio fue rechazado en el nivel de máximo volumen (' + vp.poc.toFixed(1) + '%).';
+      details = [
+        'POC actúa como resistencia fuerte',
+        'Rechazo en zona de máximo volumen',
+        'Reversión bajista confirmada'
+      ];
+      projection = {
+        target: 'VAL (' + vp.val.toFixed(1) + '%)',
+        description: 'Si la presión vendedora continúa, el precio caerá hacia VAL (' + vp.val.toFixed(1) + '%).',
+        stopLoss: 'Justo arriba del POC (' + (vp.poc + 2).toFixed(1) + '%)'
+      };
+    }
+  }
+  // CASO 2: Por encima del VAH
+  else if (vp.currentPosition === 'above') {
+    if (lastCandle === 'R' && currentCandle.strength >= 2) {
+      signal = 'sell';
+      reason = '⚠️ VENDER: El precio está por encima del área de valor (sobrecompra) y muestra reversión.';
+      details = [
+        'Por encima de VAH = sobrecomprado',
+        'Probable retorno al POC',
+        'Reversión detectada con fuerza ' + currentCandle.strength + '/3'
+      ];
+      projection = {
+        target: 'POC (' + vp.poc.toFixed(1) + '%)',
+        description: 'El precio tiende a regresar al POC como imán.',
+        stopLoss: 'Arriba de VAH (' + (vp.vah + 1).toFixed(1) + '%)'
+      };
+    } else {
+      signal = 'wait';
+      reason = '⏳ NO COMPRAR: El precio está por encima del área de valor (sobrecompra). Esperar retorno al POC.';
+      details = [
+        'Zona de sobrecompra (arriba de VAH)',
+        'Riesgo alto de reversión',
+        'Esperar pullback al POC (' + vp.poc.toFixed(1) + '%)'
+      ];
+      projection = {
+        target: 'POC (' + vp.poc.toFixed(1) + '%)',
+        description: 'Probable corrección hacia el POC antes de continuar.'
+      };
+    }
+  }
+  // CASO 3: Por debajo del VAL
+  else if (vp.currentPosition === 'below') {
+    if (lastCandle === 'G' && currentCandle.strength >= 2) {
+      signal = 'buy';
+      reason = '⚠️ COMPRAR: El precio está por debajo del área de valor (sobreventa) y muestra reversión.';
+      details = [
+        'Por debajo de VAL = sobreventa',
+        'Probable retorno al POC',
+        'Reversión alcista detectada'
+      ];
+      projection = {
+        target: 'POC (' + vp.poc.toFixed(1) + '%)',
+        description: 'El precio tiende a regresar al POC como imán.',
+        stopLoss: 'Debajo de VAL (' + (vp.val - 1).toFixed(1) + '%)'
+      };
+    } else {
+      signal = 'wait';
+      reason = '⏳ NO VENDER: El precio está por debajo del área de valor (sobreventa). Esperar retorno al POC.';
+      details = [
+        'Zona de sobreventa (debajo de VAL)',
+        'Riesgo alto de reversión alcista',
+        'Esperar pullback al POC (' + vp.poc.toFixed(1) + '%)'
+      ];
+      projection = {
+        target: 'POC (' + vp.poc.toFixed(1) + '%)',
+        description: 'Probable rebote hacia el POC.'
+      };
+    }
+  }
+  // CASO 4: Dentro del Value Area con momentum
+  else if (vp.currentPosition === 'inside') {
+    if (lastCandle === 'G' && currentCandle.strength >= 2.5) {
+      signal = 'buy';
+      reason = '📈 COMPRAR: Dentro del Value Area con momentum alcista hacia VAH.';
+      details = [
+        'En zona de valor (equilibrio)',
+        'Momentum alcista confirmado',
+        'Objetivo: VAH (' + vp.vah.toFixed(1) + '%)'
+      ];
+      projection = {
+        target: 'VAH (' + vp.vah.toFixed(1) + '%)',
+        description: 'Continuación alcista hacia el límite superior del valor.',
+        stopLoss: 'VAL (' + vp.val.toFixed(1) + '%)'
+      };
+    } else if (lastCandle === 'R' && currentCandle.strength >= 2.5) {
+      signal = 'sell';
+      reason = '📉 VENDER: Dentro del Value Area con momentum bajista hacia VAL.';
+      details = [
+        'En zona de valor (equilibrio)',
+        'Momentum bajista confirmado',
+        'Objetivo: VAL (' + vp.val.toFixed(1) + '%)'
+      ];
+      projection = {
+        target: 'VAL (' + vp.val.toFixed(1) + '%)',
+        description: 'Continuación bajista hacia el límite inferior del valor.',
+        stopLoss: 'VAH (' + vp.vah.toFixed(1) + '%)'
+      };
+    } else {
+      signal = 'wait';
+      reason = '⏳ DENTRO VALUE AREA: Esperar dirección clara. El precio está en equilibrio.';
+      details = [
+        'Zona de equilibrio entre compradores y vendedores',
+        'Esperar ruptura de VAH o VAL',
+        'POC (' + vp.poc.toFixed(1) + '%) es el nivel clave'
+      ];
+      projection = {
+        target: 'Ruptura de VAH o VAL',
+        description: 'El precio buscará dirección hacia uno de los límites.'
+      };
+    }
+  }
+  
+  return {
+    signal: signal,
+    reason: reason,
+    details: details,
+    projection: projection,
+    position: vp.currentPosition,
+    levels: {
+      poc: vp.poc,
+      vah: vp.vah,
+      val: vp.val
+    }
+  };
+}
+
+// ===== NUEVO: Mostrar señales de VP en el panel =====
+function updateVPSignalsDisplay() {
+  const vpSignal = generateVPSignals();
+  
+  // Crear o actualizar el panel de señales VP
+  let signalPanel = document.getElementById('vp-signals-panel');
+  if (!signalPanel) {
+    signalPanel = document.createElement('div');
+    signalPanel.id = 'vp-signals-panel';
+    signalPanel.className = 'vp-signals-panel';
+    signalPanel.style.cssText = `
+      width: 100%;
+      max-width: 600px;
+      background: var(--panel);
+      border: 2px solid var(--cyan);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 6px;
+      margin-top: 6px;
+    `;
+    
+    // Insertar después del panel de VP
+    const vpPanel = document.getElementById('vp-panel');
+    vpPanel.parentNode.insertBefore(signalPanel, vpPanel.nextSibling);
+  }
+  
+  // Generar HTML de la señal
+  const signalColors = {
+    'buy': 'var(--green)',
+    'sell': 'var(--red)',
+    'wait': 'var(--gold)'
+  };
+  
+  const signalTitles = {
+    'buy': '🟢 SEÑAL DE COMPRA',
+    'sell': '🔴 SEÑAL DE VENTA',
+    'wait': '🟡 ESPERAR'
+  };
+  
+  let detailsHtml = '';
+  if (vpSignal.details && vpSignal.details.length > 0) {
+    detailsHtml = `
+      <div style="margin-top: 10px; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 6px;">
+        <div style="font-size: 0.75em; color: #888; margin-bottom: 5px;">Detalles del análisis:</div>
+        ${vpSignal.details.map(d => `
+          <div style="font-size: 0.8em; color: #ccc; margin: 3px 0; padding-left: 15px; position: relative;">
+            <span style="position: absolute; left: 0; color: var(--cyan);">▸</span>
+            ${d}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+  
+  let projectionHtml = '';
+  if (vpSignal.projection) {
+    projectionHtml = `
+      <div style="margin-top: 10px; padding: 10px; background: rgba(0,212,255,0.1); border: 1px solid var(--cyan); border-radius: 6px;">
+        <div style="font-size: 0.75em; color: var(--cyan); font-weight: bold; margin-bottom: 5px;">
+          📍 PROYECCIÓN
+        </div>
+        <div style="font-size: 0.85em; color: #fff; margin-bottom: 5px;">
+          ${vpSignal.projection.description}
+        </div>
+        ${vpSignal.projection.target ? `
+          <div style="font-size: 0.8em; color: var(--gold);">
+            🎯 Objetivo: ${vpSignal.projection.target}
+          </div>
+        ` : ''}
+        ${vpSignal.projection.stopLoss ? `
+          <div style="font-size: 0.75em; color: var(--red); margin-top: 5px;">
+            🛑 Stop Loss: ${vpSignal.projection.stopLoss}
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+  
+  signalPanel.innerHTML = `
+    <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px;">
+      <span style="font-size: 1.2em;">📊</span>
+      <span style="font-size: 1.1em; font-weight: bold; color: var(--cyan);">
+        SEÑALES DE VOLUME PROFILE
+      </span>
+    </div>
+    
+    <div style="background: ${signalColors[vpSignal.signal]}22; border: 2px solid ${signalColors[vpSignal.signal]}; border-radius: 8px; padding: 12px; text-align: center;">
+      <div style="font-size: 1.3em; font-weight: bold; color: ${signalColors[vpSignal.signal]}; margin-bottom: 8px;">
+        ${signalTitles[vpSignal.signal]}
+      </div>
+      <div style="font-size: 0.9em; color: #fff; line-height: 1.4;">
+        ${vpSignal.reason}
+      </div>
+    </div>
+    
+    ${detailsHtml}
+    ${projectionHtml}
+    
+    <div style="margin-top: 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center;">
+      <div style="background: rgba(255,0,255,0.1); padding: 8px; border-radius: 6px; border: 1px solid var(--poc);">
+        <div style="font-size: 0.65em; color: #888;">POC</div>
+        <div style="font-size: 1em; font-weight: bold; color: var(--poc);">${vpSignal.levels.poc ? vpSignal.levels.poc.toFixed(1) + '%' : '--'}</div>
+      </div>
+      <div style="background: rgba(0,212,255,0.1); padding: 8px; border-radius: 6px; border: 1px solid var(--vah);">
+        <div style="font-size: 0.65em; color: #888;">VAH</div>
+        <div style="font-size: 1em; font-weight: bold; color: var(--vah);">${vpSignal.levels.vah ? vpSignal.levels.vah.toFixed(1) + '%' : '--'}</div>
+      </div>
+      <div style="background: rgba(255,136,0,0.1); padding: 8px; border-radius: 6px; border: 1px solid var(--val);">
+        <div style="font-size: 0.65em; color: #888;">VAL</div>
+        <div style="font-size: 1em; font-weight: bold; color: var(--val);">${vpSignal.levels.val ? vpSignal.levels.val.toFixed(1) + '%' : '--'}</div>
+      </div>
+    </div>
+  `;
+  
+  return vpSignal;
+}
+
+// ===== ACTUALIZAR: Modificar update() para integrar señales VP =====
+const originalUpdateFunction = update;
+update = function() {
+  originalUpdateFunction();
+  
+  // Actualizar señales de VP
+  if (history.length >= VP_CONFIG.minHistory) {
+    updateVPSignalsDisplay();
+  }
+};
+
+// ===== ACTUALIZAR: Modificar lógica de señal principal para considerar VP =====
+// Buscar en update() donde se define finalSignal y agregar:
+
+// Dentro de update(), reemplazar la sección de "NUEVO: Integrar Volume Profile" con:
+
+// NUEVO: Integrar Volume Profile en la lógica de señales
+const vp = volumeProfile;
+const vpSignal = generateVPSignals();
+
+// PRIORIDAD 0: Extremo
+if (extremeCondition && (extremeCondition.type === 'extreme_bullish' || extremeCondition.type === 'extreme_bearish')) {
+  showExtreme = true;
+  if (extremeCondition.type === 'extreme_bullish') {
+    if (currentCandle.current === 'R' && currentCandle.strength >= 2) {
+      finalSignal = 'sell'; signalClass = 'signal-extreme'; signalText = 'VENDER EXTREMO';
+      logicText = `MA10 al ${trendMA.toFixed(0)}% (extremo) + vela roja fuerza ${currentCandle.strength}/3. Reversión confirmada.`;
+    } else {
+      finalSignal = 'wait'; signalClass = 'signal-extreme'; signalText = '⚠️ ESPERAR';
+      logicText = `MA10 al ${trendMA.toFixed(0)}% - Sobrecompra extrema. NO comprar. Esperar reversión.`;
+    }
+  } else if (extremeCondition.type === 'extreme_bearish') {
+    if (currentCandle.current === 'G' && currentCandle.strength >= 2) {
+      finalSignal = 'buy'; signalClass = 'signal-extreme'; signalText = 'COMPRAR EXTREMO';
+      logicText = `MA10 al ${trendMA.toFixed(0)}% (extremo) + vela verde fuerza ${currentCandle.strength}/3. Reversión confirmada.`;
+    } else {
+      finalSignal = 'wait'; signalClass = 'signal-extreme'; signalText = '⚠️ ESPERAR';
+      logicText = `MA10 al ${trendMA.toFixed(0)}% - Sobreventa extrema. NO vender. Esperar reversión.`;
+    }
+  }
+}
+// NUEVO: PRIORIDAD 1: Señal clara de Volume Profile
+else if (vpSignal.signal !== 'wait' && vpSignal.position !== 'inside') {
+  showVP = true;
+  finalSignal = vpSignal.signal;
+  signalClass = vpSignal.signal === 'buy' ? 'signal-buy' : 'signal-sell';
+  signalText = vpSignal.signal === 'buy' ? 'COMPRAR' : 'VENDER';
+  logicText = vpSignal.reason;
+}
+// PRIORIDAD 2: FASE CMD
+else if (cmdState.phase === 'distribution' && cmdState.probability > 0.6) {
+  showCMD = true;
+  finalSignal = 'sell'; signalClass = 'signal-distribution'; signalText = 'VENDER';
+  logicText = `🏦 DISTRIBUCIÓN institucional detectada (${Math.round(cmdState.probability * 100)}%). Los "smart money" están vendiendo.`;
+}
+else if (cmdState.phase === 'accumulation' && cmdState.probability > 0.6) {
+  showCMD = true;
+  finalSignal = 'buy'; signalClass = 'signal-accumulation'; signalText = 'COMPRAR';
+  logicText = `📥 ACUMULACIÓN institucional detectada (${Math.round(cmdState.probability * 100)}%). Los "smart money" están comprando.`;
+}
+else if (cmdState.phase === 'manipulation' && cmdState.probability > 0.7) {
+  showCMD = true;
+  finalSignal = 'wait'; signalClass = 'signal-manipulation'; signalText = '⚠️ MANIPULACIÓN';
+  logicText = `🎭 MANIPULACIÓN detectada (${Math.round(cmdState.probability * 100)}%). Posible falso quiebre. Esperar confirmación.`;
+}
+// PRIORIDAD 3: Reversión fuerte
+else if (currentCandle.isReversal && currentCandle.strength >= 3) {
+  showReversal = true;
+  if (currentCandle.current === 'G') {
+    finalSignal = 'buy'; signalClass = 'signal-strong-reversal'; signalText = 'COMPRAR';
+    logicText = `Reversión alcista FUERTE (fuerza 3/3, ${currentCandle.origin}). Ignora tendencia previa.`;
+  } else {
+    finalSignal = 'sell'; signalClass = 'signal-strong-reversal'; signalText = 'VENDER';
+    logicText = `Reversión bajista FUERTE (fuerza 3/3, ${currentCandle.origin}). Ignora tendencia previa.`;
+  }
+}
+// PRIORIDAD 4: Dentro del Value Area (VP neutral)
+else if (vpSignal.position === 'inside') {
+  showVP = true;
+  // Continuar con lógica normal pero marcar que estamos en VA
+  logicText = `📊 En Value Area (${vp.poc.toFixed(1)}%). `;
 }
 
 function updateVolumeProfileDisplay() {
@@ -2453,7 +2818,8 @@ function showCorrectionOptions() {
 }
 
 function correctStrength(newStrength) {
-  confirmedStrength = newStrength;
+  pendingStrength = newStrength;  // Guardar como pendiente
+  confirmedStrength = newStrength; // También en confirmed para compatibilidad
   strengthOrigin = 'corrected';
   
   const visualStrength = STRENGTH_CONFIG.VISUAL_MAP[newStrength] || 2;
@@ -2475,10 +2841,9 @@ function correctStrength(newStrength) {
   notice.classList.add('active');
   
   document.getElementById('status-bar').className = 'status-bar status-corrected';
-  document.getElementById('status-bar').textContent = `✏️ CORREGIDO: ${config.name} (auto sugería ${STRENGTH_CONFIG.LEVELS[autoSuggestedStrength].name})`;
+  document.getElementById('status-bar').textContent = `✏️ ${config.name} seleccionada - Presiona VERDE o ROJO`;
   
   document.querySelectorAll('.correction-btn').forEach(btn => btn.classList.remove('selected'));
-  
   document.getElementById('corr-' + newStrength.toString().replace('.', '-')).classList.add('selected');
   
   showColorButtons();
@@ -2491,35 +2856,43 @@ function showColorButtons() {
 }
 
 function addCandle(color) {
-  if (confirmedStrength === null) {
-    alert('Primero debes CONFIRMAR o CORREGIR la fuerza sugerida');
+  // CORRECCIÓN: Verificar que tenemos una fuerza confirmada
+  if (confirmedStrength === null && pendingStrength === null) {
+    alert('Primero debes seleccionar la FUERZA de la vela (1-6)');
     return;
   }
   
   const index = history.length;
   history.push(color);
+  
+  // Usar la fuerza que está confirmada o pendiente
+  const strengthToUse = confirmedStrength !== null ? confirmedStrength : pendingStrength;
+  
   manualStrengths[index] = {
-    strength: confirmedStrength,
-    origin: strengthOrigin,
+    strength: strengthToUse,
+    origin: strengthOrigin === 'pending' ? 'confirmed' : strengthOrigin,
     autoSuggested: autoSuggestedStrength
   };
   
-  resetConfirmationPanel();
+  // Resetear todo para la siguiente vela
+  confirmedStrength = null;
+  pendingStrength = null;
+  strengthOrigin = 'pending';
   
-  if (history.length > 30) {
-    if (manualTrapIndex !== null) {
-      if (manualTrapIndex === 0) manualTrapIndex = null;
-      else manualTrapIndex--;
-    }
-    const newStrengths = {};
-    for (let i = 1; i < 30; i++) {
-      if (manualStrengths[i]) newStrengths[i-1] = manualStrengths[i];
-    }
-    manualStrengths = newStrengths;
-    history.shift();
-  }
+  // Resetear UI
+  document.querySelectorAll('.correction-btn').forEach(btn => {
+    btn.classList.remove('selected');
+  });
+  document.getElementById('color-buttons').classList.remove('active');
+  document.getElementById('status-bar').className = 'status-bar status-pending';
+  document.getElementById('status-bar').textContent = '⏳ PENDIENTE: Selecciona fuerza para la siguiente vela';
+  
+  // Resetear panel de sugerencia
+  document.getElementById('suggestion-box').classList.remove('confirmed', 'corrected');
+  document.getElementById('correction-notice').classList.remove('active');
   
   update();
+  updateSuggestionPanel();
 }
 
 function resetConfirmationPanel() {
