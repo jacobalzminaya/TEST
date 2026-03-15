@@ -1,0 +1,1561 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Monitor Pro — Volume Profile</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;700;800&display=swap');
+
+    :root {
+      --green:  #00ff88;
+      --red:    #ff3355;
+      --gold:   #ffd700;
+      --blue:   #00d4ff;
+      --orange: #ff8800;
+      --purple: #cc44ff;
+      --cyan:   #00ffff;
+      --poc:    #ff00ff;
+      --vah:    #00d4ff;
+      --val:    #ff8800;
+      --bg:     #070810;
+      --panel:  #0e1017;
+      --panel2: #131620;
+      --border: #1e2330;
+      --border2:#252c3e;
+      --text:   #c8d0e0;
+      --dim:    #55607a;
+      --mono:   'JetBrains Mono', monospace;
+      --sans:   'Syne', sans-serif;
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 12px;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── SCANLINE OVERLAY ─────────────────────── */
+    body::before {
+      content:'';
+      position:fixed; inset:0;
+      background: repeating-linear-gradient(0deg,
+        transparent, transparent 2px,
+        rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
+      pointer-events:none; z-index:9999;
+    }
+
+    /* ── HEADER ──────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border2);
+      position: sticky; top:0; z-index:100;
+    }
+    .header-left { display:flex; align-items:center; gap:10px; }
+    .header-title { font-family:var(--sans); font-size:13px; font-weight:800; color:#fff; letter-spacing:0.05em; }
+    .header-sub { font-size:9px; color:var(--dim); letter-spacing:0.1em; text-transform:uppercase; }
+
+    .live-dot {
+      width:8px; height:8px; border-radius:50%;
+      background:#333; border:1px solid #555;
+      transition: all 0.4s;
+      flex-shrink:0;
+    }
+    .live-dot.on {
+      background:var(--green);
+      box-shadow: 0 0 8px var(--green), 0 0 20px rgba(0,255,136,0.3);
+      animation: blink-dot 2s infinite;
+      border-color: var(--green);
+    }
+    @keyframes blink-dot { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    .header-stats {
+      display:flex; gap:14px; align-items:center;
+    }
+    .hstat { text-align:right; }
+    .hstat-label { font-size:8px; color:var(--dim); letter-spacing:0.08em; }
+    .hstat-val { font-size:13px; font-weight:700; }
+
+    /* ── MAIN SIGNAL ─────────────────────────── */
+    .signal-block {
+      margin:10px 12px 0;
+      border-radius:10px;
+      border:2px solid var(--border2);
+      overflow:hidden;
+      position:relative;
+      background: var(--panel);
+      transition: border-color 0.4s, box-shadow 0.4s;
+    }
+    .signal-block::before {
+      content:''; position:absolute;
+      top:0; left:0; right:0; height:3px;
+      background: linear-gradient(90deg, var(--val), var(--poc), var(--vah));
+    }
+    .signal-block.buy  { border-color:var(--green); box-shadow: 0 0 30px rgba(0,255,136,0.12); }
+    .signal-block.sell { border-color:var(--red);   box-shadow: 0 0 30px rgba(255,51,85,0.12); }
+    .signal-block.wait { border-color:var(--gold);  box-shadow: 0 0 20px rgba(255,215,0,0.08); }
+    .signal-block.trap { border-color:var(--purple); box-shadow: 0 0 20px rgba(204,68,255,0.15); }
+    .signal-block.extreme { border-color:var(--cyan); animation: pulse-ext 1.2s infinite; }
+    @keyframes pulse-ext {
+      0%,100%{box-shadow:0 0 15px rgba(0,255,255,0.2)}
+      50%{box-shadow:0 0 40px rgba(0,255,255,0.5)}
+    }
+
+    .signal-inner {
+      padding: 16px 18px 14px;
+      display:flex; align-items:center; gap:14px;
+    }
+    .signal-icon { font-size:28px; flex-shrink:0; }
+    .signal-main { flex:1; }
+    .signal-text {
+      font-family:var(--sans); font-size:22px; font-weight:800;
+      letter-spacing:0.06em; line-height:1;
+      margin-bottom:4px;
+    }
+    .signal-block.buy  .signal-text { color:var(--green); text-shadow: 0 0 20px rgba(0,255,136,0.5); }
+    .signal-block.sell .signal-text { color:var(--red);   text-shadow: 0 0 20px rgba(255,51,85,0.5); }
+    .signal-block.wait .signal-text { color:var(--gold); }
+    .signal-block.trap .signal-text { color:var(--purple); }
+    .signal-block.extreme .signal-text { color:var(--cyan); }
+
+    .signal-reason { font-size:10px; color:#888; line-height:1.5; }
+    .signal-conf-wrap { flex-shrink:0; text-align:center; }
+    .signal-conf-num {
+      font-size:26px; font-weight:700; font-family:var(--mono);
+      line-height:1;
+    }
+    .signal-conf-lbl { font-size:8px; color:var(--dim); letter-spacing:.08em; }
+
+    .conf-bar {
+      height:4px; background:#1a1e2c; border-radius:2px;
+      overflow:hidden; margin:8px 18px;
+    }
+    .conf-fill {
+      height:100%; border-radius:2px;
+      transition: width 0.6s cubic-bezier(.4,0,.2,1);
+    }
+    .conf-fill.high   { background: linear-gradient(90deg,var(--green),#00cc66); }
+    .conf-fill.medium { background: linear-gradient(90deg,var(--gold),var(--orange)); }
+    .conf-fill.low    { background: linear-gradient(90deg,#444,#666); }
+
+    /* ── LAYOUT GRID ─────────────────────────── */
+    .layout {
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+      padding:10px 12px;
+    }
+    @media(max-width:520px){ .layout{ grid-template-columns:1fr; } }
+
+    .full-col { grid-column: 1 / -1; }
+
+    /* ── PANEL CARD ──────────────────────────── */
+    .card {
+      background: var(--panel);
+      border:1px solid var(--border);
+      border-radius:10px;
+      overflow:hidden;
+    }
+    .card-header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:8px 12px;
+      border-bottom:1px solid var(--border);
+      background: rgba(0,0,0,0.2);
+    }
+    .card-title {
+      font-size:9px; font-weight:700; letter-spacing:.12em;
+      text-transform:uppercase; color:var(--dim);
+      display:flex; align-items:center; gap:6px;
+    }
+    .card-title span { font-size:12px; }
+    .card-badge {
+      font-size:8px; padding:2px 7px; border-radius:3px;
+      font-weight:700; letter-spacing:.05em;
+    }
+    .card-body { padding:10px 12px; }
+
+    /* ── VP PROJECTION PANEL ─────────────────── */
+    .vp-proj-grid {
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap:6px;
+      margin-bottom:10px;
+    }
+    .vp-level-box {
+      background: rgba(0,0,0,0.4);
+      border:1px solid var(--border2);
+      border-radius:8px;
+      padding:8px 10px;
+      text-align:center;
+      position:relative;
+      transition: border-color 0.3s, background 0.3s;
+    }
+    .vp-level-box.current {
+      border-width:2px;
+    }
+    .vp-level-box.level-poc { border-color:var(--poc); }
+    .vp-level-box.level-poc.current { background: rgba(255,0,255,0.07); }
+    .vp-level-box.level-vah { border-color:var(--vah); }
+    .vp-level-box.level-vah.current { background: rgba(0,212,255,0.07); }
+    .vp-level-box.level-val { border-color:var(--val); }
+    .vp-level-box.level-val.current { background: rgba(255,136,0,0.07); }
+
+    .vp-level-name {
+      font-size:8px; font-weight:700; letter-spacing:.1em;
+      text-transform:uppercase; margin-bottom:4px;
+    }
+    .level-poc .vp-level-name { color:var(--poc); }
+    .level-vah .vp-level-name { color:var(--vah); }
+    .level-val .vp-level-name { color:var(--val); }
+
+    .vp-level-price {
+      font-size:15px; font-weight:700; font-family:var(--mono);
+      line-height:1;
+    }
+    .level-poc .vp-level-price { color:var(--poc); }
+    .level-vah .vp-level-price { color:var(--vah); }
+    .level-val .vp-level-price { color:var(--val); }
+
+    .vp-level-dist {
+      font-size:8px; margin-top:3px;
+      color:var(--dim);
+    }
+    .vp-level-dist.near { color:var(--gold); font-weight:700; }
+    .vp-level-dist.at   { color:#fff; font-weight:700; }
+
+    .current-badge {
+      position:absolute; top:-7px; left:50%; transform:translateX(-50%);
+      font-size:7px; padding:1px 6px; border-radius:3px;
+      font-weight:700; letter-spacing:.05em; white-space:nowrap;
+      background:var(--gold); color:#000;
+    }
+
+    /* ── VP HISTOGRAM ────────────────────────── */
+    .vp-hist-wrap {
+      position:relative;
+      height:180px;
+      background: rgba(0,0,0,0.3);
+      border-radius:6px;
+      overflow:hidden;
+      margin-bottom:10px;
+    }
+    .vp-hist-bars {
+      position:absolute; inset:0;
+      display:flex; flex-direction:column;
+      justify-content:space-between;
+      padding:4px 8px 4px 50px;
+      gap:1px;
+    }
+    .vp-hist-row {
+      display:flex; align-items:center;
+      height:100%; position:relative;
+      gap:3px;
+    }
+    .vp-hist-bar-track {
+      flex:1; height:7px;
+      background:rgba(255,255,255,0.04);
+      border-radius:1px; position:relative; overflow:hidden;
+    }
+    .vp-hist-bar-fill {
+      height:100%; border-radius:1px;
+      transition: width 0.5s;
+      display:flex;
+    }
+    .vp-hist-bull { background:var(--green); opacity:.7; }
+    .vp-hist-bear { background:var(--red);   opacity:.7; }
+    .vp-hist-bar-fill.poc-bar .vp-hist-bull,
+    .vp-hist-bar-fill.poc-bar .vp-hist-bear { 
+      background:var(--poc) !important; opacity:1;
+      box-shadow: 0 0 8px var(--poc);
+    }
+    .vp-hist-bar-fill.vah-bar .vp-hist-bull,
+    .vp-hist-bar-fill.vah-bar .vp-hist-bear { background:var(--vah) !important; opacity:.9; }
+    .vp-hist-bar-fill.val-bar .vp-hist-bull,
+    .vp-hist-bar-fill.val-bar .vp-hist-bear { background:var(--val) !important; opacity:.9; }
+    .vp-hist-bar-fill.current-bar { outline:1px solid var(--gold); outline-offset:1px; }
+
+    .vp-price-lbl {
+      position:absolute; left:4px;
+      font-size:7px; font-family:var(--mono);
+      color:var(--dim); line-height:1;
+      transform: translateY(-50%);
+      white-space:nowrap;
+    }
+    .vp-price-lbl.hi { color:var(--gold); font-weight:700; }
+    .vp-price-lbl.cur { color:#fff; font-weight:700; }
+
+    /* ── VP PROJECTIONS TABLE ────────────────── */
+    .proj-table { width:100%; border-collapse:collapse; }
+    .proj-table td {
+      padding:5px 8px;
+      border-bottom:1px solid var(--border);
+      vertical-align:middle;
+      font-size:10px;
+    }
+    .proj-table tr:last-child td { border-bottom:none; }
+    .proj-lbl { color:var(--dim); font-size:9px; white-space:nowrap; }
+    .proj-val { font-weight:700; text-align:right; white-space:nowrap; }
+    .proj-note { color:#666; font-size:8px; text-align:right; }
+
+    .proj-buy  { color:var(--green); }
+    .proj-sell { color:var(--red); }
+    .proj-wait { color:var(--gold); }
+    .proj-poc  { color:var(--poc); }
+    .proj-vah  { color:var(--vah); }
+    .proj-val  { color:var(--val); }
+    .proj-dim  { color:var(--dim); }
+
+    /* ── SCENARIO BOXES ──────────────────────── */
+    .scenario-grid {
+      display:grid; grid-template-columns:1fr 1fr;
+      gap:6px;
+    }
+    .scenario-box {
+      border-radius:8px; padding:10px;
+      border:1px solid var(--border2);
+      background:rgba(0,0,0,0.3);
+      position:relative; overflow:hidden;
+    }
+    .scenario-box::before {
+      content:'';
+      position:absolute; top:0; left:0; width:3px; height:100%;
+    }
+    .scenario-box.bull::before { background: var(--green); }
+    .scenario-box.bear::before { background: var(--red); }
+    .scenario-box.bull { border-color:rgba(0,255,136,0.2); }
+    .scenario-box.bear { border-color:rgba(255,51,85,0.2); }
+
+    .scenario-title {
+      font-size:8px; letter-spacing:.1em; text-transform:uppercase;
+      margin-bottom:6px; font-weight:700;
+    }
+    .scenario-box.bull .scenario-title { color:var(--green); }
+    .scenario-box.bear .scenario-title { color:var(--red); }
+
+    .scenario-target {
+      font-size:18px; font-weight:700; font-family:var(--mono);
+      margin-bottom:2px; line-height:1;
+    }
+    .scenario-box.bull .scenario-target { color:var(--green); }
+    .scenario-box.bear .scenario-target { color:var(--red); }
+
+    .scenario-prob { font-size:9px; color:var(--dim); margin-bottom:6px; }
+    .scenario-detail { font-size:8px; color:#777; line-height:1.5; }
+
+    .scenario-stops {
+      margin-top:6px; padding-top:6px;
+      border-top:1px solid var(--border);
+      font-size:8px; color:var(--dim);
+      display:flex; justify-content:space-between;
+    }
+
+    /* ── CONVERGENCE SCORE ───────────────────── */
+    .conv-wrap {
+      display:flex; align-items:center; gap:10px;
+      padding:8px 0;
+    }
+    .conv-score {
+      font-size:32px; font-weight:700; font-family:var(--mono);
+      line-height:1; flex-shrink:0;
+    }
+    .conv-bars { flex:1; display:flex; flex-direction:column; gap:4px; }
+    .conv-bar-row {
+      display:flex; align-items:center; gap:6px;
+    }
+    .conv-bar-lbl { font-size:8px; color:var(--dim); width:40px; flex-shrink:0; }
+    .conv-bar-track {
+      flex:1; height:5px; background:rgba(255,255,255,0.06);
+      border-radius:3px; overflow:hidden;
+    }
+    .conv-bar-fill {
+      height:100%; border-radius:3px;
+      transition: width 0.5s;
+    }
+    .conv-bar-val { font-size:8px; width:24px; text-align:right; flex-shrink:0; }
+
+    /* ── STATE GRID ──────────────────────────── */
+    .state-grid {
+      display:grid; grid-template-columns:1fr 1fr;
+      gap:6px;
+    }
+    .state-box {
+      background:rgba(0,0,0,0.4);
+      border:1px solid var(--border2);
+      border-radius:7px; padding:7px 10px;
+    }
+    .state-lbl { font-size:8px; color:var(--dim); letter-spacing:.06em; margin-bottom:3px; text-transform:uppercase; }
+    .state-val { font-size:11px; font-weight:700; }
+
+    /* ── HISTORY BAR ─────────────────────────── */
+    .hist-wrap {
+      display:flex; gap:2px; flex-wrap:nowrap;
+      overflow-x:auto; padding-bottom:4px;
+    }
+    .hist-wrap::-webkit-scrollbar { height:2px; }
+    .hist-wrap::-webkit-scrollbar-thumb { background:#333; }
+    .hc {
+      flex-shrink:0;
+      width:20px; height:20px;
+      border-radius:3px; display:flex;
+      align-items:center; justify-content:center;
+      font-size:8px; font-weight:700;
+      position:relative;
+    }
+    .hc-g { background:var(--green); color:#000; }
+    .hc-r { background:var(--red);   color:#fff; }
+    .hc-str {
+      position:absolute; bottom:1px; right:1px;
+      font-size:5px; line-height:1;
+    }
+
+    /* ── CMD PHASE DISPLAY ───────────────────── */
+    .cmd-phases {
+      display:grid; grid-template-columns:repeat(4,1fr);
+      gap:4px;
+    }
+    .cmd-phase {
+      border-radius:6px; padding:7px 4px;
+      text-align:center; border:1px solid var(--border2);
+      background:rgba(0,0,0,0.4);
+      transition: all 0.3s;
+    }
+    .cmd-phase.active {
+      transform:scale(1.04);
+    }
+    .cmd-phase-icon { font-size:14px; margin-bottom:3px; }
+    .cmd-phase-name { font-size:7px; letter-spacing:.05em; font-weight:700; }
+    .cmd-phase.active-cons { border-color:var(--gold);   background:rgba(255,215,0,0.1);   color:var(--gold); }
+    .cmd-phase.active-man  { border-color:var(--orange); background:rgba(255,136,0,0.1);   color:var(--orange); animation:pulse-phase 1s infinite; }
+    .cmd-phase.active-dist { border-color:var(--red);    background:rgba(255,51,85,0.1);   color:var(--red); }
+    .cmd-phase.active-acc  { border-color:var(--green);  background:rgba(0,255,136,0.1);   color:var(--green); }
+    @keyframes pulse-phase { 0%,100%{opacity:1}50%{opacity:.6} }
+
+    /* ── WAITING STATE ───────────────────────── */
+    .waiting-msg {
+      text-align:center; padding:40px 20px;
+      color:var(--dim);
+    }
+    .waiting-icon { font-size:32px; margin-bottom:10px; }
+    .waiting-text { font-size:11px; letter-spacing:.05em; }
+    .waiting-sub  { font-size:9px; margin-top:6px; color:#333; }
+
+    /* ── SCROLL STYLE ────────────────────────── */
+    ::-webkit-scrollbar { width:3px; }
+    ::-webkit-scrollbar-track { background:var(--bg); }
+    ::-webkit-scrollbar-thumb { background:#333; border-radius:2px; }
+
+    /* ── ALERTS ─────────────────────────────── */
+    .alert-strip {
+      margin:0 12px 8px;
+      padding:7px 12px;
+      border-radius:6px;
+      font-size:10px;
+      font-weight:600;
+      display:none;
+      border-left:3px solid;
+    }
+    .alert-strip.show { display:block; }
+    .alert-buy  { background:rgba(0,255,136,0.08); border-color:var(--green); color:var(--green); }
+    .alert-sell { background:rgba(255,51,85,0.08);  border-color:var(--red);   color:var(--red); }
+    .alert-warn { background:rgba(255,136,0,0.08); border-color:var(--orange); color:var(--orange); }
+    .alert-info { background:rgba(0,212,255,0.08); border-color:var(--blue);   color:var(--blue); }
+    .alert-trap { background:rgba(204,68,255,0.08);border-color:var(--purple); color:var(--purple); }
+
+    /* ── MINI CHART VP ───────────────────────── */
+    .vp-position-bar {
+      height:8px; background:rgba(255,255,255,0.05);
+      border-radius:4px; position:relative;
+      overflow:visible; margin:8px 0;
+    }
+    .vp-pos-fill {
+      height:100%; background:var(--border2);
+      border-radius:4px; position:relative;
+    }
+    .vp-pos-marker {
+      position:absolute; top:-4px;
+      width:4px; height:16px;
+      border-radius:2px; background:var(--gold);
+      box-shadow: 0 0 6px var(--gold);
+      transition: left 0.5s;
+    }
+    .vp-pos-poc, .vp-pos-vah, .vp-pos-val {
+      position:absolute; top:0; bottom:0;
+      width:2px; border-radius:1px;
+    }
+    .vp-pos-poc { background:var(--poc); }
+    .vp-pos-vah { background:var(--vah); opacity:.7; }
+    .vp-pos-val { background:var(--val); opacity:.7; }
+    .vp-pos-label {
+      position:absolute; bottom:-13px;
+      font-size:7px; transform:translateX(-50%);
+      white-space:nowrap;
+    }
+
+    /* momentum spark */
+    .spark {
+      display:inline-block; font-size:9px;
+      transition: color 0.3s;
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="live-dot" id="live-dot"></div>
+    <div>
+      <div class="header-title">MONITOR VP PRO</div>
+      <div class="header-sub" id="hdr-sub">Sin conexión</div>
+    </div>
+  </div>
+  <div class="header-stats">
+    <div class="hstat">
+      <div class="hstat-label">VELAS</div>
+      <div class="hstat-val" id="hdr-count" style="color:var(--blue)">--</div>
+    </div>
+    <div class="hstat">
+      <div class="hstat-label">FUERZA</div>
+      <div class="hstat-val" id="hdr-str" style="color:var(--gold)">--</div>
+    </div>
+    <div class="hstat">
+      <div class="hstat-label">MA10</div>
+      <div class="hstat-val" id="hdr-ma" style="color:var(--green)">--%</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN SIGNAL -->
+<div class="signal-block wait" id="signal-block">
+  <div class="signal-inner">
+    <div class="signal-icon" id="sig-icon">⏸️</div>
+    <div class="signal-main">
+      <div class="signal-text" id="sig-text">ESPERAR</div>
+      <div class="signal-reason" id="sig-reason">Conecta el detector para recibir señales</div>
+    </div>
+    <div class="signal-conf-wrap">
+      <div class="signal-conf-num" id="sig-conf" style="color:var(--gold)">--</div>
+      <div class="signal-conf-lbl">CONF %</div>
+    </div>
+  </div>
+  <div class="conf-bar">
+    <div class="conf-fill low" id="conf-fill" style="width:0%"></div>
+  </div>
+</div>
+
+<!-- ALERT STRIP -->
+<div class="alert-strip" id="alert-strip"></div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- ── VP PROJECTION (full width) ── -->
+  <div class="card full-col">
+    <div class="card-header">
+      <div class="card-title"><span>📊</span> PROYECCIÓN VOLUME PROFILE</div>
+      <div class="card-badge" id="vp-pos-badge" style="background:var(--border2);color:var(--dim)">--</div>
+    </div>
+    <div class="card-body">
+
+      <!-- 3 niveles clave -->
+      <div class="vp-proj-grid" id="vp-levels-grid">
+        <div class="vp-level-box level-vah" id="box-vah">
+          <div class="vp-level-name">VAH</div>
+          <div class="vp-level-price" id="lvl-vah">--</div>
+          <div class="vp-level-dist" id="dist-vah">--</div>
+        </div>
+        <div class="vp-level-box level-poc" id="box-poc">
+          <div class="vp-level-name">POC</div>
+          <div class="vp-level-price" id="lvl-poc">--</div>
+          <div class="vp-level-dist" id="dist-poc">--</div>
+        </div>
+        <div class="vp-level-box level-val" id="box-val">
+          <div class="vp-level-name">VAL</div>
+          <div class="vp-level-price" id="lvl-val">--</div>
+          <div class="vp-level-dist" id="dist-val">--</div>
+        </div>
+      </div>
+
+      <!-- Barra de posición -->
+      <div style="margin-bottom:22px; padding:0 4px;">
+        <div style="display:flex;justify-content:space-between;font-size:8px;color:var(--dim);margin-bottom:3px;">
+          <span>POSICIÓN EN VALUE AREA</span>
+          <span id="va-pct">VA: --%</span>
+        </div>
+        <div class="vp-position-bar">
+          <div class="vp-pos-fill" style="width:100%;background:rgba(255,255,255,0.04);">
+            <div class="vp-pos-marker" id="pos-marker" style="left:50%"></div>
+            <div class="vp-pos-poc"    id="pos-poc"    style="left:50%"></div>
+            <div class="vp-pos-vah"    id="pos-vah"    style="left:80%"></div>
+            <div class="vp-pos-val"    id="pos-val"    style="left:20%"></div>
+          </div>
+          <div class="vp-pos-label" id="pos-lbl-poc" style="left:50%;color:var(--poc)">POC</div>
+          <div class="vp-pos-label" id="pos-lbl-vah" style="left:80%;color:var(--vah)">VAH</div>
+          <div class="vp-pos-label" id="pos-lbl-val" style="left:20%;color:var(--val)">VAL</div>
+        </div>
+      </div>
+
+      <!-- Histograma VP -->
+      <div class="vp-hist-wrap" id="vp-hist-wrap">
+        <div class="vp-hist-bars" id="vp-hist-bars">
+          <!-- injected by JS -->
+        </div>
+      </div>
+
+      <!-- Tabla de proyecciones VP -->
+      <table class="proj-table" id="proj-table">
+        <tr>
+          <td class="proj-lbl">🎯 Siguiente resistencia</td>
+          <td class="proj-val proj-sell" id="pt-resistance">--</td>
+          <td class="proj-note" id="pt-resistance-note">--</td>
+        </tr>
+        <tr>
+          <td class="proj-lbl">🛡️ Siguiente soporte</td>
+          <td class="proj-val proj-buy" id="pt-support">--</td>
+          <td class="proj-note" id="pt-support-note">--</td>
+        </tr>
+        <tr>
+          <td class="proj-lbl">📍 Regreso al POC</td>
+          <td class="proj-val proj-poc" id="pt-poc-return">--</td>
+          <td class="proj-note" id="pt-poc-prob">--</td>
+        </tr>
+        <tr>
+          <td class="proj-lbl">⚡ Ruptura de VA</td>
+          <td class="proj-val" id="pt-breakout">--</td>
+          <td class="proj-note" id="pt-breakout-note">--</td>
+        </tr>
+        <tr>
+          <td class="proj-lbl">🔄 Rebote en nivel</td>
+          <td class="proj-val" id="pt-bounce">--</td>
+          <td class="proj-note" id="pt-bounce-prob">--</td>
+        </tr>
+        <tr>
+          <td class="proj-lbl">📐 Rango del VA</td>
+          <td class="proj-val proj-dim" id="pt-va-range">--</td>
+          <td class="proj-note" id="pt-va-pct">70%</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── ESCENARIOS (full width) ── -->
+  <div class="card full-col">
+    <div class="card-header">
+      <div class="card-title"><span>🔭</span> ESCENARIOS SI PRÓXIMA VELA ES…</div>
+    </div>
+    <div class="card-body">
+      <div class="scenario-grid">
+        <div class="scenario-box bull">
+          <div class="scenario-title">🟢 Si VERDE</div>
+          <div class="scenario-target" id="sc-g-target">--</div>
+          <div class="scenario-prob" id="sc-g-prob">Prob: --%</div>
+          <div class="scenario-detail" id="sc-g-detail">--</div>
+          <div class="scenario-stops">
+            <span>Stop: <span id="sc-g-stop" style="color:var(--red)">--</span></span>
+            <span>R/R: <span id="sc-g-rr" style="color:var(--gold)">--</span></span>
+          </div>
+        </div>
+        <div class="scenario-box bear">
+          <div class="scenario-title">🔴 Si ROJA</div>
+          <div class="scenario-target" id="sc-r-target">--</div>
+          <div class="scenario-prob" id="sc-r-prob">Prob: --%</div>
+          <div class="scenario-detail" id="sc-r-detail">--</div>
+          <div class="scenario-stops">
+            <span>Stop: <span id="sc-r-stop" style="color:var(--green)">--</span></span>
+            <span>R/R: <span id="sc-r-rr" style="color:var(--gold)">--</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CONVERGENCIA ── -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span>🔀</span> CONVERGENCIA</div>
+    </div>
+    <div class="card-body">
+      <div class="conv-wrap">
+        <div class="conv-score" id="conv-score" style="color:var(--gold)">--</div>
+        <div class="conv-bars">
+          <div class="conv-bar-row">
+            <div class="conv-bar-lbl">VP</div>
+            <div class="conv-bar-track"><div class="conv-bar-fill" id="cb-vp" style="width:0%;background:var(--purple)"></div></div>
+            <div class="conv-bar-val" id="cbv-vp" style="color:var(--purple)">--</div>
+          </div>
+          <div class="conv-bar-row">
+            <div class="conv-bar-lbl">CMD</div>
+            <div class="conv-bar-track"><div class="conv-bar-fill" id="cb-cmd" style="width:0%;background:var(--gold)"></div></div>
+            <div class="conv-bar-val" id="cbv-cmd" style="color:var(--gold)">--</div>
+          </div>
+          <div class="conv-bar-row">
+            <div class="conv-bar-lbl">MA</div>
+            <div class="conv-bar-track"><div class="conv-bar-fill" id="cb-ma" style="width:0%;background:var(--blue)"></div></div>
+            <div class="conv-bar-val" id="cbv-ma" style="color:var(--blue)">--</div>
+          </div>
+          <div class="conv-bar-row">
+            <div class="conv-bar-lbl">FUERZA</div>
+            <div class="conv-bar-track"><div class="conv-bar-fill" id="cb-str" style="width:0%;background:var(--cyan)"></div></div>
+            <div class="conv-bar-val" id="cbv-str" style="color:var(--cyan)">--</div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:9px;color:var(--dim);margin-top:4px;" id="conv-text">--</div>
+    </div>
+  </div>
+
+  <!-- ── ESTADO MERCADO ── -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span>🧠</span> ESTADO MERCADO</div>
+    </div>
+    <div class="card-body">
+      <div class="state-grid" style="margin-bottom:8px;">
+        <div class="state-box">
+          <div class="state-lbl">Posición VP</div>
+          <div class="state-val" id="st-vppos">--</div>
+        </div>
+        <div class="state-box">
+          <div class="state-lbl">MA10</div>
+          <div class="state-val" id="st-ma10">--%</div>
+        </div>
+        <div class="state-box">
+          <div class="state-lbl">Tendencia</div>
+          <div class="state-val" id="st-trend">--</div>
+        </div>
+        <div class="state-box">
+          <div class="state-lbl">Momentum</div>
+          <div class="state-val" id="st-mom">--</div>
+        </div>
+      </div>
+      <!-- CMD phases -->
+      <div class="cmd-phases" id="cmd-phases">
+        <div class="cmd-phase" id="ph-cons"><div class="cmd-phase-icon">📊</div><div class="cmd-phase-name">CONS.</div></div>
+        <div class="cmd-phase" id="ph-man"> <div class="cmd-phase-icon">🎭</div><div class="cmd-phase-name">MANIP.</div></div>
+        <div class="cmd-phase" id="ph-dist"><div class="cmd-phase-icon">🔻</div><div class="cmd-phase-name">DIST.</div></div>
+        <div class="cmd-phase" id="ph-acc"> <div class="cmd-phase-icon">📥</div><div class="cmd-phase-name">ACUM.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── HISTORIAL ── -->
+  <div class="card full-col">
+    <div class="card-header">
+      <div class="card-title"><span>📜</span> HISTORIAL DE VELAS</div>
+      <div style="font-size:8px;color:var(--dim)">número = fuerza</div>
+    </div>
+    <div class="card-body">
+      <div class="hist-wrap" id="hist-wrap">
+        <div class="waiting-msg" style="padding:10px 0; width:100%;">
+          <div class="waiting-text">Sin datos aún</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end .layout -->
+
+<!-- WAITING STATE (shown when not connected) -->
+<div id="waiting-overlay" style="display:none; text-align:center; padding:30px 20px;">
+  <div class="waiting-icon">📡</div>
+  <div class="waiting-text">Esperando conexión con el detector…</div>
+  <div class="waiting-sub">Abre el index.html en la misma pestaña o ventana</div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════
+   CONFIG
+════════════════════════════════════════════════════ */
+const CFG = {
+  channel: 'cmd-detector-vp',
+  minHistory: 5,
+  vpRows: 20,
+  maxHistDisplay: 30
+};
+
+let state = {
+  history: [],
+  manualStrengths: {},
+  volumeProfile: null,
+  cmdState: null,
+  connected: false
+};
+
+/* ════════════════════════════════════════════════════
+   CANDLE STRENGTH (mirrored from index.html)
+════════════════════════════════════════════════════ */
+function getCandleStrength(index) {
+  if (state.manualStrengths?.[index]) return state.manualStrengths[index].strength;
+  if (!state.history || index < 0 || index >= state.history.length) return 2;
+  if (index < 2) return 2;
+
+  const current = state.history[index];
+  let consecutiveSame = 0;
+  for (let i = index; i >= 0 && state.history[i] === current; i--) consecutiveSame++;
+  let consecutiveOpposite = 0;
+  for (let i = index - 1; i >= 0 && state.history[i] !== current; i--) consecutiveOpposite++;
+  let alternations = 0;
+  const lb = Math.min(4, index + 1);
+  for (let i = 0; i < lb - 1; i++) {
+    const ci = index - lb + 1 + i;
+    if (ci >= 0 && state.history[ci] !== state.history[ci + 1]) alternations++;
+  }
+
+  if (consecutiveOpposite >= 4) {
+    const ma10 = calcMA(10);
+    if (ma10 !== null) {
+      if (current === 'R' && ma10 >= 90) return 4;
+      if (current === 'G' && ma10 <= 10) return 4;
+    }
+    return 3;
+  }
+  if (consecutiveOpposite >= 3) return 3;
+  if (consecutiveSame >= 3)     return 2.5;
+  if (alternations >= 3 && consecutiveSame >= 1) return 1.5;
+  if (consecutiveOpposite === 2) return 2;
+  if (consecutiveSame >= 2)      return 2;
+  return 1.5;
+}
+
+function calcMA(period) {
+  if (state.history.length < period) return null;
+  const slice = state.history.slice(-period);
+  return (slice.filter(h => h === 'G').length / period) * 100;
+}
+
+function calcPrevMA(period) {
+  if (state.history.length <= period) return null;
+  const slice = state.history.slice(-period - 1, -1);
+  return (slice.filter(h => h === 'G').length / period) * 100;
+}
+
+/* ════════════════════════════════════════════════════
+   COMMUNICATION
+════════════════════════════════════════════════════ */
+let bc = null;
+try {
+  bc = new BroadcastChannel(CFG.channel);
+  bc.onmessage = (e) => {
+    const d = e.data;
+    if (d?.type === 'vp-update' || d?.type === 'strength-edited') {
+      const p = d.payload;
+      if (p?.history?.length) handleData(p);
+    }
+  };
+} catch(e) {}
+
+// localStorage polling fallback
+setInterval(() => {
+  try {
+    const raw = localStorage.getItem('cmd-vp-data');
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    if (d.timestamp && Date.now() - d.timestamp < 8000 && d.history?.length) {
+      handleData(d);
+    }
+  } catch(e) {}
+}, 600);
+
+function handleData(data) {
+  state.history         = data.history || [];
+  state.manualStrengths = data.manualStrengths || {};
+  state.volumeProfile   = data.volumeProfile || null;
+  state.cmdState        = data.cmdState || null;
+  state.connected       = true;
+  fullUpdate();
+}
+
+/* ════════════════════════════════════════════════════
+   FULL UPDATE
+════════════════════════════════════════════════════ */
+function fullUpdate() {
+  if (!state.history.length) return;
+
+  const h       = state.history;
+  const lastIdx = h.length - 1;
+  const ma10    = calcMA(10) ?? 50;
+  const prevMA  = calcPrevMA(10) ?? ma10;
+  const mom     = ma10 - prevMA;
+  const lastStr = getCandleStrength(lastIdx);
+  const lastC   = h[lastIdx];
+
+  // VP — use data from index if available, else recalculate
+  const vp = state.volumeProfile?.poc != null ? state.volumeProfile : buildVP(h);
+
+  // Trend
+  const trend = getTrend(ma10, prevMA, mom);
+
+  // Signal
+  const sig = getSignal(vp, trend, ma10, mom, lastC, lastStr);
+
+  // Render each section
+  renderHeader(h, lastStr, ma10);
+  renderSignal(sig);
+  renderVPProjection(vp, trend, sig, lastC, lastStr, ma10, mom);
+  renderScenarios(vp, trend, sig, lastC, lastStr, ma10);
+  renderConvergence(vp, trend, sig, lastC, lastStr);
+  renderState(vp, trend, ma10, mom);
+  renderHistory(h);
+}
+
+/* ════════════════════════════════════════════════════
+   VP BUILDER (used as fallback)
+════════════════════════════════════════════════════ */
+function buildVP(history) {
+  if (history.length < CFG.minHistory) return null;
+  const lb = Math.min(history.length, 30);
+  const start = history.length - lb;
+  const levels = [];
+  let price = 50;
+
+  for (let i = start; i < history.length; i++) {
+    const c = history[i];
+    const s = getCandleStrength(i) || 2;
+    const move = (c === 'G' ? 1 : -1) * (s * 2);
+    const open = price, close = price + move;
+    const high = Math.max(open, close) + s * 0.3;
+    const low  = Math.min(open, close) - s * 0.3;
+    const vol  = Math.floor(s * 10 + 5);
+    levels.push({ high, low, close, vol, upVol: c === 'G' ? 0.7 : 0.3 });
+    price = close;
+  }
+
+  const prices = levels.flatMap(l => [l.high, l.low]);
+  const minP   = Math.min(...prices), maxP = Math.max(...prices);
+  const range  = maxP - minP, rowH = range / CFG.vpRows;
+  const hist   = [];
+
+  for (let i = 0; i < CFG.vpRows; i++) {
+    const rLow = minP + i * rowH, rHigh = rLow + rowH;
+    let vol = 0, upV = 0;
+    levels.forEach(l => {
+      const ov = Math.max(0, Math.min(l.high, rHigh) - Math.max(l.low, rLow));
+      if (ov > 0) {
+        const r = ov / (l.high - l.low + 0.001);
+        vol += l.vol * r; upV += l.vol * r * l.upVol;
+      }
+    });
+    hist.push({ price: (rLow + rHigh) / 2, priceLow: rLow, priceHigh: rHigh,
+                volume: vol, upVolume: upV, downVolume: vol - upV,
+                isPOC: false, isVAH: false, isVAL: false });
+  }
+
+  const maxV   = Math.max(...hist.map(h => h.volume));
+  const pocIdx = hist.findIndex(h => h.volume === maxV);
+  hist[pocIdx].isPOC = true;
+
+  const totalV = hist.reduce((s, h) => s + h.volume, 0);
+  let vaV = hist[pocIdx].volume, vahI = pocIdx, valI = pocIdx;
+  while (vaV < totalV * 0.7 && (vahI < CFG.vpRows - 1 || valI > 0)) {
+    const up = vahI < CFG.vpRows - 1 ? hist[vahI + 1].volume : 0;
+    const dn = valI > 0 ? hist[valI - 1].volume : 0;
+    if (up >= dn && vahI < CFG.vpRows - 1) { vahI++; vaV += hist[vahI].volume; hist[vahI].inVA = true; }
+    else if (valI > 0) { valI--; vaV += hist[valI].volume; hist[valI].inVA = true; }
+    else break;
+  }
+  hist[vahI].isVAH = true; hist[valI].isVAL = true;
+
+  const curP = levels[levels.length - 1].close;
+  const curI = hist.findIndex(h => curP >= h.priceLow && curP <= h.priceHigh);
+  let pos = 'unknown';
+  if (curI !== -1) {
+    if (curI === pocIdx) pos = 'poc';
+    else if (curI >= valI && curI <= vahI) pos = 'inside';
+    else if (curI > vahI) pos = 'above';
+    else pos = 'below';
+  }
+
+  return {
+    poc: hist[pocIdx].price, vah: hist[vahI].price, val: hist[valI].price,
+    histogram: hist, totalVolume: totalV, valueAreaVolume: vaV,
+    currentPriceLevel: curP, currentPosition: pos,
+    pocIndex: pocIdx, vahIndex: vahI, valIndex: valI,
+    minPrice: minP, maxPrice: maxP
+  };
+}
+
+/* ════════════════════════════════════════════════════
+   TREND
+════════════════════════════════════════════════════ */
+function getTrend(ma10, prevMA, mom) {
+  let dir = 'neutral', str = 1, extreme = null;
+  if (ma10 >= 90)                   { dir = 'down';  str = 4; extreme = 'overbought'; }
+  else if (ma10 <= 10)              { dir = 'up';    str = 4; extreme = 'oversold'; }
+  else if (ma10 > 60 && mom > 0)   { dir = 'up';    str = 3; }
+  else if (ma10 < 40 && mom < 0)   { dir = 'down';  str = 3; }
+  else if (mom > 3)                 { dir = 'up';    str = 2; }
+  else if (mom < -3)                { dir = 'down';  str = 2; }
+  return { dir, str, extreme, ma10, mom };
+}
+
+/* ════════════════════════════════════════════════════
+   SIGNAL LOGIC
+════════════════════════════════════════════════════ */
+function getSignal(vp, trend, ma10, mom, lastC, lastStr) {
+  const cmd   = state.cmdState || {};
+  const phase = cmd.phase || 'none';
+  const cProb = cmd.probability || 0;
+  const vpPos = vp?.currentPosition || 'unknown';
+  const nearPOC = vp && Math.abs(vp.currentPriceLevel - vp.poc) < Math.abs(vp.vah - vp.val) * 0.15;
+
+  let type = 'wait', icon = '⏸️', text = 'ESPERAR', reason = 'Sin señales claras', conf = 50;
+  let alert = null, alertType = null;
+
+  // Capitulación
+  if (lastStr === 4) {
+    if (lastC === 'G' && ma10 <= 15) {
+      type = 'buy'; icon = '🔥'; text = 'COMPRAR EXTREMO';
+      reason = `⚡ Capitulación bajista + sobreventa extrema (MA10 ${ma10.toFixed(0)}%)`;
+      conf = 95; alert = '🔥 CAPITULACIÓN — Reversión alcista violenta inminente'; alertType = 'buy';
+    } else if (lastC === 'R' && ma10 >= 85) {
+      type = 'sell'; icon = '🔥'; text = 'VENDER EXTREMO';
+      reason = `⚡ Capitulación alcista + sobrecompra extrema (MA10 ${ma10.toFixed(0)}%)`;
+      conf = 95; alert = '🔥 CAPITULACIÓN — Reversión bajista violenta inminente'; alertType = 'sell';
+    }
+  }
+  // CMD Acumulación
+  else if (phase === 'accumulation' && cProb > 0.6) {
+    type = 'buy'; icon = '📥'; text = 'COMPRAR';
+    reason = `📥 Acumulación institucional (${Math.round(cProb*100)}%). Smart money comprando.`;
+    conf = Math.round(80 + cProb * 15);
+    alert = '⚡ ACUMULACIÓN: Fase institucional de compra'; alertType = 'buy';
+  }
+  // CMD Distribución
+  else if (phase === 'distribution' && cProb > 0.6) {
+    type = 'sell'; icon = '🏦'; text = 'VENDER';
+    reason = `🏦 Distribución institucional (${Math.round(cProb*100)}%). Smart money vendiendo.`;
+    conf = Math.round(80 + cProb * 15);
+    alert = '⚠️ DISTRIBUCIÓN: Fase institucional de venta'; alertType = 'sell';
+  }
+  // Reversión fuerte con VP
+  else if (lastStr >= 3 && lastC === 'G' && vpPos === 'below') {
+    type = 'buy'; icon = '🎯'; text = 'COMPRAR';
+    reason = `🔄 Vela fuerte (${lastStr}/4) rebotando desde bajo el VAL`;
+    conf = 82; alert = '🎯 Reversión desde zona de sobreventa (bajo VAL)'; alertType = 'buy';
+  }
+  else if (lastStr >= 3 && lastC === 'R' && vpPos === 'above') {
+    type = 'sell'; icon = '🎯'; text = 'VENDER';
+    reason = `🔄 Vela fuerte (${lastStr}/4) rechazada desde sobre el VAH`;
+    conf = 82; alert = '🎯 Rechazo desde zona de sobrecompra (sobre VAH)'; alertType = 'sell';
+  }
+  // VP: debajo de VAL + tendencia arriba
+  else if (vpPos === 'below' && trend.dir === 'up') {
+    type = 'buy'; icon = '⬆️'; text = 'COMPRAR';
+    reason = `📊 Precio bajo VAL + momentum alcista. Regreso al POC probable`;
+    conf = 75; alert = '🎯 Precio en zona de sobreventa (debajo de VAL)'; alertType = 'buy';
+  }
+  // VP: sobre VAH + tendencia abajo
+  else if (vpPos === 'above' && trend.dir === 'down') {
+    type = 'sell'; icon = '⬇️'; text = 'VENDER';
+    reason = `📊 Precio sobre VAH + momentum bajista. Regreso al POC probable`;
+    conf = 75; alert = '🎯 Precio en zona de sobrecompra (sobre VAH)'; alertType = 'sell';
+  }
+  // Rebote en POC
+  else if (nearPOC && trend.dir === 'up' && trend.str >= 2) {
+    type = 'buy'; icon = '🎯'; text = 'COMPRAR';
+    reason = `🎯 Precio cerca del POC + tendencia alcista. Soporte fuerte`;
+    conf = 78;
+  }
+  else if (nearPOC && trend.dir === 'down' && trend.str >= 2) {
+    type = 'sell'; icon = '🎯'; text = 'VENDER';
+    reason = `🎯 Precio cerca del POC + tendencia bajista. Resistencia fuerte`;
+    conf = 78;
+  }
+  // Sobreventa/sobrecompra extrema
+  else if (trend.extreme === 'oversold' && trend.dir === 'up') {
+    type = 'buy'; icon = '🔥'; text = 'COMPRAR';
+    reason = `⚡ Sobreventa extrema (${ma10.toFixed(0)}%) + reversión alcista detectada`;
+    conf = 88; alert = '🔥 EXTREMO: Sobreventa + reversión'; alertType = 'buy';
+  }
+  else if (trend.extreme === 'overbought' && trend.dir === 'down') {
+    type = 'sell'; icon = '🔥'; text = 'VENDER';
+    reason = `⚡ Sobrecompra extrema (${ma10.toFixed(0)}%) + reversión bajista detectada`;
+    conf = 88; alert = '🔥 EXTREMO: Sobrecompra + reversión'; alertType = 'sell';
+  }
+  // Manipulación
+  else if (phase === 'manipulation' && cProb > 0.7) {
+    type = 'trap'; icon = '🎭'; text = 'ESPERAR';
+    reason = `🎭 Manipulación detectada (${Math.round(cProb*100)}%). Posible falso quiebre. NO operar.`;
+    conf = 25; alert = '⚠️ MANIPULACIÓN: Esperar confirmación'; alertType = 'warn';
+  }
+  // Consolidación
+  else if (phase === 'consolidation' && cProb > 0.6) {
+    type = 'wait'; icon = '📊'; text = 'ESPERAR';
+    reason = `📊 Consolidación (${Math.round(cProb*100)}%). Rango estrecho, esperar ruptura`;
+    conf = 40; alert = 'ℹ️ CONSOLIDACIÓN: Esperar breakout'; alertType = 'info';
+  }
+  // Dentro del VA
+  else if (vpPos === 'inside') {
+    type = 'wait'; icon = '⚖️'; text = 'ESPERAR';
+    reason = `⚖️ Precio dentro del Value Area. Zona de equilibrio, esperar extremos`;
+    conf = 50;
+  }
+
+  return { type, icon, text, reason, conf, alert, alertType };
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER HEADER
+════════════════════════════════════════════════════ */
+function renderHeader(history, lastStr, ma10) {
+  document.getElementById('live-dot').className = 'live-dot on';
+  const now = new Date();
+  document.getElementById('hdr-sub').textContent =
+    `Última sync: ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+  document.getElementById('hdr-count').textContent = history.length;
+  document.getElementById('hdr-str').textContent   = lastStr + '/4';
+  const maEl = document.getElementById('hdr-ma');
+  maEl.textContent = ma10.toFixed(0) + '%';
+  maEl.style.color = ma10 > 60 ? 'var(--green)' : ma10 < 40 ? 'var(--red)' : 'var(--gold)';
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER SIGNAL
+════════════════════════════════════════════════════ */
+function renderSignal(sig) {
+  const block = document.getElementById('signal-block');
+  block.className = 'signal-block ' + sig.type;
+  document.getElementById('sig-icon').textContent   = sig.icon;
+  document.getElementById('sig-text').textContent   = sig.text;
+  document.getElementById('sig-reason').textContent = sig.reason;
+
+  const confEl = document.getElementById('sig-conf');
+  confEl.textContent = sig.conf + '%';
+  confEl.style.color = sig.conf >= 75 ? 'var(--green)' : sig.conf >= 50 ? 'var(--gold)' : 'var(--red)';
+
+  const fill = document.getElementById('conf-fill');
+  fill.style.width = sig.conf + '%';
+  fill.className   = 'conf-fill ' + (sig.conf >= 75 ? 'high' : sig.conf >= 45 ? 'medium' : 'low');
+
+  const strip = document.getElementById('alert-strip');
+  if (sig.alert) {
+    strip.className   = 'alert-strip show alert-' + sig.alertType;
+    strip.textContent = sig.alert;
+  } else {
+    strip.className = 'alert-strip';
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER VP PROJECTION (the main pro section)
+════════════════════════════════════════════════════ */
+function renderVPProjection(vp, trend, sig, lastC, lastStr, ma10, mom) {
+  if (!vp || vp.poc == null) return;
+
+  const cur  = vp.currentPriceLevel;
+  const poc  = vp.poc;
+  const vah  = vp.vah;
+  const val  = vp.val;
+  const pos  = vp.currentPosition;
+  const vaRange = Math.abs(vah - val);
+
+  // ── Level boxes ──
+  const distPOC = ((poc - cur) / Math.max(1, Math.abs(poc - cur) + 0.01) * Math.abs(poc - cur)).toFixed(1);
+  const distVAH = (vah - cur).toFixed(1);
+  const distVAL = (cur - val).toFixed(1);
+
+  const fmtDist = (d, dir) => {
+    const abs = Math.abs(d);
+    const near = abs < vaRange * 0.1;
+    const at   = abs < vaRange * 0.04;
+    let txt = at ? '⬤ AQUÍ' : (dir > 0 ? '+' : '-') + abs.toFixed(1) + ' unidades';
+    let cls = at ? 'at' : near ? 'near' : '';
+    return { txt, cls };
+  };
+
+  const { txt: dtPOC, cls: clPOC } = fmtDist(poc - cur, Math.sign(poc - cur));
+  const { txt: dtVAH, cls: clVAH } = fmtDist(vah - cur, 1);
+  const { txt: dtVAL, cls: clVAL } = fmtDist(cur - val, 1);
+
+  document.getElementById('lvl-poc').textContent  = poc.toFixed(1);
+  document.getElementById('lvl-vah').textContent  = vah.toFixed(1);
+  document.getElementById('lvl-val').textContent  = val.toFixed(1);
+  document.getElementById('dist-poc').textContent = dtPOC;
+  document.getElementById('dist-vah').textContent = (vah - cur).toFixed(1) + ' ↑';
+  document.getElementById('dist-val').textContent = (cur - val).toFixed(1) + ' ↓';
+  document.getElementById('dist-poc').className   = 'vp-level-dist ' + clPOC;
+  document.getElementById('dist-vah').className   = 'vp-level-dist ' + clVAH;
+  document.getElementById('dist-val').className   = 'vp-level-dist ' + clVAL;
+
+  // Highlight current level
+  ['box-poc','box-vah','box-val'].forEach(id => {
+    document.getElementById(id).classList.remove('current');
+    document.getElementById(id).innerHTML =
+      document.getElementById(id).innerHTML.replace(/<div class="current-badge">.*?<\/div>/g,'');
+  });
+  if (pos === 'poc') {
+    const b = document.getElementById('box-poc');
+    b.classList.add('current');
+    b.insertAdjacentHTML('afterbegin','<div class="current-badge">⬤ AQUÍ</div>');
+  } else if (pos === 'above') {
+    const b = document.getElementById('box-vah');
+    b.classList.add('current');
+    b.insertAdjacentHTML('afterbegin','<div class="current-badge">SOBRE</div>');
+  } else if (pos === 'below') {
+    const b = document.getElementById('box-val');
+    b.classList.add('current');
+    b.insertAdjacentHTML('afterbegin','<div class="current-badge">BAJO</div>');
+  } else if (pos === 'inside') {
+    // Mark POC as reference
+  }
+
+  // ── VP Position badge ──
+  const posLabels = {
+    'poc':'EN POC','inside':'DENTRO VA','above':'SOBRE VAH','below':'BAJO VAL','unknown':'--'
+  };
+  const posColors = {
+    'poc':'var(--poc)','inside':'var(--gold)','above':'var(--green)','below':'var(--red)','unknown':'var(--dim)'
+  };
+  const badge = document.getElementById('vp-pos-badge');
+  badge.textContent = posLabels[pos] || '--';
+  badge.style.background = posColors[pos] || 'var(--border2)';
+  badge.style.color = pos === 'inside' || pos === 'poc' ? '#000' : '#fff';
+
+  // ── Position bar ──
+  if (vp.minPrice != null && vp.maxPrice != null) {
+    const min = vp.minPrice, max = vp.maxPrice, rng = max - min;
+    const pct = v => Math.max(0, Math.min(100, ((v - min) / rng * 100)));
+    document.getElementById('pos-marker').style.left = pct(cur)  + '%';
+    document.getElementById('pos-poc').style.left    = pct(poc)  + '%';
+    document.getElementById('pos-vah').style.left    = pct(vah)  + '%';
+    document.getElementById('pos-val').style.left    = pct(val)  + '%';
+    document.getElementById('pos-lbl-poc').style.left = pct(poc) + '%';
+    document.getElementById('pos-lbl-vah').style.left = pct(vah) + '%';
+    document.getElementById('pos-lbl-val').style.left = pct(val) + '%';
+  }
+
+  // ── VA % ──
+  const vaPct = vp.totalVolume > 0
+    ? Math.round(vp.valueAreaVolume / vp.totalVolume * 100) : 70;
+  document.getElementById('va-pct').textContent = 'VA: ' + vaPct + '%';
+
+  // ── Histogram ──
+  const hist    = vp.histogram || [];
+  const maxVol  = Math.max(...hist.map(h => h.volume), 1);
+  const histEl  = document.getElementById('vp-hist-bars');
+  const rows    = hist.length;
+
+  // Determine row height for labels
+  histEl.innerHTML = [...hist].reverse().map((row, i) => {
+    const ri  = rows - 1 - i; // original index
+    const w   = Math.max(3, (row.volume / maxVol) * 100);
+    const upR = row.volume > 0 ? (row.upVolume / row.volume) : 0.5;
+    const isCur = (vp.currentLevelIndex === ri || vp.currentLevelIndex === undefined);
+
+    let fillCls = '';
+    if (row.isPOC) fillCls = 'poc-bar';
+    else if (row.isVAH) fillCls = 'vah-bar';
+    else if (row.isVAL) fillCls = 'val-bar';
+    if (vp.currentLevelIndex === ri) fillCls += ' current-bar';
+
+    const isHiLabel = row.isPOC || row.isVAH || row.isVAL;
+    const priceDisp = row.price != null ? row.price.toFixed(0) : '';
+    const lblCls    = row.isPOC ? 'hi' : (vp.currentLevelIndex === ri ? 'cur' : '');
+
+    return `<div class="vp-hist-row">
+      <div class="vp-price-lbl ${lblCls}">${isHiLabel || vp.currentLevelIndex===ri ? priceDisp : (i%4===0?priceDisp:'')}</div>
+      <div class="vp-hist-bar-track">
+        <div class="vp-hist-bar-fill ${fillCls}" style="width:${w}%">
+          <div class="vp-hist-bull" style="width:${upR*100}%"></div>
+          <div class="vp-hist-bear" style="width:${(1-upR)*100}%"></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // ── Projection table ──
+  // Resistance: nearest level ABOVE current
+  let resistance = null, resistanceLbl = '';
+  if (pos === 'below' || pos === 'val') {
+    resistance = val; resistanceLbl = 'VAL';
+  } else if (pos === 'inside') {
+    resistance = poc > cur ? poc : vah; resistanceLbl = poc > cur ? 'POC' : 'VAH';
+  } else if (pos === 'poc') {
+    resistance = vah; resistanceLbl = 'VAH';
+  } else if (pos === 'above') {
+    resistance = vah + vaRange * 0.5; resistanceLbl = 'Ext 1.5× VA';
+  }
+
+  // Support: nearest level BELOW current
+  let support = null, supportLbl = '';
+  if (pos === 'above') {
+    support = vah; supportLbl = 'VAH';
+  } else if (pos === 'inside' || pos === 'poc') {
+    support = poc < cur ? poc : val; supportLbl = poc < cur ? 'POC' : 'VAL';
+  } else if (pos === 'below') {
+    support = val - vaRange * 0.5; supportLbl = 'Ext 1.5× VA';
+  }
+
+  // POC return probability
+  const distToPOC = Math.abs(cur - poc);
+  const pocReturnProb = Math.max(30, Math.min(85,
+    pos === 'poc' ? 95 :
+    pos === 'inside' ? 75 - distToPOC * 2 :
+    pos === 'above'  ? 60 - distToPOC :
+    pos === 'below'  ? 60 - distToPOC : 50
+  ));
+
+  // Breakout probability (price leaving VA)
+  const breakoutDir = trend.dir === 'up' ? 'alcista ↑' : trend.dir === 'down' ? 'bajista ↓' : '--';
+  const breakoutProb = Math.round(
+    pos === 'above' ? 65 + trend.str * 5 :
+    pos === 'below' ? 65 + trend.str * 5 :
+    Math.max(20, 40 - (poc - cur) * 2)
+  );
+
+  // Bounce probability at nearest level
+  const nearestDist = Math.min(Math.abs(cur-poc), Math.abs(cur-vah), Math.abs(cur-val));
+  const nearestLbl  = nearestDist === Math.abs(cur-poc) ? 'POC' :
+                      nearestDist === Math.abs(cur-vah) ? 'VAH' : 'VAL';
+  const bounceProb  = Math.round(
+    nearestLbl === 'POC' ? 70 + lastStr * 4 :
+    nearestLbl === 'VAH' && pos === 'above' ? 65 + lastStr * 4 :
+    nearestLbl === 'VAL' && pos === 'below' ? 65 + lastStr * 4 :
+    50
+  );
+
+  setText('pt-resistance', resistance != null ? resistance.toFixed(1) : '--');
+  setText('pt-resistance-note', resistanceLbl || '--');
+  document.getElementById('pt-resistance').className = 'proj-val proj-sell';
+
+  setText('pt-support', support != null ? support.toFixed(1) : '--');
+  setText('pt-support-note', supportLbl || '--');
+  document.getElementById('pt-support').className = 'proj-val proj-buy';
+
+  setText('pt-poc-return', poc.toFixed(1));
+  setText('pt-poc-prob', pocReturnProb + '% prob');
+  document.getElementById('pt-poc-return').className = 'proj-val proj-poc';
+
+  setText('pt-breakout', breakoutDir);
+  setText('pt-breakout-note', breakoutProb + '% prob');
+  document.getElementById('pt-breakout').className = 'proj-val ' +
+    (trend.dir === 'up' ? 'proj-buy' : trend.dir === 'down' ? 'proj-sell' : 'proj-dim');
+
+  setText('pt-bounce', nearestLbl);
+  setText('pt-bounce-prob', bounceProb + '% prob');
+  document.getElementById('pt-bounce').className = 'proj-val proj-poc';
+
+  setText('pt-va-range', vaRange.toFixed(1) + ' unid');
+  setText('pt-va-pct', vaPct + '% vol');
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER SCENARIOS
+════════════════════════════════════════════════════ */
+function renderScenarios(vp, trend, sig, lastC, lastStr, ma10) {
+  if (!vp || vp.poc == null) return;
+
+  const cur = vp.currentPriceLevel;
+  const poc = vp.poc, vah = vp.vah, val = vp.val;
+  const vaRange = Math.abs(vah - val);
+  const cmd   = state.cmdState || {};
+  const phase = cmd.phase || 'none';
+
+  // ── GREEN candle scenario ──
+  let gTarget, gProb, gDetail, gStop, gRR;
+  if (vp.currentPosition === 'below') {
+    gTarget  = poc;
+    gProb    = Math.min(88, 65 + lastStr * 5 + (trend.dir==='up'?10:0));
+    gDetail  = `Rebote desde bajo VAL → regreso al POC. ${phase==='accumulation'?'Acumulación confirma.':''}`;
+    gStop    = (val - vaRange * 0.3).toFixed(1);
+  } else if (vp.currentPosition === 'inside' || vp.currentPosition === 'poc') {
+    gTarget  = vah;
+    gProb    = Math.min(80, 55 + lastStr * 4 + (trend.dir==='up'?8:0));
+    gDetail  = `Dentro del VA → ataque al VAH. ${phase==='accumulation'?'Momentum institucional.':''}`;
+    gStop    = (val - vaRange * 0.15).toFixed(1);
+  } else {
+    gTarget  = vah + vaRange * 0.5;
+    gProb    = Math.min(72, 45 + lastStr * 4);
+    gDetail  = `Precio sobre VAH → extensión. ${phase==='distribution'?'⚠️ Distribución en zona.':''}`;
+    gStop    = vah.toFixed(1);
+  }
+  const gPot = gTarget - cur;
+  const gStp = Math.abs(cur - parseFloat(gStop));
+  gRR = gStp > 0 ? (gPot / gStp).toFixed(1) + ':1' : '--';
+
+  setText('sc-g-target',  gTarget.toFixed(1));
+  setText('sc-g-prob',    'Prob: ' + Math.round(gProb) + '%');
+  setText('sc-g-detail',  gDetail);
+  setText('sc-g-stop',    gStop);
+  setText('sc-g-rr',      gRR);
+
+  // ── RED candle scenario ──
+  let rTarget, rProb, rDetail, rStop, rRR;
+  if (vp.currentPosition === 'above') {
+    rTarget  = poc;
+    rProb    = Math.min(88, 65 + lastStr * 5 + (trend.dir==='down'?10:0));
+    rDetail  = `Rechazo desde sobre VAH → regreso al POC. ${phase==='distribution'?'Distribución confirma.':''}`;
+    rStop    = (vah + vaRange * 0.3).toFixed(1);
+  } else if (vp.currentPosition === 'inside' || vp.currentPosition === 'poc') {
+    rTarget  = val;
+    rProb    = Math.min(80, 55 + lastStr * 4 + (trend.dir==='down'?8:0));
+    rDetail  = `Dentro del VA → ataque al VAL. ${phase==='distribution'?'Momentum institucional.':''}`;
+    rStop    = (vah + vaRange * 0.15).toFixed(1);
+  } else {
+    rTarget  = val - vaRange * 0.5;
+    rProb    = Math.min(72, 45 + lastStr * 4);
+    rDetail  = `Precio bajo VAL → extensión bajista. ${phase==='accumulation'?'⚠️ Acumulación en zona.':''}`;
+    rStop    = val.toFixed(1);
+  }
+  const rPot = cur - rTarget;
+  const rStp = Math.abs(parseFloat(rStop) - cur);
+  rRR = rStp > 0 ? (rPot / rStp).toFixed(1) + ':1' : '--';
+
+  setText('sc-r-target',  rTarget.toFixed(1));
+  setText('sc-r-prob',    'Prob: ' + Math.round(rProb) + '%');
+  setText('sc-r-detail',  rDetail);
+  setText('sc-r-stop',    rStop);
+  setText('sc-r-rr',      rRR);
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER CONVERGENCE
+════════════════════════════════════════════════════ */
+function renderConvergence(vp, trend, sig, lastC, lastStr) {
+  if (!vp) return;
+
+  const cmd   = state.cmdState || {};
+  const phase = cmd.phase || 'none';
+  const cProb = cmd.probability || 0;
+  const pos   = vp.currentPosition;
+
+  // VP score (0-100)
+  let vpScore = 50;
+  if (pos === 'below' && sig.type === 'buy')  vpScore = 90;
+  if (pos === 'above' && sig.type === 'sell') vpScore = 90;
+  if (pos === 'poc')   vpScore = 70;
+  if (pos === 'inside') vpScore = 45;
+
+  // CMD score
+  let cmdScore = 50;
+  if (phase === 'accumulation') cmdScore = 85;
+  if (phase === 'distribution') cmdScore = 85;
+  if (phase === 'manipulation') cmdScore = 20;
+  if (phase === 'consolidation') cmdScore = 35;
+  if (phase === 'none') cmdScore = 40;
+  if (cProb > 0) cmdScore = Math.round(cmdScore * (0.5 + cProb * 0.5));
+
+  // MA score
+  const ma10  = trend.ma10;
+  let maScore = 50;
+  if ((sig.type === 'buy'  && ma10 > 55) || (sig.type === 'sell' && ma10 < 45)) maScore = 75;
+  if ((sig.type === 'buy'  && ma10 > 65) || (sig.type === 'sell' && ma10 < 35)) maScore = 90;
+  if (trend.extreme) maScore = 95;
+
+  // Strength score
+  const strScore = Math.min(100, lastStr * 22);
+
+  const total = Math.round((vpScore * 0.35 + cmdScore * 0.25 + maScore * 0.25 + strScore * 0.15));
+
+  const scoreEl = document.getElementById('conv-score');
+  scoreEl.textContent = total + '%';
+  scoreEl.style.color = total >= 75 ? 'var(--green)' : total >= 50 ? 'var(--gold)' : 'var(--red)';
+
+  setBar('cb-vp',  'cbv-vp',  vpScore);
+  setBar('cb-cmd', 'cbv-cmd', cmdScore);
+  setBar('cb-ma',  'cbv-ma',  maScore);
+  setBar('cb-str', 'cbv-str', strScore);
+
+  const convText = total >= 80 ? '🔥 Alta convergencia — señal muy fiable' :
+                   total >= 65 ? '✅ Convergencia buena — señal fiable' :
+                   total >= 50 ? '⚠️ Convergencia media — precaución' :
+                                 '❌ Señales conflictivas — no operar';
+  document.getElementById('conv-text').textContent = convText;
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER STATE
+════════════════════════════════════════════════════ */
+function renderState(vp, trend, ma10, mom) {
+  const cmd = state.cmdState || {};
+  const phase = cmd.phase || 'none';
+
+  const posNames = {
+    'poc':'En POC 🎯','inside':'Dentro VA ⚖️','above':'Sobre VAH ↑',
+    'below':'Bajo VAL ↓','unknown':'--'
+  };
+  const posColors = {
+    'poc':'var(--poc)','inside':'var(--gold)','above':'var(--green)','below':'var(--red)','unknown':'var(--dim)'
+  };
+  const pos = vp?.currentPosition || 'unknown';
+
+  const vpEl = document.getElementById('st-vppos');
+  vpEl.textContent = posNames[pos];
+  vpEl.style.color = posColors[pos];
+
+  const maEl = document.getElementById('st-ma10');
+  maEl.textContent = ma10.toFixed(0) + '%';
+  maEl.style.color = ma10 > 60 ? 'var(--green)' : ma10 < 40 ? 'var(--red)' : 'var(--gold)';
+
+  const tEl = document.getElementById('st-trend');
+  const tNames = { up:'Alcista ↑', down:'Bajista ↓', neutral:'Lateral ↔' };
+  tEl.textContent = tNames[trend.dir];
+  tEl.style.color = trend.dir==='up'?'var(--green)':trend.dir==='down'?'var(--red)':'var(--gold)';
+
+  const mEl = document.getElementById('st-mom');
+  mEl.textContent = mom > 3 ? 'Fuerte +' + mom.toFixed(1) :
+                    mom > 0 ? 'Débil +' + mom.toFixed(1) :
+                    mom < -3 ? 'Fuerte ' + mom.toFixed(1) :
+                    mom < 0  ? 'Débil ' + mom.toFixed(1) : 'Neutro';
+  mEl.style.color = mom > 0 ? 'var(--green)' : mom < 0 ? 'var(--red)' : 'var(--gold)';
+
+  // CMD phases
+  ['cons','man','dist','acc'].forEach(k => {
+    const el = document.getElementById('ph-' + k);
+    el.className = 'cmd-phase';
+  });
+  const phaseMap = {
+    consolidation:'cons', manipulation:'man', distribution:'dist', accumulation:'acc'
+  };
+  const clsMap = {
+    cons:'active-cons', man:'active-man', dist:'active-dist', acc:'active-acc'
+  };
+  if (phaseMap[phase]) {
+    const k = phaseMap[phase];
+    document.getElementById('ph-'+k).className = 'cmd-phase active active-' + k;
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER HISTORY
+════════════════════════════════════════════════════ */
+function renderHistory(history) {
+  const wrap = document.getElementById('hist-wrap');
+  const slice = history.slice(-CFG.maxHistDisplay);
+  wrap.innerHTML = slice.map((c, i) => {
+    const idx = history.length - slice.length + i;
+    const s   = getCandleStrength(idx);
+    const sLbl = s >= 4 ? '4🔥' : s >= 3 ? '3' : s >= 2.5 ? '2+' : s >= 2 ? '2' : '1+';
+    return `<div class="hc hc-${c.toLowerCase()}" title="Vela #${idx+1}: ${c} F${s}">
+      ${c}<span class="hc-str">${sLbl}</span>
+    </div>`;
+  }).join('');
+}
+
+/* ════════════════════════════════════════════════════
+   HELPERS
+════════════════════════════════════════════════════ */
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+function setBar(fillId, valId, score) {
+  const fill = document.getElementById(fillId);
+  const lbl  = document.getElementById(valId);
+  if (fill) fill.style.width = score + '%';
+  if (lbl)  lbl.textContent  = score + '%';
+}
+
+console.log('📊 Monitor VP Pro v3.0 — aguardando datos del detector...');
+</script>
+</body>
+</html>
