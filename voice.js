@@ -1,74 +1,90 @@
-// ===== VOICE.JS — Narrador inteligente de señales =====
-// Solo habla cuando la señal CAMBIA de tipo. Mensajes cortos y directos.
+// ===== VOICE.JS — Narrador de señales =====
 
 const Voice = (() => {
 
   const synth = window.speechSynthesis;
   let enabled        = false;
-  let lastSignalType = '';   // buy | sell | wait | trap | extreme
-  let spanishVoice   = null;
+  let lastSignalType = '';
+  let bestVoice      = null;
 
-  // ── Voces ────────────────────────────────────────────────────────────────
+  // ── Elegir la voz más natural disponible ─────────────────────────────────
   function loadVoice() {
     const voices = synth.getVoices();
-    spanishVoice =
-      voices.find(v => v.lang === 'es-US') ||
-      voices.find(v => v.lang === 'es-MX') ||
-      voices.find(v => v.lang === 'es-ES') ||
-      voices.find(v => v.lang.startsWith('es')) ||
-      null;
+
+    // Preferencia: voces "Neural" o "Natural" > Google > Microsoft > resto
+    // En español priorizamos voces femeninas que suelen sonar más suaves
+    const ranked = voices
+      .filter(v => v.lang.startsWith('es'))
+      .sort((a, b) => {
+        const score = v => {
+          let s = 0;
+          const n = v.name.toLowerCase();
+          if (n.includes('neural') || n.includes('natural')) s += 40;
+          if (n.includes('google'))     s += 20;
+          if (n.includes('microsoft'))  s += 15;
+          if (n.includes('paulina') || n.includes('mónica') ||
+              n.includes('monica')  || n.includes('laura')  ||
+              n.includes('lucia')   || n.includes('sofia')  ||
+              n.includes('camila')  || n.includes('valentina')) s += 30;
+          if (v.lang === 'es-US') s += 10;
+          if (v.lang === 'es-MX') s += 8;
+          if (v.lang === 'es-ES') s += 5;
+          return s;
+        };
+        return score(b) - score(a);
+      });
+
+    bestVoice = ranked[0] || null;
   }
+
   loadVoice();
   if (synth.onvoiceschanged !== undefined) synth.onvoiceschanged = loadVoice;
 
-  // ── Hablar ───────────────────────────────────────────────────────────────
+  // ── Hablar ────────────────────────────────────────────────────────────────
   function say(text, interrupt = false) {
     if (!enabled || !text) return;
     if (interrupt) synth.cancel();
 
-    const utt  = new SpeechSynthesisUtterance(text);
-    utt.lang   = spanishVoice?.lang || 'es-ES';
-    utt.voice  = spanishVoice || null;
-    utt.rate   = 0.95;
-    utt.pitch  = 1.0;
-    utt.volume = 1.0;
+    const utt    = new SpeechSynthesisUtterance(text);
+    utt.voice    = bestVoice || null;
+    utt.lang     = bestVoice?.lang || 'es-ES';
+    utt.rate     = 0.88;   // más lento = más calmado y claro
+    utt.pitch    = 1.15;   // un poco más agudo = más suave al oído
+    utt.volume   = 1.0;
     synth.speak(utt);
   }
 
-  // ── Detectar tipo de señal desde la clase CSS ────────────────────────────
-  function getType(cssClass) {
-    if (cssClass.includes('extreme'))                                   return 'extreme';
-    if (cssClass.includes('trap') || cssClass.includes('manipulation')) return 'trap';
-    if (cssClass.includes('buy')  || cssClass.includes('accumulation') || cssClass.includes('reversal')) return 'buy';
-    if (cssClass.includes('sell') || cssClass.includes('distribution')) return 'sell';
-    if (cssClass.includes('conflict'))                                  return 'conflict';
+  // ── Tipo de señal ─────────────────────────────────────────────────────────
+  function getType(css) {
+    if (css.includes('extreme'))                                    return 'extreme';
+    if (css.includes('trap') || css.includes('manipulation'))       return 'trap';
+    if (css.includes('buy')  || css.includes('accumulation') ||
+        css.includes('reversal'))                                   return 'buy';
+    if (css.includes('sell') || css.includes('distribution'))       return 'sell';
+    if (css.includes('conflict'))                                   return 'conflict';
     return 'wait';
   }
 
-  // ── Mensajes — cortos, directos, como un trader ──────────────────────────
+  // ── Mensajes — pausas con comas para ritmo más natural ───────────────────
   const MESSAGES = {
-    buy:      '¡Compra!',
-    sell:     '¡Venta!',
+    buy:      'Señal de compra.',
+    sell:     'Señal de venta.',
     wait:     'Espera.',
-    trap:     '¡Cuidado, posible trampa!',
-    extreme:  '¡Alerta extrema! No operes todavía.',
+    trap:     'Cuidado... posible trampa.',
+    extreme:  'Alerta extrema. No operes todavía.',
     conflict: 'Señal conflictiva. Espera confirmación.',
   };
 
-  // ── Llamado en cada update() ─────────────────────────────────────────────
+  // ── Hook desde update() ───────────────────────────────────────────────────
   function onUpdate(cssClass) {
     if (!enabled) return;
     const type = getType(cssClass);
-
-    // Solo habla si el tipo de señal CAMBIÓ
     if (type === lastSignalType) return;
     lastSignalType = type;
-
-    const urgent = type === 'extreme' || type === 'trap';
-    say(MESSAGES[type] || 'Espera.', urgent);
+    say(MESSAGES[type], type === 'extreme' || type === 'trap');
   }
 
-  // ── Botón toggle ─────────────────────────────────────────────────────────
+  // ── Toggle ────────────────────────────────────────────────────────────────
   function toggle() {
     enabled = !enabled;
     synth.cancel();
