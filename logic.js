@@ -82,6 +82,16 @@ let cmdState = {
   lastUpdate: null
 };
 
+// ===== ESTADO DE PREDICCIÓN (puente entre paneles) =====
+// Se actualiza en updatePredictionPanel() y se lee en la lógica de señal
+let predictionState = {
+  direction: 'neutral',   // 'bullish' | 'bearish' | 'neutral'
+  confidence: 0,          // 0-1
+  targetPosition: null,   // 'vah' | 'val' | 'poc' | null
+  candlesEstimate: null,  // número estimado de velas
+  ready: false            // true cuando hay suficientes datos
+};
+
 let volumeProfile = {
   poc: null,
   vah: null,
@@ -2147,7 +2157,10 @@ function update() {
   updateSuggestionPanel();
   updateCMDPanel();
   updateCandleTrapAlert();  // ← Detector de Bear/Bull Trap
-  updatePredictionPanel();  // ← Predicción de dirección + velas
+
+  // ⚠️ ORDEN IMPORTANTE: updatePredictionPanel debe ejecutarse ANTES de la lógica
+  // de señal porque escribe predictionState, que la señal lee para el puente.
+  updatePredictionPanel();  // ← Predicción + escribe predictionState
   
   // Calcular y mostrar Volume Profile
   calculateVolumeProfile();
@@ -2429,14 +2442,66 @@ function update() {
     } else if (vp.currentPosition === 'above' && currentCandle.current === 'R' && currentCandle.strength >= 2) {
       // No vender en VP si hay extremo bajista activo
       if (!extremeCondition || extremeCondition.type !== 'extreme_bearish') {
-        showVP = true;
-        finalSignal = 'sell'; signalClass = 'signal-sell'; signalText = '⬇️ VENDER';
-        logicText = `📊 SOBRE VAH (${vp.vah.toFixed(1)}%) + reversión. Regreso al POC (${vp.poc.toFixed(1)}%) probable.`;
+
+        // ===== PUENTE PREDICCIÓN → SEÑAL =====
+        // Si el panel de predicción dice ALCISTA con confianza >= 50%,
+        // la vela roja sobre VAH es probablemente una pausa, no una reversión.
+        // Bloquear la venta y avisar al usuario del conflicto.
+        const predConflict = predictionState.ready &&
+                             predictionState.direction === 'bullish' &&
+                             predictionState.confidence >= 0.50;
+
+        // Adicionalmente: no vender si MA10 es alcista fuerte (>= 60%)
+        // porque significa que la tendencia domina sobre la posición VP
+        const ma10Conflict = trendMA !== null && trendMA >= 60;
+
+        // Adicionalmente: requerir 2ª vela roja como confirmación mínima
+        const prevCandle = history.length >= 2 ? history[history.length - 2] : null;
+        const noConfirmation = prevCandle !== 'R';
+
+        if (predConflict) {
+          showVP = true;
+          finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = '⚠️ POSIBLE ALZA — ESPERAR';
+          const confPct = Math.round(predictionState.confidence * 100);
+          logicText = `⚠️ Conflicto VP vs Predicción: precio sobre VAH (${vp.vah.toFixed(1)}%) pero predicción ALCISTA ${confPct}% (objetivo ${predictionState.targetPosition || 'VP'}). Esperar vela roja fuerte (≥2.5) para confirmar venta.`;
+        } else if (ma10Conflict && noConfirmation) {
+          showVP = true;
+          finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = '⚠️ ESPERAR CONFIRMACIÓN';
+          logicText = `⚠️ Sobre VAH (${vp.vah.toFixed(1)}%) pero MA10 alcista ${trendMA.toFixed(0)}% — esperar 2ª vela roja para confirmar regreso al POC (${vp.poc.toFixed(1)}%).`;
+        } else if (noConfirmation && currentCandle.strength < 2.5) {
+          showVP = true;
+          finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = '⚠️ ESPERAR CONFIRMACIÓN';
+          logicText = `⚠️ Sobre VAH con 1 sola vela roja (fuerza ${currentCandle.strength}). Esperar 2ª roja o fuerza ≥2.5 para confirmar venta hacia POC (${vp.poc.toFixed(1)}%).`;
+        } else {
+          showVP = true;
+          finalSignal = 'sell'; signalClass = 'signal-sell'; signalText = '⬇️ VENDER';
+          logicText = `📊 SOBRE VAH (${vp.vah.toFixed(1)}%) + reversión confirmada. Regreso al POC (${vp.poc.toFixed(1)}%) probable.`;
+        }
       }
     } else if (vp.currentPosition === 'below' && currentCandle.current === 'G' && currentCandle.strength >= 2) {
-      showVP = true;
-      finalSignal = 'buy'; signalClass = 'signal-buy'; signalText = '⬆️ COMPRAR';
-      logicText = `📊 BAJO VAL (${vp.val.toFixed(1)}%) + reversión. Regreso al POC (${vp.poc.toFixed(1)}%) probable.`;
+
+      // ===== PUENTE PREDICCIÓN → SEÑAL (simétrico) =====
+      const predConflictBuy = predictionState.ready &&
+                              predictionState.direction === 'bearish' &&
+                              predictionState.confidence >= 0.50;
+      const ma10ConflictBuy = trendMA !== null && trendMA <= 40;
+      const prevCandleBuy   = history.length >= 2 ? history[history.length - 2] : null;
+      const noConfirmBuy    = prevCandleBuy !== 'G';
+
+      if (predConflictBuy) {
+        showVP = true;
+        finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = '⚠️ POSIBLE BAJA — ESPERAR';
+        const confPct = Math.round(predictionState.confidence * 100);
+        logicText = `⚠️ Conflicto VP vs Predicción: precio bajo VAL (${vp.val.toFixed(1)}%) pero predicción BAJISTA ${confPct}%. Esperar vela verde fuerte (≥2.5) para confirmar rebote.`;
+      } else if (ma10ConflictBuy && noConfirmBuy) {
+        showVP = true;
+        finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = '⚠️ ESPERAR CONFIRMACIÓN';
+        logicText = `⚠️ Bajo VAL (${vp.val.toFixed(1)}%) pero MA10 bajista ${trendMA.toFixed(0)}% — esperar 2ª vela verde para confirmar rebote al POC (${vp.poc.toFixed(1)}%).`;
+      } else {
+        showVP = true;
+        finalSignal = 'buy'; signalClass = 'signal-buy'; signalText = '⬆️ COMPRAR';
+        logicText = `📊 BAJO VAL (${vp.val.toFixed(1)}%) + reversión. Regreso al POC (${vp.poc.toFixed(1)}%) probable.`;
+      }
     } else if (vp.currentPosition === 'inside' && currentCandle.strength >= 2.5) {
       showVP = true;
       if (currentCandle.current === 'G') {
@@ -3599,6 +3664,15 @@ function calculatePrediction() {
 
 function updatePredictionPanel() {
   const p = calculatePrediction();
+
+  // ===== PUENTE: Escribir estado de predicción para que la señal principal lo lea =====
+  predictionState = {
+    direction:      p.direction,
+    confidence:     p.confidence,
+    targetPosition: p.targetName  || null,
+    candlesEstimate: p.candlesMin !== null ? `${p.candlesMin}-${p.candlesMax}` : null,
+    ready:          p.hasData
+  };
 
   const notEnough  = document.getElementById('pred-not-enough');
   const dirBox     = document.getElementById('pred-direction');
