@@ -2520,14 +2520,36 @@ function update() {
   // lo que permitía que Prioridad 6 sobreescribiera la señal 'NO VENDER'.
   if (finalSignal === 'wait' && !showExtreme) {
     if (cmdState.phase === 'distribution' && cmdState.probability > 0.6) {
-      showCMD = true;
-      finalSignal = 'sell'; signalClass = 'signal-distribution'; signalText = '🏦 VENDER';
-      logicText = `🏦 DISTRIBUCIÓN institucional (${Math.round(cmdState.probability * 100)}%). Smart money vendiendo.`;
+      // ===== PUENTE: CMD DISTRIBUCIÓN vs PREDICCIÓN =====
+      // Si predicción dice ALCISTA con confianza >= 55%, el CMD podría estar
+      // detectando una pausa institucional, no una distribución real todavía.
+      const predBlocksDist = predictionState.ready &&
+                             predictionState.direction === 'bullish' &&
+                             predictionState.confidence >= 0.55;
+      if (predBlocksDist) {
+        showCMD = true;
+        finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = '⚠️ CONFLICTO CMD';
+        logicText = `⚠️ CMD detecta Distribución (${Math.round(cmdState.probability*100)}%) pero Predicción dice ALCISTA ${Math.round(predictionState.confidence*100)}%. Señales opuestas — esperar claridad.`;
+      } else {
+        showCMD = true;
+        finalSignal = 'sell'; signalClass = 'signal-distribution'; signalText = '🏦 VENDER';
+        logicText = `🏦 DISTRIBUCIÓN institucional (${Math.round(cmdState.probability * 100)}%). Smart money vendiendo.`;
+      }
     }
     else if (cmdState.phase === 'accumulation' && cmdState.probability > 0.6) {
-      showCMD = true;
-      finalSignal = 'buy'; signalClass = 'signal-accumulation'; signalText = '📥 COMPRAR';
-      logicText = `📥 ACUMULACIÓN institucional (${Math.round(cmdState.probability * 100)}%). Smart money comprando.`;
+      // ===== PUENTE: CMD ACUMULACIÓN vs PREDICCIÓN =====
+      const predBlocksAccum = predictionState.ready &&
+                              predictionState.direction === 'bearish' &&
+                              predictionState.confidence >= 0.55;
+      if (predBlocksAccum) {
+        showCMD = true;
+        finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = '⚠️ CONFLICTO CMD';
+        logicText = `⚠️ CMD detecta Acumulación (${Math.round(cmdState.probability*100)}%) pero Predicción dice BAJISTA ${Math.round(predictionState.confidence*100)}%. Señales opuestas — esperar claridad.`;
+      } else {
+        showCMD = true;
+        finalSignal = 'buy'; signalClass = 'signal-accumulation'; signalText = '📥 COMPRAR';
+        logicText = `📥 ACUMULACIÓN institucional (${Math.round(cmdState.probability * 100)}%). Smart money comprando.`;
+      }
     }
     else if (cmdState.phase === 'manipulation' && cmdState.probability > 0.7) {
       showCMD = true;
@@ -2589,6 +2611,10 @@ function update() {
         if (candleTrapCheck && candleTrapCheck.type === 'bear-trap' && candleTrapCheck.probability >= 0.55) {
           finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = '⚠️ ESPERAR';
           logicText = `⚠️ Death Cross vs Bear Trap (${Math.round(candleTrapCheck.probability*100)}%) — señales contradictorias. ${candleTrapCheck.action}`;
+        // ===== PUENTE: Death Cross vs Predicción ALCISTA =====
+        } else if (predictionState.ready && predictionState.direction === 'bullish' && predictionState.confidence >= 0.55) {
+          finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = '⚠️ POSIBLE ALZA — ESPERAR';
+          logicText = `⚠️ Death Cross en ${activeCross.pair} pero Predicción dice ALCISTA ${Math.round(predictionState.confidence*100)}%. Señales contradictorias — esperar confirmación bajista.`;
         } else {
           finalSignal = 'sell'; signalClass = 'signal-sell'; signalText = '✅ VENDER';
           logicText = `✅ Death Cross válido en ${activeCross.pair}. Tendencia bajista.`;
@@ -2600,6 +2626,10 @@ function update() {
         if (candleTrapCheck && candleTrapCheck.type === 'bull-trap' && candleTrapCheck.probability >= 0.55) {
           finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = '⚠️ ESPERAR';
           logicText = `⚠️ Golden Cross vs Bull Trap (${Math.round(candleTrapCheck.probability*100)}%) — señales contradictorias. ${candleTrapCheck.action}`;
+        // ===== PUENTE: Golden Cross vs Predicción BAJISTA =====
+        } else if (predictionState.ready && predictionState.direction === 'bearish' && predictionState.confidence >= 0.55) {
+          finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = '⚠️ ESPERAR';
+          logicText = `⚠️ Golden Cross en ${activeCross.pair} pero Predicción dice BAJISTA ${Math.round(predictionState.confidence*100)}%. Señales contradictorias — esperar confirmación alcista.`;
         } else {
           finalSignal = 'buy'; signalClass = 'signal-buy'; signalText = '✅ COMPRAR';
           logicText = `✅ Golden Cross válido en ${activeCross.pair}. Tendencia alcista.`;
@@ -2616,11 +2646,29 @@ function update() {
         finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = '⚠️ ESPERAR';
         logicText = `⚠️ Patrón detectado pero momentum en contra (${(trendMA - prevTrendMA).toFixed(1)}%).`;
       } else if (recentTrend.trend === 'bullish' && proj.ifG.sig === 'COMPRA') {
-        finalSignal = 'buy'; signalClass = 'signal-buy'; signalText = '⬆️ COMPRAR';
-        logicText = `⬆️ Patrón ${proj.ifG.pat} en contexto alcista. Confianza: ${Math.round(proj.ifG.conf * 100)}%`;
+        // ===== PUENTE: patrón COMPRA vs predicción BAJISTA =====
+        const predBlocksBuy = predictionState.ready &&
+                              predictionState.direction === 'bearish' &&
+                              predictionState.confidence >= 0.60;
+        if (predBlocksBuy) {
+          finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = '⚠️ ESPERAR';
+          logicText = `⚠️ Patrón ${proj.ifG.pat} alcista pero Predicción dice BAJISTA ${Math.round(predictionState.confidence*100)}%. Señales opuestas — no entrar.`;
+        } else {
+          finalSignal = 'buy'; signalClass = 'signal-buy'; signalText = '⬆️ COMPRAR';
+          logicText = `⬆️ Patrón ${proj.ifG.pat} en contexto alcista. Confianza: ${Math.round(proj.ifG.conf * 100)}%`;
+        }
       } else if (recentTrend.trend === 'bearish' && proj.ifR.sig === 'VENTA') {
-        finalSignal = 'sell'; signalClass = 'signal-sell'; signalText = '⬇️ VENDER';
-        logicText = `⬇️ Patrón ${proj.ifR.pat} en contexto bajista. Confianza: ${Math.round(proj.ifR.conf * 100)}%`;
+        // ===== PUENTE: patrón VENTA vs predicción ALCISTA =====
+        const predBlocksSell = predictionState.ready &&
+                               predictionState.direction === 'bullish' &&
+                               predictionState.confidence >= 0.60;
+        if (predBlocksSell) {
+          finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = '⚠️ POSIBLE ALZA — ESPERAR';
+          logicText = `⚠️ Patrón ${proj.ifR.pat} bajista pero Predicción dice ALCISTA ${Math.round(predictionState.confidence*100)}%. Señales opuestas — esperar confirmación.`;
+        } else {
+          finalSignal = 'sell'; signalClass = 'signal-sell'; signalText = '⬇️ VENDER';
+          logicText = `⬇️ Patrón ${proj.ifR.pat} en contexto bajista. Confianza: ${Math.round(proj.ifR.conf * 100)}%`;
+        }
       } else {
         logicText = `🤔 Patrón en conflicto con tendencia. Esperando.`;
       }
@@ -2794,6 +2842,10 @@ function updateProjections(trendMA, prevTrendMA, activeCross, recentTrend, curre
     gSignal = 'NO COMPRAR'; gClass = 'proj-signal-hold'; gBoxClass = 'proj-box proj-green proj-conflict'; gConfidence = 'Distribución activa';
   } else if (recentTrend.warning === 'momentum_change' && recentTrend.weightedScore < 0) {
     gSignal = 'ESPERAR'; gClass = 'proj-signal-hold'; gBoxClass = 'proj-box proj-green proj-conflict'; gConfidence = 'Conflicto momentum';
+  // ===== PUENTE: Predicción bajista bloquea señal de compra en proyecciones =====
+  } else if (predictionState.ready && predictionState.direction === 'bearish' && predictionState.confidence >= 0.55) {
+    gSignal = 'PRECAUCIÓN'; gClass = 'proj-signal-hold'; gBoxClass = 'proj-box proj-green proj-conflict';
+    gConfidence = `Pred. BAJISTA ${Math.round(predictionState.confidence*100)}%`;
   }
   
   document.getElementById('proj-g-sig').textContent = gSignal;
@@ -2818,6 +2870,10 @@ function updateProjections(trendMA, prevTrendMA, activeCross, recentTrend, curre
     rSignal = 'NO VENDER'; rClass = 'proj-signal-hold'; rBoxClass = 'proj-box proj-red proj-conflict'; rConfidence = 'Acumulación activa';
   } else if (recentTrend.warning === 'momentum_change' && recentTrend.weightedScore > 0) {
     rSignal = 'ESPERAR'; rClass = 'proj-signal-hold'; rBoxClass = 'proj-box proj-red proj-conflict'; rConfidence = 'Conflicto momentum';
+  // ===== PUENTE: Predicción alcista bloquea señal de venta en proyecciones =====
+  } else if (predictionState.ready && predictionState.direction === 'bullish' && predictionState.confidence >= 0.55) {
+    rSignal = 'PRECAUCIÓN'; rClass = 'proj-signal-hold'; rBoxClass = 'proj-box proj-red proj-conflict';
+    rConfidence = `Pred. ALCISTA ${Math.round(predictionState.confidence*100)}%`;
   }
   
   document.getElementById('proj-r-sig').textContent = rSignal;
