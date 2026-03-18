@@ -1,1 +1,465 @@
-a
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Detector CMD + MA + Fuerza Híbrida + Volume Profile</title>
+  <link rel="stylesheet" href="animations.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Modal trampa (fuera del layout) -->
+  <div class="trap-modal" id="trap-modal">
+    <div class="trap-modal-content">
+      <div class="trap-modal-title">🎭 MARCAR COMO TRAMPA</div>
+      <div class="trap-modal-text">
+        ¿La vela <strong id="trap-candle-color">--</strong> en posición <strong id="trap-candle-pos">--</strong> fue una trampa?
+        <br><br>
+        Esto recalculará <strong>TODAS</strong> las MA incluyendo la tendencia global.
+      </div>
+      <div class="trap-modal-buttons">
+        <button class="trap-btn trap-btn-confirm" onclick="confirmTrap()">Sí, recalcular</button>
+        <button class="trap-btn trap-btn-cancel" onclick="closeModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODO BOSTON: Overlay ultra-simplificado ===== -->
+  <div id="boston-overlay">
+
+    <div class="boston-bar">
+      <span class="boston-title">⚡ MODO DECISIÓN</span>
+      <button class="boston-close" onclick="toggleBoston()">✕ Salir</button>
+    </div>
+
+    <!-- Señal principal grande -->
+    <div id="boston-signal" class="signal-wait">ESPERAR</div>
+
+    <!-- Contexto mínimo: 1 línea de razón -->
+    <div id="boston-context">Analizando...</div>
+
+    <!-- Proyecciones compactas -->
+    <div id="boston-projections">
+      <div class="boston-proj" id="boston-proj-g">
+        <div class="boston-proj-label">Si VERDE →</div>
+        <div class="boston-proj-sig" id="boston-proj-g-sig">--</div>
+        <div class="boston-proj-conf" id="boston-proj-g-conf">--</div>
+      </div>
+      <div class="boston-proj" id="boston-proj-r">
+        <div class="boston-proj-label">Si ROJO →</div>
+        <div class="boston-proj-sig" id="boston-proj-r-sig">--</div>
+        <div class="boston-proj-conf" id="boston-proj-r-conf">--</div>
+      </div>
+    </div>
+
+    <!-- Color de la vela -->
+    <div id="boston-color-toggle">
+      <button class="boston-color-btn" id="boston-btn-green" onclick="bostonSetColor('G')">🟢 VERDE</button>
+      <button class="boston-color-btn" id="boston-btn-red"   onclick="bostonSetColor('R')">🔴 ROJO</button>
+    </div>
+
+    <!-- Grid de velas (mismo SVG que el picker principal) -->
+    <div id="boston-candle-grid"></div>
+
+    <!-- Botón de confirmación -->
+    <button id="boston-add-btn" onclick="bostonAdd()">← Selecciona color y tipo</button>
+
+    <!-- Historial compacto -->
+    <div id="boston-history"></div>
+
+  </div><!-- /boston-overlay -->
+
+  <div class="app-wrapper">
+
+    <!-- ===== BARRA SUPERIOR ===== -->
+    <div class="top-bar">
+      <div class="top-bar-title">CMD + MA + VP</div>
+      <div style="display:flex;gap:6px;align-items:center;flex:1;justify-content:center;">
+        <div class="active-trap-banner" id="trap-banner" style="position:static;margin:0;padding:4px 10px;font-size:0.72em;border-radius:20px;">
+          🎭 <strong>TRAMPA</strong> Vela <span id="trap-info">--</span>
+        </div>
+        <button class="btn-clear-trap" id="btn-clear-trap" onclick="clearTrap()" style="display:none;padding:4px 12px;font-size:0.72em;border-radius:20px;">
+          🗑 Limpiar Trampa
+        </button>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <!-- BOTÓN BOSTON — el más visible -->
+        <button class="boston-btn" id="boston-btn-main" onclick="toggleBoston()" title="Modo Decisión: solo señal + vela">
+          ⚡ DECISIÓN
+        </button>
+        <div class="focus-switch" id="focus-switch" onclick="toggleFocusMode()" title="Modo enfoque">
+          <div class="focus-switch-dot"></div>
+          <span class="focus-switch-label">Enfoque</span>
+        </div>
+        <button class="btn-reset" onclick="reset()" style="padding:5px 12px;font-size:0.75em;border-radius:6px;">↺</button>
+        <button onclick="openMonitor()" style="background:var(--purple);color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:0.72em;">VP</button>
+        <button id="voice-btn" onclick="Voice.toggle()"
+          title="Activar narrador de voz"
+          style="background:#1a1a2e;color:#aaa;border:1px solid #444;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:0.72em;transition:all 0.2s;font-weight:bold;">
+          🔇 VOZ
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== DOS COLUMNAS ===== -->
+    <div class="two-col">
+
+      <!-- ===== COLUMNA IZQUIERDA: entrada + señal principal ===== -->
+      <div class="col-left">
+
+        <!-- SEÑAL PRINCIPAL (al tope, lo más importante) -->
+        <div class="main-signal signal-wait" id="main-signal">
+          ESPERAR
+          <div class="manual-trap-badge">TRAMPA ACTIVA</div>
+          <div class="conflict-badge">⚠️ CONFLICTO</div>
+          <div class="reversal-badge">🔄 REVERSIÓN FUERTE</div>
+          <div class="extreme-signal-badge">🚨 EXTREMO</div>
+          <div class="cmd-signal-badge">🎯 FASE CMD</div>
+          <div class="candle-trap-badge">🪤 POSIBLE TRAMPA</div>
+        </div>
+
+        <!-- ALERTAS (extremo + trampa de vela) -->
+        <div id="extreme-alert" class="extreme-alert">
+          <div class="extreme-title">⚠️ EXTREMO DETECTADO</div>
+          <div class="extreme-text" id="extreme-text">Mercado en sobrecompra/sobreventa extrema.</div>
+        </div>
+
+        <div class="candle-trap-alert" id="candle-trap-alert" role="alert" aria-live="polite">
+          <div class="trap-alert-header">
+            <div class="trap-alert-icon" id="trap-alert-icon">🪤</div>
+            <div>
+              <div class="trap-alert-title" id="trap-alert-title">⚠️ POSIBLE TRAMPA</div>
+              <div class="trap-alert-subtitle" id="trap-alert-subtitle">Patrón de reversión falsa</div>
+            </div>
+          </div>
+          <div class="trap-sequence-display" id="trap-sequence-display"></div>
+          <div class="trap-alert-body">
+            <div class="trap-stat-box"><div class="trap-stat-label">Tipo</div><div class="trap-stat-value" id="trap-type-value">--</div></div>
+            <div class="trap-stat-box"><div class="trap-stat-label">Confianza</div><div class="trap-stat-value" id="trap-conf-value">--</div></div>
+          </div>
+          <div class="trap-alert-reason" id="trap-alert-reason">Analizando...</div>
+          <div class="trap-confidence-bar"><div class="trap-confidence-fill" id="trap-confidence-fill" style="width:0%"></div></div>
+          <div class="trap-confidence-label"><span>Baja probabilidad</span><span>Alta probabilidad</span></div>
+        </div>
+
+        <!-- LÓGICA -->
+        <div class="logic-explanation" id="logic-explanation">
+          <div class="logic-title">🧠 Lógica:</div>
+          <div class="logic-item" id="logic-text">Analizando...</div>
+        </div>
+
+        <!-- ENTRADA DE VELAS — Nuevo picker de tamaño -->
+        <div class="confirm-panel" role="region" aria-label="Selector de velas">
+          <div class="confirm-title">🎯 SELECCIONA LA VELA</div>
+
+          <!-- Nuevo picker: 2 filas × 6 tamaños -->
+          <div id="size-picker-container" style="
+            display: block;
+            width: 100%;
+            overflow: visible;
+            min-height: 140px;
+          "></div>
+
+          <!-- Atajos de teclado — mantenidos -->
+          <div style="font-size:0.65em;color:#444;text-align:center;margin-top:8px;">
+            Atajos: <kbd style="background:#222;padding:1px 5px;border-radius:3px;border:1px solid #333">G</kbd> Verde ·
+            <kbd style="background:#222;padding:1px 5px;border-radius:3px;border:1px solid #333">R</kbd> Rojo ·
+            <kbd style="background:#222;padding:1px 5px;border-radius:3px;border:1px solid #333">1–6</kbd> Tamaño
+          </div>
+
+          <!-- Elementos legacy ocultos — necesarios para que logic.js no rompa -->
+          <div id="suggestion-box" style="display:none;">
+            <div id="suggestion-text"></div>
+            <div id="suggestion-reason"></div>
+            <div id="suggestion-bars"></div>
+            <div id="suggested-candle-svg-g"></div>
+            <div id="suggested-candle-svg-r"></div>
+            <div id="correction-notice"></div>
+          </div>
+          <div id="step-confirm" style="display:none;">
+            <div id="status-bar"></div>
+            <span id="suggested-strength-display"></span>
+          </div>
+          <div id="correction-options" style="display:none;">
+            <div id="candle-picker-grid"></div>
+            <button id="add-candle-confirm-btn"></button>
+          </div>
+          <div id="color-buttons" style="display:none;">
+            <button onclick="addCandle('G')" id="green-strength-legacy"></button>
+            <button onclick="addCandle('R')" id="red-strength-legacy"></button>
+          </div>
+          <span id="green-strength" style="display:none"></span>
+          <span id="red-strength" style="display:none"></span>
+          <div id="pick-color-green" style="display:none"></div>
+          <div id="pick-color-red" style="display:none"></div>
+        </div>
+
+        <!-- HISTORIAL -->
+        <div class="history-container">
+          <div class="history-label">HISTORIAL (Click = trampa · Doble-click = editar)</div>
+          <div class="history" id="history" role="list" aria-label="Historial de velas"></div>
+          <div class="edit-hint">💡 Click en vela para editar fuerza</div>
+          <div class="instruction">✓ = Confirmado | ✏️ = Corregido | ● = Trampa</div>
+        </div>
+
+        <!-- PROYECCIONES -->
+        <div class="projections" id="projections">
+          <div class="proj-box proj-green" id="proj-g-box">
+            <div class="proj-label">Si VERDE →</div>
+            <div class="proj-sequence" id="proj-g-seq">--</div>
+            <div class="proj-signal proj-signal-hold" id="proj-g-sig">HOLD</div>
+            <div class="proj-confidence" id="proj-g-conf">0%</div>
+            <div class="proj-reason" id="proj-g-reason"></div>
+            <div class="proj-conflict-note" id="proj-g-conflict"></div>
+            <div class="proj-reversal-note" id="proj-g-reversal"></div>
+            <div class="proj-extreme-note" id="proj-g-extreme"></div>
+            <div class="proj-cmd-note" id="proj-g-cmd"></div>
+          </div>
+          <div class="proj-box proj-red" id="proj-r-box">
+            <div class="proj-label">Si ROJO →</div>
+            <div class="proj-sequence" id="proj-r-seq">--</div>
+            <div class="proj-signal proj-signal-hold" id="proj-r-sig">HOLD</div>
+            <div class="proj-confidence" id="proj-r-conf">0%</div>
+            <div class="proj-reason" id="proj-r-reason"></div>
+            <div class="proj-conflict-note" id="proj-r-conflict"></div>
+            <div class="proj-reversal-note" id="proj-r-reversal"></div>
+            <div class="proj-extreme-note" id="proj-r-extreme"></div>
+            <div class="proj-cmd-note" id="proj-r-cmd"></div>
+          </div>
+        </div>
+
+      </div><!-- /col-left -->
+
+      <!-- ===== COLUMNA DERECHA: análisis + datos ===== -->
+      <div class="col-right">
+
+        <!-- TENDENCIAS -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          <div class="trend-box neutral" id="trend-box">
+            <div class="trend-badge">AJUSTADA</div>
+            <div class="extreme-badge">EXTREMO</div>
+            <div class="trend-label">GLOBAL (MA10)</div>
+            <div class="trend-value" id="trend-value">NEUTRAL</div>
+            <div class="trend-original" id="trend-original"></div>
+            <div class="momentum-note" id="momentum-note"></div>
+          </div>
+          <div class="trend-box neutral" id="short-trend-box">
+            <div class="trend-label">CORTA (MA3)</div>
+            <div class="trend-value" id="short-trend-value">NEUTRAL</div>
+            <div class="momentum-note" id="short-momentum-note"></div>
+          </div>
+        </div>
+
+        <!-- MOMENTUM -->
+        <div class="momentum-indicator" id="momentum-box" style="display:none;">
+          <div class="momentum-title">📈 MA10</div>
+          <div class="momentum-bar">
+            <div class="momentum-fill" id="momentum-fill"></div>
+            <div class="momentum-marker" style="left:50%;"></div>
+          </div>
+          <div class="momentum-labels"><span>Bajista</span><span>Neutral</span><span>Alcista</span></div>
+          <div style="text-align:center;margin-top:4px;font-size:0.72em;color:#888;" id="momentum-detail"></div>
+        </div>
+
+        <!-- CMD -->
+        <div class="cmd-panel" id="cmd-panel">
+          <div class="cmd-phase-indicator" id="cmd-phase-indicator"></div>
+          <div class="cmd-title"><span>🎯</span><span>FASES (CMD)</span></div>
+          <div class="cmd-status">
+            <div class="cmd-item" id="cmd-consolidation"><div class="cmd-icon">📊</div><div class="cmd-label">Consol.</div><div class="cmd-value" id="consolidation-val">--</div><div class="cmd-probability" id="consolidation-prob">0%</div></div>
+            <div class="cmd-item" id="cmd-manipulation"><div class="cmd-icon">🎭</div><div class="cmd-label">Manip.</div><div class="cmd-value" id="manipulation-val">--</div><div class="cmd-probability" id="manipulation-prob">0%</div></div>
+            <div class="cmd-item" id="cmd-distribution"><div class="cmd-icon">🏦</div><div class="cmd-label">Distrib.</div><div class="cmd-value" id="distribution-val">--</div><div class="cmd-probability" id="distribution-prob">0%</div></div>
+            <div class="cmd-item" id="cmd-accumulation"><div class="cmd-icon">📥</div><div class="cmd-label">Acumul.</div><div class="cmd-value" id="accumulation-val">--</div><div class="cmd-probability" id="accumulation-prob">0%</div></div>
+          </div>
+          <div class="cmd-alert" id="cmd-alert">
+            <div class="cmd-alert-title" id="cmd-alert-title">⚠️ ALERTA</div>
+            <div class="cmd-alert-text" id="cmd-alert-text">Detectando actividad institucional...</div>
+          </div>
+          <div class="whale-activity" id="whale-activity" style="display:none;">
+            <div class="whale-title">🐋 Smart Money</div>
+            <div class="whale-bar" id="whale-bar">
+              <div class="whale-segment retail" id="whale-retail" style="width:33%"></div>
+              <div class="whale-segment smart" id="whale-smart" style="width:33%"></div>
+              <div class="whale-segment whale" id="whale-whale" style="width:34%"></div>
+            </div>
+            <div class="whale-labels"><span>Retail</span><span>Smart</span><span>Ballenas</span></div>
+          </div>
+        </div>
+
+        <!-- VP -->
+        <div class="vp-panel hide-in-focus" id="vp-panel">
+          <div class="vp-title"><span>📊</span><span>VOLUME PROFILE</span></div>
+          <div class="vp-container" id="vp-histogram"></div>
+          <div class="vp-legend">
+            <div class="vp-legend-item"><div class="vp-legend-color poc"></div><span>POC</span></div>
+            <div class="vp-legend-item"><div class="vp-legend-color vah"></div><span>VAH</span></div>
+            <div class="vp-legend-item"><div class="vp-legend-color val"></div><span>VAL</span></div>
+          </div>
+          <div class="vp-stats">
+            <div class="vp-stat poc-stat"><div class="vp-stat-label">POC</div><div class="vp-stat-value poc" id="vp-poc-value">--</div></div>
+            <div class="vp-stat vah-stat"><div class="vp-stat-label">VAH</div><div class="vp-stat-value vah" id="vp-vah-value">--</div></div>
+            <div class="vp-stat val-stat"><div class="vp-stat-label">VAL</div><div class="vp-stat-value val" id="vp-val-value">--</div></div>
+          </div>
+          <div class="vp-current-position" id="vp-position">
+            <div class="vp-position-text" id="vp-position-text">Posición: --</div>
+            <div class="vp-position-detail" id="vp-position-detail">Esperando datos...</div>
+          </div>
+        </div>
+
+        <!-- CRUCES MA (compacto) -->
+        <div class="cross-detector hide-in-focus">
+          <div class="cross-title">⚔️ CRUCES MA</div>
+          <div class="cross-active" id="cross-alert">
+            <span id="cross-pair">MA2/MA10</span>: <span id="cross-type" class="cross-type-golden">GOLDEN CROSS</span>
+          </div>
+          <div class="ma-grid" id="ma-grid"></div>
+        </div>
+
+        <!-- ANÁLISIS VELA ACTUAL -->
+        <div class="current-candle-analysis" id="current-analysis">
+          <div class="current-title">🎯 VELA ACTUAL</div>
+          <div class="current-stats">
+            <div class="stat-box"><div class="stat-label">Fuerza</div><div class="stat-value" id="current-strength">--</div></div>
+            <div class="stat-box"><div class="stat-label">Origen</div><div class="stat-value" id="current-origin">--</div></div>
+          </div>
+          <div class="current-verdict" id="current-verdict">Analizando...</div>
+        </div>
+
+        <!-- CONTEXTO RECIENTE -->
+        <div class="recent-trend hide-in-focus" id="recent-box">
+          <div class="recent-title">📊 CONTEXTO (5 velas)</div>
+          <div class="recent-sequence" id="recent-sequence"></div>
+          <div class="recent-analysis" id="recent-analysis">Analizando...</div>
+        </div>
+
+        <!-- PREDICCIÓN DE DIRECCIÓN Y TIEMPO -->
+        <div class="prediction-panel" id="prediction-panel">
+          <div class="pred-title">🔮 PREDICCIÓN</div>
+
+          <!-- Sin datos suficientes -->
+          <div class="pred-not-enough" id="pred-not-enough">
+            Necesitas más velas para predecir...
+          </div>
+
+          <!-- Dirección probable -->
+          <div class="pred-direction" id="pred-direction" style="display:none">
+            <div class="pred-dir-icon" id="pred-dir-icon">→</div>
+            <div class="pred-dir-text">
+              <div class="pred-dir-label">Dirección probable</div>
+              <div class="pred-dir-value" id="pred-dir-value">NEUTRAL</div>
+              <div class="pred-dir-conf"  id="pred-dir-conf">--</div>
+            </div>
+          </div>
+
+          <!-- Objetivo y tiempo -->
+          <div class="pred-target-row" id="pred-target-row" style="display:none">
+            <div class="pred-target">
+              <div class="pred-target-label">Objetivo VP</div>
+              <div class="pred-target-value" id="pred-target-level">--</div>
+            </div>
+            <div class="pred-target">
+              <div class="pred-target-label">Distancia</div>
+              <div class="pred-target-value" id="pred-target-dist">--</div>
+            </div>
+          </div>
+
+          <!-- Estimación de velas -->
+          <div class="pred-candles" id="pred-candles-box" style="display:none">
+            <div class="pred-candles-icon">🕯️</div>
+            <div class="pred-candles-text">
+              <div class="pred-candles-label">Velas estimadas para alcanzar objetivo</div>
+              <div class="pred-candles-value" id="pred-candles-value">--</div>
+              <div class="pred-candles-sub"  id="pred-candles-sub">--</div>
+            </div>
+          </div>
+
+          <!-- Razones del análisis -->
+          <div class="pred-reasons" id="pred-reasons" style="display:none"></div>
+
+          <!-- Barra de confianza total -->
+          <div class="pred-confidence-bar" id="pred-conf-bar" style="display:none">
+            <div class="pred-confidence-fill" id="pred-conf-fill" style="width:0%"></div>
+          </div>
+        </div>
+
+        <!-- PRIORIDADES (solo en modo completo) -->
+        <div class="priority-explanation hide-in-focus" id="priority-explanation">
+          <div class="priority-title">⚡ Prioridad de Señales:</div>
+          <div class="priority-item extreme">1. EXTREMO (>90% o <10%)</div>
+          <div class="priority-item vp">2. VOLUME PROFILE - POC/VAH/VAL</div>
+          <div class="priority-item cmd">3. FASE CMD</div>
+          <div class="priority-item">4. Reversión fuerte (fuerza 3)</div>
+          <div class="priority-item">5. Cruce MA válido</div>
+          <div class="priority-item">6. Patrón + contexto</div>
+        </div>
+
+      </div><!-- /col-right -->
+
+    </div><!-- /two-col -->
+
+    <!-- Panel edición velas existentes (flotante) -->
+    <div class="edit-panel" id="edit-panel">
+      <div style="color:var(--cyan);font-weight:bold;margin-bottom:10px;text-align:center;">
+        ✏️ EDITAR VELA #<span id="edit-index">--</span>
+        <div style="font-size:0.75em;color:#888;margin-top:4px;">Actual: <span id="edit-current">--</span></div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+        <button class="edit-btn" onclick="confirmEditFromIndex(1)"><div style="font-size:1.3em;">▰</div><div style="font-weight:bold;">DÉBIL</div><div style="font-size:0.7em;color:#888;">1</div></button>
+        <button class="edit-btn" onclick="confirmEditFromIndex(1.5)"><div style="font-size:1.3em;">▰+</div><div style="font-weight:bold;">DÉBIL+</div><div style="font-size:0.7em;color:#888;">1.5</div></button>
+        <button class="edit-btn" onclick="confirmEditFromIndex(2)"><div style="font-size:1.3em;">▰▰</div><div style="font-weight:bold;">MEDIA</div><div style="font-size:0.7em;color:#888;">2</div></button>
+        <button class="edit-btn" onclick="confirmEditFromIndex(2.5)"><div style="font-size:1.3em;">▰▰+</div><div style="font-weight:bold;">MEDIA+</div><div style="font-size:0.7em;color:#888;">2.5</div></button>
+        <button class="edit-btn" onclick="confirmEditFromIndex(3)"><div style="font-size:1.3em;">▰▰▰</div><div style="font-weight:bold;">FUERTE</div><div style="font-size:0.7em;color:#888;">3</div></button>
+        <button class="edit-btn" onclick="confirmEditFromIndex(4)"><div style="font-size:1.3em;">▰▰▰🔥</div><div style="font-weight:bold;">EXTREMA</div><div style="font-size:0.7em;color:#888;">4</div></button>
+      </div>
+      <div style="text-align:center;margin-top:10px;">
+        <button onclick="closeEditPanel()" style="background:#555;color:#fff;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;">Cancelar</button>
+      </div>
+    </div>
+
+  </div><!-- /app-wrapper -->
+
+  <script src="logic.js?v=20260318"></script>
+  <script src="voice.js?v=20260318"></script>
+  <script>
+    // Garantizar que el picker se construye después de que todo el DOM y scripts cargaron
+    window.addEventListener('load', function() {
+      if (typeof buildSizePicker === 'function') {
+        buildSizePicker();
+      }
+    });
+  </script>
+<!-- ── CSS del nuevo Size Picker está en style.css ── -->
+
+<script>
+// ── Atajos de teclado actualizados para el nuevo picker ─────────────────────
+// G = verde normal (F2) · R = rojo normal (F2)
+// 1-6 = tamaño directo: 1=Doji 2=Pequeña 3=Normal 4=Grande 5=MuyGrande 6=Marubozu
+(function() {
+  const SIZE_STRENGTHS = { '1': 1, '2': 1.5, '3': 2, '4': 2.5, '5': 3, '6': 4 };
+  let pendingColor = null;
+
+  document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    const k = e.key.toUpperCase();
+
+    if (k === 'G') { pendingColor = 'G'; return; }
+    if (k === 'R') { pendingColor = 'R'; return; }
+
+    if (SIZE_STRENGTHS[e.key] !== undefined) {
+      const str = SIZE_STRENGTHS[e.key];
+      const color = pendingColor || 'G';
+      if (typeof quickAddCandle === 'function') quickAddCandle(color, str);
+      pendingColor = null;
+      return;
+    }
+
+    // Atajos legacy directos (G sin número = normal F2)
+    if (k === 'G' && !pendingColor) { if (typeof quickAddCandle === 'function') quickAddCandle('G', 2); return; }
+    if (k === 'R' && !pendingColor) { if (typeof quickAddCandle === 'function') quickAddCandle('R', 2); return; }
+  });
+})();
+</script>
+
+</body>
+</html>
