@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -430,95 +429,7 @@
       }
     });
   </script>
-<!-- ── CSS del nuevo Size Picker ─────────────────────────────────────── -->
-<style>
-/* Forzar que el panel no corte el picker */
-.confirm-panel {
-  overflow: visible !important;
-}
-#size-picker-container {
-  display: block !important;
-  overflow: visible !important;
-  width: 100%;
-}
-
-.sp-row {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  padding: 5px 0;
-  width: 100%;
-}
-.sp-row-green { border-bottom: 1px solid rgba(0,255,136,0.12); padding-bottom: 7px; }
-.sp-row-red   { padding-top: 7px; }
-
-.sp-row-label {
-  font-size: 16px;
-  width: 24px;
-  flex-shrink: 0;
-  text-align: center;
-}
-
-.sp-cell {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 5px 2px 4px;
-  border: 2px solid transparent;
-  border-radius: 8px;
-  background: rgba(255,255,255,0.03);
-  cursor: pointer;
-  transition: background .1s, border-color .1s, transform .08s;
-  min-width: 0;
-}
-.sp-cell:hover {
-  background: rgba(255,255,255,0.07);
-  border-color: rgba(255,255,255,0.18);
-}
-.sp-row-green .sp-cell:active {
-  background: rgba(0,255,136,0.18);
-  border-color: #00ff88;
-  transform: scale(0.93);
-}
-.sp-row-red .sp-cell:active {
-  background: rgba(255,68,68,0.18);
-  border-color: #ff4444;
-  transform: scale(0.93);
-}
-
-.sp-svg-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 54px;
-}
-
-.sp-cell-label {
-  font-size: 8px;
-  color: #666;
-  margin-top: 3px;
-  text-align: center;
-  line-height: 1.2;
-}
-.sp-cell-str {
-  font-size: 9px;
-  font-weight: bold;
-  text-align: center;
-  margin-top: 1px;
-}
-
-@keyframes sp-flash-green {
-  0%,100% { background: transparent; }
-  50%      { background: rgba(0,255,136,0.22); }
-}
-@keyframes sp-flash-red {
-  0%,100% { background: transparent; }
-  50%      { background: rgba(255,68,68,0.22); }
-}
-.sp-row-green.sp-flash { animation: sp-flash-green 0.22s ease; }
-.sp-row-red.sp-flash   { animation: sp-flash-red   0.22s ease; }
-</style>
+<!-- ── CSS del nuevo Size Picker está en style.css ── -->
 
 <script>
 // ── Atajos de teclado actualizados para el nuevo picker ─────────────────────
