@@ -6,142 +6,186 @@ const Voice = (() => {
   let enabled       = false;
   let lastSignalKey = '';
   let bestVoice     = null;
+  let voiceReady    = false;
 
-  // ── Selección de voz femenina natural ────────────────────────────────────
-  // Orden de preferencia: Neural/Natural > Google > Microsoft > sistema
-  // Nombres femeninos conocidos tienen bonus extra
+  // ── Selección de voz ─────────────────────────────────────────────────────
+  // Estrategia: intentar varias veces hasta tener voces cargadas,
+  // luego elegir la mejor femenina/natural disponible.
   function loadVoice() {
-    const voices = synth.getVoices();
-    const ranked = voices
-      .filter(v => v.lang.startsWith('es'))
-      .sort((a, b) => {
-        const score = v => {
-          let s = 0;
-          const n = v.name.toLowerCase();
-          // Calidad de síntesis
-          if (n.includes('neural'))     s += 50;
-          if (n.includes('natural'))    s += 45;
-          if (n.includes('premium'))    s += 40;
-          if (n.includes('enhanced'))   s += 35;
-          if (n.includes('google'))     s += 25;
-          if (n.includes('microsoft'))  s += 18;
-          // Nombres femeninos en español — suenan más cálidos
-          if (n.includes('paulina'))    s += 40;
-          if (n.includes('mónica') || n.includes('monica'))  s += 38;
-          if (n.includes('laura'))      s += 36;
-          if (n.includes('valentina'))  s += 35;
-          if (n.includes('camila'))     s += 34;
-          if (n.includes('sofia') || n.includes('sofía'))    s += 33;
-          if (n.includes('lucia') || n.includes('lucía'))    s += 32;
-          if (n.includes('elena'))      s += 31;
-          if (n.includes('sara'))       s += 30;
-          if (n.includes('maria') || n.includes('maría'))    s += 29;
-          if (n.includes('isabela') || n.includes('isabella')) s += 28;
-          if (n.includes('fernanda'))   s += 28;
-          // Región — preferir América Latina (más neutral)
-          if (v.lang === 'es-US') s += 12;
-          if (v.lang === 'es-MX') s += 10;
-          if (v.lang === 'es-CO') s += 9;
-          if (v.lang === 'es-AR') s += 8;
-          if (v.lang === 'es-ES') s += 5;
-          return s;
-        };
-        return score(b) - score(a);
-      });
-    bestVoice = ranked[0] || null;
-    if (bestVoice) console.log('🎙 Voz seleccionada:', bestVoice.name, bestVoice.lang);
+    const all    = synth.getVoices();
+    const esVoices = all.filter(v => v.lang.startsWith('es'));
+
+    // Si no hay voces españolas, intentar con cualquier voz
+    const pool = esVoices.length > 0 ? esVoices : all;
+    if (pool.length === 0) return; // aún cargando
+
+    const scored = pool.map(v => {
+      let s = 0;
+      const n = v.name.toLowerCase();
+
+      // ── Calidad de síntesis (lo más importante) ──────────────────────────
+      if (n.includes('neural'))              s += 100;
+      if (n.includes('natural'))             s += 90;
+      if (n.includes('premium'))             s += 80;
+      if (n.includes('enhanced'))            s += 70;
+      if (n.includes('wavenet'))             s += 85;  // Google WaveNet
+      if (n.includes('studio'))             s += 75;
+
+      // ── Motor de síntesis ────────────────────────────────────────────────
+      if (n.includes('google'))              s += 30;
+      if (n.includes('amazon'))              s += 25;
+      if (n.includes('microsoft'))           s += 20;
+      if (n.includes('apple'))               s += 18;
+
+      // ── Nombres femeninos en español ─────────────────────────────────────
+      const femNames = [
+        'paulina','mónica','monica','laura','valentina','camila',
+        'sofia','sofía','lucia','lucía','elena','sara','maria','maría',
+        'isabela','isabella','fernanda','andrea','alejandra','carolina',
+        'diana','gabriela','paloma','conchita','esperanza','lupe',
+        'marisol','rocío','rocio','pilar','penelope','penélope',
+      ];
+      if (femNames.some(name => n.includes(name))) s += 50;
+
+      // ── Excluir voces masculinas conocidas ───────────────────────────────
+      const maleNames = [
+        'jorge','carlos','miguel','juan','pedro','antonio','rafael',
+        'diego','pablo','alberto','mario','roberto','sergio','jorge',
+        'enrique','rodrigo','francisco','alejandro','felipe','daniel',
+      ];
+      if (maleNames.some(name => n.includes(name))) s -= 80;
+
+      // ── Región ───────────────────────────────────────────────────────────
+      if (v.lang === 'es-US') s += 12;
+      if (v.lang === 'es-MX') s += 11;
+      if (v.lang === 'es-CO') s += 10;
+      if (v.lang === 'es-CL') s += 9;
+      if (v.lang === 'es-AR') s += 8;
+      if (v.lang === 'es-ES') s += 6;
+
+      return { voice: v, score: s };
+    });
+
+    scored.sort((a, b) => b.score - a.score);
+    bestVoice  = scored[0]?.voice || null;
+    voiceReady = true;
+
+    if (bestVoice) {
+      console.log('🎙 Voz:', bestVoice.name, '|', bestVoice.lang, '| Score:', scored[0].score);
+    }
+
+    // Log de todas las voces en español para debug
+    const esLog = scored.filter(x => x.voice.lang.startsWith('es'));
+    if (esLog.length > 0) {
+      console.log('📋 Voces ES disponibles:');
+      esLog.forEach(x => console.log(' ', x.score, x.voice.name, x.voice.lang));
+    }
   }
 
+  // Intentar cargar inmediatamente y en onvoiceschanged
   loadVoice();
-  if (synth.onvoiceschanged !== undefined) synth.onvoiceschanged = loadVoice;
+  if (synth.onvoiceschanged !== undefined) {
+    synth.onvoiceschanged = loadVoice;
+  }
+  // Algunos browsers (Safari, Firefox) necesitan un delay
+  setTimeout(loadVoice, 500);
+  setTimeout(loadVoice, 1500);
 
   // ── Hablar ────────────────────────────────────────────────────────────────
-  // rate  0.82 = más pausado, más humano (0.88 era un poco acelerado)
-  // pitch 1.10 = ligeramente agudo, femenino sin sonar artificial
-  // Las comas y puntos en el texto crean pausas naturales
-  function say(text, interrupt = false) {
+  // Parámetros calibrados para sonar más humano:
+  // - rate 0.80: pausado, como quien habla con calma
+  // - pitch 1.08: ligeramente femenino sin exagerar
+  // - Las comas y puntos en el texto crean pausas naturales de respiración
+  function say(text, interrupt = false, rateOverride = null) {
     if (!enabled || !text) return;
     if (interrupt) synth.cancel();
+
+    // Si las voces aún no cargaron, esperar y reintentar
+    if (!voiceReady) {
+      setTimeout(() => say(text, interrupt, rateOverride), 600);
+      return;
+    }
+
     const utt    = new SpeechSynthesisUtterance(text);
     utt.voice    = bestVoice || null;
     utt.lang     = bestVoice?.lang || 'es-MX';
-    utt.rate     = 0.82;
-    utt.pitch    = 1.10;
+    utt.rate     = rateOverride ?? 0.80;
+    utt.pitch    = 1.08;
     utt.volume   = 1.0;
+
+    // Workaround para bug de Chrome donde la voz se cuelga después de ~15s
+    utt.onend = () => { /* noop */ };
     synth.speak(utt);
   }
 
-  // ── Tabla de mensajes — frases naturales, como una analista real ─────────
-  // Cada clase tiene su frase. Las comas crean pausas de respiración.
-  // Evitar imperativos secos ("Compra") — usar frases descriptivas.
+  // ── Mensajes naturales — como una analista hablando ─────────────────────
+  // Frases con comas = pausas naturales al hablar
+  // Evitar imperativos secos. Usar descripciones de lo que está pasando.
   const MESSAGES = {
-    // Señales de compra — de mayor a menor confianza
+    // ── Compra ────────────────────────────────────────────────────────────
     'signal-extreme-buy':
-      'Atención. Sobreventa extrema confirmada. El mercado está listo para rebotar.',
+      'Atención. Sobreventa extrema. El mercado está en mínimos, con señal de rebote confirmada.',
     'signal-strong-reversal-buy':
-      'Reversión alcista fuerte. Dos o más rojas previas y ahora verde con fuerza. Señal de entrada.',
+      'Reversión alcista fuerte. Hay velas rojas previas y ahora una verde poderosa. Buena entrada.',
     'signal-accumulation':
-      'Acumulación institucional detectada. El dinero inteligente está comprando. Señal de compra.',
+      'Acumulación detectada. Las ballenas están comprando. Señal de compra con alta confianza.',
     'signal-buy':
-      'Señal de compra confirmada. Dos condiciones alineadas.',
+      'Señal de compra. Dos condiciones alineadas hacia arriba.',
     'signal-buy-weak':
-      'Posible compra, pero confianza media. Verifica el contexto antes de entrar.',
+      'Posible compra, pero con confianza media. Verifica el contexto antes de entrar.',
 
-    // Señales de venta — de mayor a menor confianza
+    // ── Venta ─────────────────────────────────────────────────────────────
     'signal-extreme-sell':
-      'Atención. Sobrecompra extrema confirmada. El mercado está listo para caer.',
+      'Atención. Sobrecompra extrema. El mercado está en máximos, con señal de caída confirmada.',
     'signal-strong-reversal-sell':
-      'Reversión bajista fuerte. Dos o más verdes previas y ahora roja con fuerza. Señal de salida.',
+      'Reversión bajista fuerte. Hay velas verdes previas y ahora una roja poderosa. Señal de salida.',
     'signal-distribution':
-      'Distribución institucional detectada. El dinero inteligente está vendiendo. Señal de venta.',
+      'Distribución detectada. Las ballenas están vendiendo. Señal de venta con alta confianza.',
     'signal-sell':
-      'Señal de venta confirmada. Dos condiciones alineadas.',
+      'Señal de venta. Dos condiciones alineadas hacia abajo.',
     'signal-sell-weak':
-      'Posible venta, pero confianza media. Verifica el contexto antes de entrar.',
+      'Posible venta, pero con confianza media. Verifica el contexto antes de entrar.',
 
-    // Esperar
+    // ── Esperar ───────────────────────────────────────────────────────────
     'signal-extreme-wait':
-      'Mercado en extremo. No operes todavía. Espera la corrección.',
+      'El mercado está sobreextendido. No entres en esta dirección. Espera la corrección.',
     'signal-caution':
-      'Precaución. Estás en una zona límite. Poco recorrido en esa dirección.',
+      'Precaución. Estás cerca de un límite del rango. Hay poco recorrido en esa dirección.',
     'signal-conflict':
-      'Señales contradictorias. El mercado no es claro. Espera confirmación.',
+      'Señales contradictorias. El sistema no tiene claridad. Es mejor esperar.',
     'signal-manipulation':
-      'Posible manipulación detectada. El movimiento puede ser una trampa. No entres.',
+      'Posible manipulación. Este movimiento puede ser una trampa institucional. No entres.',
     'signal-trap':
-      'Cuidado. Este movimiento parece una trampa. Espera la siguiente vela.',
+      'Cuidado. Este movimiento parece una trampa. Espera la siguiente vela para confirmar.',
     'signal-wait':
-      'Sin señal clara. Espera.',
+      'Sin señal por ahora. Esperando.',
   };
 
-  // ── Resolver qué mensaje leer ────────────────────────────────────────────
-  // 1. Leer data-voice si existe (texto específico del logic.js)
-  // 2. Si no, usar la tabla de mensajes naturales por clase
-  // 3. Fallback: limpiar el signalText visible
+  // ── Resolver texto a leer ────────────────────────────────────────────────
   function resolveText(el) {
-    const css       = el.className || '';
-    const dataVoice = el.getAttribute('data-voice');
+    const css = el.className || '';
+    const dv  = (el.getAttribute('data-voice') || '').trim();
+    const dvL = dv.toLowerCase();
 
-    // data-voice existe y no es genérico → usarlo directamente
-    if (dataVoice && dataVoice.trim() &&
-        !dataVoice.includes('confirmado') &&   // evitar los genéricos cortos
-        dataVoice.length > 20) {
-      return dataVoice.trim();
+    // Si data-voice tiene una frase larga y específica, usarla
+    // (viene de logic.js con el contexto exacto del momento)
+    if (dv.length > 25 &&
+        !dv.includes('confirmado') &&
+        !dv.includes('Esperar.') &&
+        !dv.includes('Esperando')) {
+      return dv;
     }
 
-    // Mapear clase CSS → clave del mensaje
+    // Mapear clase → clave de mensaje
     if (css.includes('signal-extreme')) {
-      // Distinguir si la señal es de compra, venta o espera según data-voice
-      const dv = (dataVoice || '').toLowerCase();
-      if (dv.includes('comprar') || dv.includes('sobreventa'))
+      if (dvL.includes('comprar') || dvL.includes('sobreventa') || dvL.includes('rebote'))
         return MESSAGES['signal-extreme-buy'];
-      if (dv.includes('vender') || dv.includes('sobrecompra'))
+      if (dvL.includes('vender') || dvL.includes('sobrecompra') || dvL.includes('caída'))
         return MESSAGES['signal-extreme-sell'];
       return MESSAGES['signal-extreme-wait'];
     }
     if (css.includes('signal-strong-reversal')) {
-      const dv = (dataVoice || '').toLowerCase();
-      return dv.includes('vender') || dv.includes('bajista')
+      return (dvL.includes('vender') || dvL.includes('bajista'))
         ? MESSAGES['signal-strong-reversal-sell']
         : MESSAGES['signal-strong-reversal-buy'];
     }
@@ -159,28 +203,27 @@ const Voice = (() => {
     return MESSAGES['signal-wait'];
   }
 
-  // ── Urgencia: interrumpir lo que se esté diciendo ────────────────────────
+  // ── Urgencia ─────────────────────────────────────────────────────────────
   function isUrgent(css) {
     return css.includes('extreme') ||
            css.includes('trap')    ||
            css.includes('manipulation');
   }
 
-  // ── Clave única: clase + data-voice para detectar cambios reales ─────────
+  // ── Clave para detectar cambios reales de señal ──────────────────────────
   function signalKey(el) {
     const cls   = (el.className || '').replace('main-signal', '').trim();
     const voice = el.getAttribute('data-voice') || '';
     return cls + '||' + voice;
   }
 
-  // ── Llamado en cada update() ─────────────────────────────────────────────
+  // ── onUpdate: llamado en cada ciclo de update() ──────────────────────────
   function onUpdate(el) {
     if (!enabled || !el) return;
     const key = signalKey(el);
     if (key === lastSignalKey) return;
     lastSignalKey = key;
-    const text = resolveText(el);
-    say(text, isUrgent(el.className || ''));
+    say(resolveText(el), isUrgent(el.className || ''));
   }
 
   // ── Toggle ────────────────────────────────────────────────────────────────
@@ -197,22 +240,28 @@ const Voice = (() => {
     }
 
     if (enabled) {
-      // Al activar, leer la señal actual inmediatamente
       const el = document.getElementById('main-signal');
       if (el) {
         lastSignalKey = signalKey(el);
-        // Pequeño delay para que el browser inicialice el sintetizador
-        setTimeout(() => say(resolveText(el)), 300);
+        // Delay para que el sintetizador esté listo
+        setTimeout(() => say(resolveText(el)), 400);
       }
     }
   }
 
-  return { toggle, onUpdate };
+  // ── API pública ───────────────────────────────────────────────────────────
+  // listVoices(): para diagnosticar qué voces están disponibles
+  function listVoices() {
+    const voices = synth.getVoices().filter(v => v.lang.startsWith('es'));
+    console.table(voices.map(v => ({ name: v.name, lang: v.lang, local: v.localService })));
+    return voices.map(v => v.name);
+  }
+
+  return { toggle, onUpdate, listVoices };
 
 })();
 
-// ── Sincronización con update() ──────────────────────────────────────────────
-// Espera a que logic.js cargue y parchea update() para pasar el elemento completo
+// ── Sincronización con update() de logic.js ──────────────────────────────────
 window.addEventListener('load', () => {
   if (typeof update === 'function') {
     const _orig = update;
