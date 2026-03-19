@@ -3131,7 +3131,7 @@ function updateProjections(trendMA, prevTrendMA, activeCross, recentTrend, curre
     gSignal = 'PRECAUCIÓN'; gClass = 'proj-signal-hold'; gBoxClass = 'proj-box proj-green proj-conflict';
     gConfidence = `Pred. BAJISTA ${Math.round(predictionState.confidence*100)}%`;
   }
-  
+
   document.getElementById('proj-g-sig').textContent = gSignal;
   document.getElementById('proj-g-sig').className = 'proj-signal ' + gClass;
   document.getElementById('proj-g-conf').textContent = gConfidence;
