@@ -105,11 +105,12 @@
     <!-- ===== DOS COLUMNAS ===== -->
     <div class="two-col">
 
-      <!-- ===== COLUMNA IZQUIERDA: entrada + señal principal ===== -->
+      <!-- ===== COLUMNA IZQUIERDA ===== -->
       <div class="col-left">
 
-        <!-- SEÑAL PRINCIPAL (al tope, lo más importante) -->
-        <div class="main-signal signal-wait" id="main-signal">
+        <!-- ① SEÑAL PRINCIPAL — sticky arriba, siempre visible -->
+        <div class="main-signal signal-wait" id="main-signal"
+          style="position:sticky;top:0;z-index:60;">
           ESPERAR
           <div class="manual-trap-badge">TRAMPA ACTIVA</div>
           <div class="conflict-badge">⚠️ CONFLICTO</div>
@@ -119,13 +120,63 @@
           <div class="candle-trap-badge">🪤 POSIBLE TRAMPA</div>
         </div>
 
-        <!-- ALERTAS (extremo + trampa de vela) -->
-        <div id="extreme-alert" class="extreme-alert" style="min-height:0;overflow:hidden;">
+        <!-- ② PICKER DE PRECIO — sticky justo debajo de la señal -->
+        <div class="confirm-panel" role="region" aria-label="Selector de velas"
+          style="position:sticky;top:52px;z-index:55;">
+
+          <div class="confirm-title">📈 REGISTRAR VELA</div>
+
+          <!-- Spread configurable: define cuántos puntos abarca el rango -->
+          <div style="display:flex;gap:5px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
+            <span style="font-size:0.7em;color:#666;">Spread ±</span>
+            <input type="number" id="pp-spread" value="1" step="0.01" min="0.01"
+              style="width:60px;font-size:0.75em;padding:3px 5px;background:#111;border:1px solid #333;color:#fff;border-radius:5px;text-align:right;"
+              oninput="ppUpdateSpread()"
+              title="Rango total = precio ± este valor">
+            <span style="font-size:0.65em;color:#444;">puntos &nbsp;|&nbsp;</span>
+            <span style="font-size:0.7em;color:#666;">Ref:</span>
+            <input type="number" id="pp-ref-manual" step="0.01" placeholder="precio base"
+              style="width:80px;font-size:0.75em;padding:3px 5px;background:#111;border:1px solid #333;color:#fff;border-radius:5px;text-align:right;"
+              onchange="ppSetRef(this.value)"
+              title="Precio de apertura o cierre anterior">
+            <span id="pp-ref-label" style="font-size:0.65em;color:#555;"></span>
+          </div>
+
+          <div id="pp-bar"
+            onclick="ppBarClick(event)"
+            onmousemove="ppBarHover(event)"
+            onmouseleave="ppBarLeave()"
+            style="position:relative;width:100%;height:180px;border:1px solid #1e1e1e;border-radius:8px;overflow:hidden;cursor:pointer;user-select:none;background:#080808;">
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#333;font-size:0.72em;">
+              Introduce el precio base para comenzar
+            </div>
+          </div>
+
+          <div id="pp-result"
+            style="margin-top:6px;padding:6px 10px;border-radius:6px;font-size:0.75em;font-weight:bold;border:1px solid #222;background:#0d0d0d;color:#444;">
+            Define el precio base y haz click donde cerró la vela
+          </div>
+
+          <!-- Legacy ocultos -->
+          <div id="suggestion-box" style="display:none;"><div id="suggestion-text"></div><div id="suggestion-reason"></div><div id="suggestion-bars"></div><div id="suggested-candle-svg-g"></div><div id="suggested-candle-svg-r"></div><div id="correction-notice"></div></div>
+          <div id="step-confirm" style="display:none;"><div id="status-bar"></div><span id="suggested-strength-display"></span></div>
+          <div id="correction-options" style="display:none;"><div id="candle-picker-grid"></div><button id="add-candle-confirm-btn"></button></div>
+          <div id="color-buttons" style="display:none;"><button onclick="addCandle('G')" id="green-strength-legacy"></button><button onclick="addCandle('R')" id="red-strength-legacy"></button></div>
+          <span id="green-strength" style="display:none"></span>
+          <span id="red-strength" style="display:none"></span>
+          <div id="pick-color-green" style="display:none"></div>
+          <div id="pick-color-red" style="display:none"></div>
+          <div id="size-picker-container" style="display:none;"></div>
+          <div id="visual-picker-panel" style="display:none;"></div>
+        </div>
+
+        <!-- ③ MENSAJES — van DEBAJO del picker, no lo empujan -->
+        <div id="extreme-alert" class="extreme-alert">
           <div class="extreme-title">⚠️ EXTREMO DETECTADO</div>
           <div class="extreme-text" id="extreme-text">Mercado en sobrecompra/sobreventa extrema.</div>
         </div>
 
-        <div class="candle-trap-alert" id="candle-trap-alert" role="alert" aria-live="polite" style="min-height:0;overflow:hidden;">
+        <div class="candle-trap-alert" id="candle-trap-alert" role="alert" aria-live="polite">
           <div class="trap-alert-header">
             <div class="trap-alert-icon" id="trap-alert-icon">🪤</div>
             <div>
@@ -143,56 +194,9 @@
           <div class="trap-confidence-label"><span>Baja probabilidad</span><span>Alta probabilidad</span></div>
         </div>
 
-        <!-- LÓGICA -->
         <div class="logic-explanation" id="logic-explanation">
           <div class="logic-title">🧠 Lógica:</div>
           <div class="logic-item" id="logic-text">Analizando...</div>
-        </div>
-
-        <!-- ENTRADA DE VELAS — Sticky para no moverse con las alertas -->
-        <div class="confirm-panel" role="region" aria-label="Selector de velas"
-          style="position:sticky;top:6px;z-index:50;">
-
-          <div class="confirm-title">📈 REGISTRAR VELA</div>
-
-          <div style="display:flex;gap:5px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
-            <span style="font-size:0.7em;color:#666;">Rango:</span>
-            <input type="number" id="pp-min" value="0" step="0.01" placeholder="Mín"
-              style="width:70px;font-size:0.75em;padding:3px 5px;background:#111;border:1px solid #333;color:#fff;border-radius:5px;text-align:right;"
-              onchange="ppRebuild()">
-            <span style="color:#444;font-size:0.8em;">—</span>
-            <input type="number" id="pp-max" value="0" step="0.01" placeholder="Máx"
-              style="width:70px;font-size:0.75em;padding:3px 5px;background:#111;border:1px solid #333;color:#fff;border-radius:5px;text-align:right;"
-              onchange="ppRebuild()">
-            <span id="pp-ref-label" style="font-size:0.65em;color:#555;">ref: --</span>
-          </div>
-
-          <div id="pp-bar"
-            onclick="ppBarClick(event)"
-            onmousemove="ppBarHover(event)"
-            onmouseleave="ppBarLeave()"
-            style="position:relative;width:100%;height:180px;border:1px solid #1e1e1e;border-radius:8px;overflow:hidden;cursor:pointer;user-select:none;background:#080808;">
-            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#333;font-size:0.72em;">
-              Introduce el rango mín y máx
-            </div>
-          </div>
-
-          <div id="pp-result"
-            style="margin-top:6px;padding:6px 10px;border-radius:6px;font-size:0.75em;font-weight:bold;border:1px solid #222;background:#0d0d0d;color:#444;">
-            Haz click donde cerró la vela
-          </div>
-
-          <!-- Elementos legacy ocultos — necesarios para que logic.js no rompa -->
-          <div id="suggestion-box" style="display:none;"><div id="suggestion-text"></div><div id="suggestion-reason"></div><div id="suggestion-bars"></div><div id="suggested-candle-svg-g"></div><div id="suggested-candle-svg-r"></div><div id="correction-notice"></div></div>
-          <div id="step-confirm" style="display:none;"><div id="status-bar"></div><span id="suggested-strength-display"></span></div>
-          <div id="correction-options" style="display:none;"><div id="candle-picker-grid"></div><button id="add-candle-confirm-btn"></button></div>
-          <div id="color-buttons" style="display:none;"><button onclick="addCandle('G')" id="green-strength-legacy"></button><button onclick="addCandle('R')" id="red-strength-legacy"></button></div>
-          <span id="green-strength" style="display:none"></span>
-          <span id="red-strength" style="display:none"></span>
-          <div id="pick-color-green" style="display:none"></div>
-          <div id="pick-color-red" style="display:none"></div>
-          <div id="size-picker-container" style="display:none;"></div>
-          <div id="visual-picker-panel" style="display:none;"></div>
         </div>
 
         <!-- HISTORIAL -->
@@ -421,30 +425,9 @@
 
   <script src="logic.js?v=20260319"></script>
   <script src="voice.js?v=20260319"></script>
-<!-- ── CSS: picker sticky + alertas sin saltos ── -->
+<!-- ── CSS: señal y picker sticky, mensajes debajo sin empujar ── -->
 <style>
-.confirm-panel {
-  position: sticky !important;
-  top: 6px !important;
-  z-index: 50 !important;
-}
-
-#extreme-alert {
-  overflow: hidden;
-  max-height: 0;
-  padding: 0 !important;
-  margin: 0 !important;
-  border-width: 0 !important;
-  transition: max-height 0.22s ease, padding 0.18s, margin 0.18s, border-width 0.18s;
-}
-#extreme-alert.active {
-  max-height: 120px;
-  padding: revert !important;
-  margin: revert !important;
-  border-width: revert !important;
-}
-
-#candle-trap-alert {
+#extreme-alert, #candle-trap-alert, #logic-explanation {
   overflow: hidden;
   max-height: 0;
   padding: 0 !important;
@@ -452,26 +435,210 @@
   border-width: 0 !important;
   transition: max-height 0.25s ease, padding 0.2s, margin 0.2s, border-width 0.2s;
 }
-#candle-trap-alert.active {
-  max-height: 320px;
-  padding: revert !important;
-  margin: revert !important;
-  border-width: revert !important;
-}
-
-#logic-explanation {
-  overflow: hidden;
-  max-height: 0;
-  padding: 0 !important;
-  margin: 0 !important;
-  transition: max-height 0.2s ease, padding 0.15s, margin 0.15s;
-}
-#logic-explanation.active {
-  max-height: 100px;
-  padding: revert !important;
-  margin: revert !important;
-}
+#extreme-alert.active    { max-height: 120px; padding: revert !important; margin: revert !important; border-width: revert !important; }
+#candle-trap-alert.active{ max-height: 320px; padding: revert !important; margin: revert !important; border-width: revert !important; }
+#logic-explanation.active{ max-height: 100px; padding: revert !important; margin: revert !important; }
 </style>
+
+<script>
+  // ═══════════════════════════════════════════════════
+  // PICKER DE PRECIO — spread fijo, ref se actualiza sola
+  // ═══════════════════════════════════════════════════
+  let ppRef    = null;   // precio de referencia (cierre anterior)
+  let ppSpread = 1;      // ± puntos del rango (configurable)
+  let ppMin    = 0;
+  let ppMax    = 0;
+
+  const PP_ZONES = [
+    { min:85, max:100, strength:4,   label:'Marubozu',   gBg:'rgba(0,220,90,0.24)', rBg:'rgba(220,50,50,0.24)' },
+    { min:65, max:85,  strength:3,   label:'Muy grande', gBg:'rgba(0,220,90,0.16)', rBg:'rgba(220,50,50,0.16)' },
+    { min:45, max:65,  strength:2.5, label:'Grande',     gBg:'rgba(0,220,90,0.10)', rBg:'rgba(220,50,50,0.10)' },
+    { min:25, max:45,  strength:2,   label:'Normal',     gBg:'rgba(0,220,90,0.06)', rBg:'rgba(220,50,50,0.06)' },
+    { min:8,  max:25,  strength:1.5, label:'Pequeña',    gBg:'rgba(0,220,90,0.03)', rBg:'rgba(220,50,50,0.03)' },
+    { min:0,  max:8,   strength:1,   label:'Doji',       gBg:'rgba(130,130,130,0.07)', rBg:'rgba(130,130,130,0.07)' },
+  ];
+
+  function ppGetZone(pct) {
+    for (const z of PP_ZONES) { if (pct >= z.min) return z; }
+    return PP_ZONES[PP_ZONES.length - 1];
+  }
+
+  // Actualiza el spread cuando el usuario lo cambia
+  function ppUpdateSpread() {
+    const v = parseFloat(document.getElementById('pp-spread').value);
+    if (!isNaN(v) && v > 0) {
+      ppSpread = v;
+      if (ppRef !== null) ppCenterRange(ppRef);
+    }
+  }
+
+  // Fija la referencia manualmente (precio de apertura / cierre anterior)
+  function ppSetRef(val) {
+    const price = parseFloat(val);
+    if (isNaN(price)) return;
+    ppRef = price;
+    ppCenterRange(price);
+    document.getElementById('pp-ref-label').textContent = '← listo';
+    document.getElementById('pp-result').style.cssText = 'margin-top:6px;padding:6px 10px;border-radius:6px;font-size:0.75em;font-weight:bold;border:1px solid #3366ff44;background:rgba(51,102,255,0.08);color:#4499ff;';
+    document.getElementById('pp-result').innerHTML = 'Ref fijada en <b>' + price.toFixed(2) + '</b> · Spread ±' + ppSpread + ' · Haz click donde cerró la vela';
+  }
+
+  // Centra el rango alrededor de un precio con el spread actual
+  function ppCenterRange(price) {
+    ppMin = parseFloat((price - ppSpread).toFixed(4));
+    ppMax = parseFloat((price + ppSpread).toFixed(4));
+    ppRenderBar();
+  }
+
+  // También permite ppRebuild desde legacy (logic.js lo llama en algunos paths)
+  function ppRebuild() {
+    if (ppRef !== null) ppCenterRange(ppRef);
+  }
+
+  function ppRenderBar() {
+    const bar = document.getElementById('pp-bar');
+    if (!bar) return;
+    const range = ppMax - ppMin;
+    if (range <= 0) return;
+
+    let html = '';
+    PP_ZONES.forEach((z, i) => {
+      const top    = (100 - z.max) + '%';
+      const h      = (z.max - z.min) + '%';
+      const priceHi = (ppMin + z.max / 100 * range).toFixed(2);
+      html += `<div class="ppz" id="ppz${i}" style="
+        position:absolute;left:0;right:0;top:${top};height:${h};
+        background:${z.gBg};
+        display:flex;align-items:center;justify-content:space-between;
+        padding:0 8px;border-bottom:1px solid rgba(255,255,255,0.04);
+        transition:background .08s;">
+        <span style="font-size:10px;font-weight:500;color:rgba(0,220,90,0.85);pointer-events:none;">${z.label} · F${z.strength}</span>
+        <span style="font-size:9px;color:rgba(255,255,255,0.35);pointer-events:none;">${priceHi}</span>
+      </div>`;
+    });
+
+    [25, 50, 75].forEach(p => {
+      const price = (ppMin + p / 100 * range).toFixed(2);
+      html += `<div style="position:absolute;left:0;right:0;top:${100-p}%;height:1px;background:rgba(255,255,255,0.07);pointer-events:none;">
+        <span style="position:absolute;left:50%;transform:translateX(-50%);bottom:2px;font-size:9px;color:rgba(255,255,255,0.35);">${price}</span>
+      </div>`;
+    });
+
+    html += `<div style="position:absolute;top:3px;left:7px;font-size:9px;color:rgba(255,255,255,0.4);pointer-events:none;">${ppMax.toFixed(2)} ↑</div>`;
+    html += `<div style="position:absolute;bottom:3px;left:7px;font-size:9px;color:rgba(255,255,255,0.4);pointer-events:none;">${ppMin.toFixed(2)} ↓</div>`;
+
+    // Línea de referencia (siempre en el centro del rango)
+    html += `<div style="position:absolute;left:0;right:0;top:50%;height:2px;background:#4499ff;z-index:4;pointer-events:none;">
+      <span style="position:absolute;left:7px;bottom:3px;font-size:9px;color:#4499ff;font-weight:bold;">ref ${ppRef !== null ? ppRef.toFixed(2) : '--'}</span>
+    </div>`;
+
+    html += `<div id="pp-hline" style="position:absolute;left:0;right:0;height:2px;display:none;pointer-events:none;z-index:6;">
+      <span id="pp-hprice" style="position:absolute;right:7px;top:-15px;font-size:10px;font-weight:bold;padding:1px 5px;border-radius:3px;"></span>
+      <span id="pp-hdir"   style="position:absolute;left:7px;top:-15px;font-size:10px;font-weight:bold;padding:1px 5px;border-radius:3px;"></span>
+    </div>`;
+
+    bar.innerHTML = html;
+  }
+
+  function ppBarHover(e) {
+    const bar = document.getElementById('pp-bar');
+    if (!bar || ppRef === null) return;
+    const rect    = bar.getBoundingClientRect();
+    const yPct    = (e.clientY - rect.top) / rect.height;
+    const price   = ppMax - yPct * (ppMax - ppMin);
+    const isGreen = price >= ppRef;
+    const pct     = Math.min(100, Math.abs(price - ppRef) / (ppMax - ppMin) * 100);
+    const z       = ppGetZone(pct);
+    const zi      = PP_ZONES.indexOf(z);
+    const col     = isGreen ? '#00cc66' : '#ff4444';
+
+    PP_ZONES.forEach((zd, i) => {
+      const el = document.getElementById('ppz' + i);
+      if (!el) return;
+      if (i === zi) {
+        el.style.background = isGreen ? 'rgba(0,220,90,0.42)' : 'rgba(220,50,50,0.42)';
+        el.firstElementChild.style.color = col;
+      } else {
+        el.style.background = isGreen ? zd.gBg : zd.rBg;
+        el.firstElementChild.style.color = isGreen ? 'rgba(0,220,90,0.75)' : 'rgba(220,80,80,0.75)';
+      }
+    });
+
+    const yPx = e.clientY - rect.top;
+    const hl  = document.getElementById('pp-hline');
+    const hp  = document.getElementById('pp-hprice');
+    const hd  = document.getElementById('pp-hdir');
+    if (!hl) return;
+    hl.style.display    = 'block';
+    hl.style.top        = yPx + 'px';
+    hl.style.background = col;
+    hp.textContent      = price.toFixed(2);
+    hp.style.color      = col;
+    hp.style.background = isGreen ? 'rgba(0,180,60,0.18)' : 'rgba(200,40,40,0.18)';
+    hd.textContent      = (isGreen ? '▲ VERDE' : '▼ ROJA') + ' · ' + z.label + ' · F' + z.strength;
+    hd.style.color      = col;
+    hd.style.background = isGreen ? 'rgba(0,180,60,0.18)' : 'rgba(200,40,40,0.18)';
+  }
+
+  function ppBarLeave() {
+    PP_ZONES.forEach((z, i) => {
+      const el = document.getElementById('ppz' + i);
+      if (el) {
+        el.style.background = z.gBg;
+        if (el.firstElementChild) el.firstElementChild.style.color = 'rgba(0,220,90,0.75)';
+      }
+    });
+    const hl = document.getElementById('pp-hline');
+    if (hl) hl.style.display = 'none';
+  }
+
+  function ppBarClick(e) {
+    if (ppRef === null) {
+      document.getElementById('pp-result').innerHTML =
+        '<span style="color:#ff4444">Primero ingresa el precio base (campo Ref)</span>';
+      document.getElementById('pp-ref-manual').focus();
+      return;
+    }
+    const bar   = document.getElementById('pp-bar');
+    const rect  = bar.getBoundingClientRect();
+    const yPct  = (e.clientY - rect.top) / rect.height;
+    const price = Math.max(ppMin, Math.min(ppMax, ppMax - yPct * (ppMax - ppMin)));
+    const pct   = Math.min((Math.abs(price - ppRef) / (ppMax - ppMin)) * 100, 100);
+    const isGreen = price >= ppRef;
+    const z     = ppGetZone(pct);
+    const col   = isGreen ? '#00cc66' : '#ff4444';
+    const arrow = isGreen ? '▲' : '▼';
+
+    const res = document.getElementById('pp-result');
+    res.style.cssText = `margin-top:6px;padding:6px 10px;border-radius:6px;font-size:0.75em;font-weight:bold;border:1px solid ${col}44;background:${isGreen?'rgba(0,200,80,0.1)':'rgba(210,50,50,0.1)'};color:${col};`;
+    res.innerHTML = `${arrow} <b>${isGreen?'VERDE':'ROJA'}</b> &nbsp;·&nbsp; Cierre <b>${price.toFixed(2)}</b> &nbsp;·&nbsp; Recorrió <b>${pct.toFixed(0)}%</b> &nbsp;·&nbsp; <b>F${z.strength} ${z.label}</b>`;
+
+    // Actualizar ref al precio de cierre — el rango se centra automáticamente
+    ppRef = price;
+    document.getElementById('pp-ref-manual').value = price.toFixed(2);
+    document.getElementById('pp-ref-label').textContent = '';
+    ppCenterRange(price);
+
+    if (typeof quickAddCandle === 'function') quickAddCandle(isGreen ? 'G' : 'R', z.strength);
+  }
+
+  // Atajos de teclado
+  (function() {
+    const SZ = {'1':1,'2':1.5,'3':2,'4':2.5,'5':3,'6':4};
+    let pend = null;
+    document.addEventListener('keydown', function(e) {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      const k = e.key.toUpperCase();
+      if (k === 'G') { pend = 'G'; return; }
+      if (k === 'R') { pend = 'R'; return; }
+      if (SZ[e.key] && typeof quickAddCandle === 'function') {
+        quickAddCandle(pend || 'G', SZ[e.key]); pend = null;
+      }
+    });
+  })();
+</script>
+</body>
+</html>
 
 <script>
   // ═══════════════════════════════════════════════════
