@@ -130,17 +130,29 @@
             Define el precio base y haz click donde cerró la vela
           </div>
 
-          <!-- Legacy ocultos — necesarios para que logic.js no rompa -->
-          <div id="suggestion-box" style="display:none;"><div id="suggestion-text"></div><div id="suggestion-reason"></div><div id="suggestion-bars"></div><div id="suggested-candle-svg-g"></div><div id="suggested-candle-svg-r"></div><div id="correction-notice"></div></div>
-          <div id="step-confirm" style="display:none;"><div id="status-bar"></div><span id="suggested-strength-display"></span></div>
-          <div id="correction-options" style="display:none;"><div id="candle-picker-grid"></div><button id="add-candle-confirm-btn"></button></div>
-          <div id="color-buttons" style="display:none;"><button onclick="addCandle('G')" id="green-strength-legacy"></button><button onclick="addCandle('R')" id="red-strength-legacy"></button></div>
-          <span id="green-strength" style="display:none"></span>
-          <span id="red-strength" style="display:none"></span>
-          <div id="pick-color-green" style="display:none"></div>
-          <div id="pick-color-red" style="display:none"></div>
-          <div id="size-picker-container" style="display:none;"></div>
-          <div id="visual-picker-panel" style="display:none;"></div>
+          <!-- ⚠️ OBSOLETO — Panel de confirmación legacy.
+               El nuevo logic.js (refactorizado) usa quickAddCandle() directamente
+               desde el Price Picker y el Modo Boston. Estos IDs ya no se renderizan
+               en pantalla pero se mantienen como nodos vacíos porque resetConfirmationPanel()
+               en logic.js los referencia con getElementById + guard (if el).
+               NO eliminar los IDs; SÍ se puede omitir cualquier contenido visual interno. -->
+          <div id="suggestion-box"      style="display:none;" aria-hidden="true">
+            <div id="suggestion-text"></div>
+            <div id="suggestion-reason"></div>
+            <div id="suggestion-bars"></div>
+            <div id="suggested-candle-svg-g"></div>
+            <div id="suggested-candle-svg-r"></div>
+            <div id="correction-notice"></div>
+          </div>
+          <div id="step-confirm"        style="display:none;" aria-hidden="true"><div id="status-bar"></div><span id="suggested-strength-display"></span></div>
+          <div id="correction-options"  style="display:none;" aria-hidden="true"><div id="candle-picker-grid"></div><button id="add-candle-confirm-btn"></button></div>
+          <div id="color-buttons"       style="display:none;" aria-hidden="true"><button onclick="addCandle('G')" id="green-strength-legacy"></button><button onclick="addCandle('R')" id="red-strength-legacy"></button></div>
+          <span id="green-strength"     style="display:none" aria-hidden="true"></span>
+          <span id="red-strength"       style="display:none" aria-hidden="true"></span>
+          <div id="pick-color-green"    style="display:none;" aria-hidden="true"></div>
+          <div id="pick-color-red"      style="display:none;" aria-hidden="true"></div>
+          <div id="size-picker-container"  style="display:none;" aria-hidden="true"></div>
+          <div id="visual-picker-panel"    style="display:none;" aria-hidden="true"></div>
         </div>
 
         <!-- ③ MENSAJES — debajo del picker, no lo empujan -->
@@ -523,14 +535,9 @@
       }
     });
 
-    // Atajos de teclado
-    var _ppPend=null;
-    document.addEventListener('keydown', function(e) {
-      if (e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
-      var k=e.key.toUpperCase(), SZ={'1':1,'2':1.5,'3':2,'4':2.5,'5':3,'6':4};
-      if (k==='G'){_ppPend='G';return;} if(k==='R'){_ppPend='R';return;}
-      if (SZ[e.key]&&typeof quickAddCandle==='function') { quickAddCandle(_ppPend||'G',SZ[e.key]); _ppPend=null; }
-    });
+    // NOTA: El listener de atajos de teclado (G/R/1-6) fue eliminado de aquí.
+    // Está centralizado en logic.js (función keydown, línea ~1732) para evitar
+    // doble-registro de eventos y conflictos con el estado de strengthOrigin.
 
   })();
   </script>
