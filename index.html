@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Detector CMD + MA + Fuerza Híbrida + Volume Profile</title>
+  <title>Detector CMD + MA + Fuerza Híbrida</title>
   <link rel="stylesheet" href="animations.css">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -57,7 +57,7 @@
 
     <!-- BARRA SUPERIOR -->
     <div class="top-bar">
-      <div class="top-bar-title">CMD + MA + VP</div>
+      <div class="top-bar-title">CMD + MA</div>
       <div style="display:flex;gap:6px;align-items:center;flex:1;justify-content:center;">
         <div class="active-trap-banner" id="trap-banner" style="position:static;margin:0;padding:4px 10px;font-size:0.72em;border-radius:20px;">
           🎭 <strong>TRAMPA</strong> Vela <span id="trap-info">--</span>
@@ -73,7 +73,6 @@
           <span class="focus-switch-label">Enfoque</span>
         </div>
         <button class="btn-reset" onclick="reset()" style="padding:5px 12px;font-size:0.75em;border-radius:6px;">↺</button>
-        <button onclick="openMonitor()" style="background:var(--purple);color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:0.72em;">VP</button>
         <button id="voice-btn" onclick="Voice.toggle()" title="Activar narrador de voz"
           style="background:#1a1a2e;color:#aaa;border:1px solid #444;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:0.72em;transition:all 0.2s;font-weight:bold;">
           🔇 VOZ
@@ -273,24 +272,6 @@
           </div>
         </div>
 
-        <div class="vp-panel hide-in-focus" id="vp-panel">
-          <div class="vp-title"><span>📊</span><span>VOLUME PROFILE</span></div>
-          <div class="vp-container" id="vp-histogram"></div>
-          <div class="vp-legend">
-            <div class="vp-legend-item"><div class="vp-legend-color poc"></div><span>POC</span></div>
-            <div class="vp-legend-item"><div class="vp-legend-color vah"></div><span>VAH</span></div>
-            <div class="vp-legend-item"><div class="vp-legend-color val"></div><span>VAL</span></div>
-          </div>
-          <div class="vp-stats">
-            <div class="vp-stat poc-stat"><div class="vp-stat-label">POC</div><div class="vp-stat-value poc" id="vp-poc-value">--</div></div>
-            <div class="vp-stat vah-stat"><div class="vp-stat-label">VAH</div><div class="vp-stat-value vah" id="vp-vah-value">--</div></div>
-            <div class="vp-stat val-stat"><div class="vp-stat-label">VAL</div><div class="vp-stat-value val" id="vp-val-value">--</div></div>
-          </div>
-          <div class="vp-current-position" id="vp-position">
-            <div class="vp-position-text" id="vp-position-text">Posición: --</div>
-            <div class="vp-position-detail" id="vp-position-detail">Esperando datos...</div>
-          </div>
-        </div>
 
         <div class="cross-detector hide-in-focus">
           <div class="cross-title">⚔️ CRUCES MA</div>
@@ -315,44 +296,16 @@
           <div class="recent-analysis" id="recent-analysis">Analizando...</div>
         </div>
 
-        <div class="prediction-panel" id="prediction-panel">
-          <div class="pred-title">🔮 PREDICCIÓN</div>
-          <div class="pred-not-enough" id="pred-not-enough">Necesitas más velas para predecir...</div>
-          <div class="pred-direction" id="pred-direction" style="display:none">
-            <div class="pred-dir-icon" id="pred-dir-icon">→</div>
-            <div class="pred-dir-text">
-              <div class="pred-dir-label">Dirección probable</div>
-              <div class="pred-dir-value" id="pred-dir-value">NEUTRAL</div>
-              <div class="pred-dir-conf"  id="pred-dir-conf">--</div>
-            </div>
-          </div>
-          <div class="pred-target-row" id="pred-target-row" style="display:none">
-            <div class="pred-target"><div class="pred-target-label">Objetivo VP</div><div class="pred-target-value" id="pred-target-level">--</div></div>
-            <div class="pred-target"><div class="pred-target-label">Distancia</div><div class="pred-target-value" id="pred-target-dist">--</div></div>
-          </div>
-          <div class="pred-candles" id="pred-candles-box" style="display:none">
-            <div class="pred-candles-icon">🕯️</div>
-            <div class="pred-candles-text">
-              <div class="pred-candles-label">Velas estimadas para alcanzar objetivo</div>
-              <div class="pred-candles-value" id="pred-candles-value">--</div>
-              <div class="pred-candles-sub"  id="pred-candles-sub">--</div>
-            </div>
-          </div>
-          <div class="pred-reasons" id="pred-reasons" style="display:none"></div>
-          <div class="pred-confidence-bar" id="pred-conf-bar" style="display:none">
-            <div class="pred-confidence-fill" id="pred-conf-fill" style="width:0%"></div>
-          </div>
-        </div>
 
         <div class="priority-explanation hide-in-focus" id="priority-explanation">
           <div class="priority-title">⚡ Prioridad de Señales:</div>
           <div class="priority-item extreme">1. EXTREMO (&gt;90% o &lt;10%)</div>
-          <div class="priority-item vp">2. VOLUME PROFILE - POC/VAH/VAL</div>
-          <div class="priority-item cmd">3. FASE CMD</div>
-          <div class="priority-item">4. Reversión fuerte (fuerza 3)</div>
-          <div class="priority-item">5. Cruce MA válido</div>
-          <div class="priority-item">6. Patrón + contexto</div>
+          <div class="priority-item cmd">2. FASE CMD</div>
+          <div class="priority-item">3. Reversión fuerte (fuerza 3)</div>
+          <div class="priority-item">4. Cruce MA válido</div>
+          <div class="priority-item">5. Patrón + contexto</div>
         </div>
+
 
       </div><!-- /col-right -->
 
