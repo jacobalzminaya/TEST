@@ -1875,43 +1875,49 @@ function openMonitor() {
 update();
 initCandlePicker();
 initFocusMode();
-console.log('Detector CMD iniciado.');
+patchHistoryCandles();
+console.log('Detector CMD v20260320 iniciado.');
 
-// ===== PROYECCION POR VELA SELECCIONADA =====
+// ===== MODO DE PROYECCION (Vela Actual / Siguiente) =====
 
-var projectionMode = 'current'; // 'current' = vela actual | 'next' = vela siguiente
+var projectionMode = 'current';
+var hoverProjPinned = false;
+var _hoverMouseX = 0;
+var _hoverMouseY = 0;
+var _hideTimer = null;
+
+document.addEventListener('mousemove', function(e) {
+  _hoverMouseX = e.clientX;
+  _hoverMouseY = e.clientY;
+});
 
 function toggleProjectionMode() {
   projectionMode = projectionMode === 'current' ? 'next' : 'current';
-  // Actualizar visual del switch integrado en el panel
-  var track = document.getElementById('sel-proj-track');
-  var dot   = document.getElementById('sel-proj-dot');
-  var label = document.getElementById('sel-proj-label');
-  var badge = document.getElementById('sel-proj-mode-badge');
+  var sw    = document.getElementById('proj-mode-switch');
+  var badge = document.getElementById('hover-proj-mode-badge');
+  var labelBot = document.querySelector('.proj-label-bot');
+  var labelTop = document.querySelector('.proj-label-top');
   if (projectionMode === 'next') {
-    if (track) track.style.background = '#00ffff';
-    if (dot)   dot.style.transform    = 'translateX(11px)';
-    if (label) { label.textContent = 'Siguiente'; label.style.color = '#00ffff'; }
-    if (badge) { badge.textContent = 'VELA SIGUIENTE'; badge.style.color = '#00ffff'; badge.style.borderColor = '#00ffff'; }
-    var sw = document.getElementById('sel-proj-mode-switch');
-    if (sw) sw.style.borderColor = '#00ffff';
+    if (sw) sw.classList.add('mode-next');
+    if (badge) badge.textContent = 'VELA SIGUIENTE';
+    if (labelTop) labelTop.style.color = '#444';
+    if (labelBot) labelBot.style.color = '#00ffff';
   } else {
-    if (track) track.style.background = '#333';
-    if (dot)   dot.style.transform    = 'translateX(0)';
-    if (label) { label.textContent = 'Actual'; label.style.color = '#888'; }
-    if (badge) { badge.textContent = 'VELA ACTUAL'; badge.style.color = '#ffd700'; badge.style.borderColor = '#333'; }
-    var sw = document.getElementById('sel-proj-mode-switch');
-    if (sw) sw.style.borderColor = '#333';
+    if (sw) sw.classList.remove('mode-next');
+    if (badge) badge.textContent = 'VELA ACTUAL';
+    if (labelTop) labelTop.style.color = '#aaa';
+    if (labelBot) labelBot.style.color = '#444';
   }
-  // Si hay vela seleccionada, recalcular
-  var panel = document.getElementById('sel-proj-panel');
-  if (panel && panel.style.display !== 'none') {
-    var idx = parseInt(panel.getAttribute('data-sel-idx') || '-1');
-    if (idx >= 0) showSelProj(idx);
+  if (hoverProjPinned) {
+    var panel = document.getElementById('hover-proj-panel');
+    if (panel && panel.style.display !== 'none') {
+      var idx = parseInt(panel.getAttribute('data-idx') || '-1');
+      if (idx >= 0) showHoverProj(idx, true);
+    }
   }
 }
 
-function computeSelProjection(idx) {
+function computeHoverProjection(idx) {
   var effHist = history;
   if (manualTrapIndex !== null) {
     effHist = history.filter(function(_, i) { return i !== manualTrapIndex; });
@@ -1921,73 +1927,292 @@ function computeSelProjection(idx) {
     : Math.min(idx + 2, effHist.length);
   var slice = effHist.slice(0, windowEnd);
   if (slice.length < 2) return null;
+  var lastTwo = slice.slice(-2);
   var cr = detectCrosses(false);
-  return analyzePattern(slice.slice(-2), null, cr.extremeCondition);
+  return analyzePattern(lastTwo, null, cr.extremeCondition);
 }
 
-function showSelProj(idx) {
-  var panel  = document.getElementById('sel-proj-panel');
-  var infoEl = document.getElementById('sel-proj-candle-info');
+function positionHoverPanel(panel) {
+  var W  = panel.offsetWidth  || 300;
+  var H  = panel.offsetHeight || 200;
+  var vw = window.innerWidth;
+  var vh = window.innerHeight;
+  var gap = 16;
+  var left = _hoverMouseX + gap;
+  var top  = _hoverMouseY + gap;
+  if (left + W > vw - 8) { left = _hoverMouseX - W - gap; }
+  if (top  + H > vh - 8) { top  = _hoverMouseY - H - gap; }
+  if (left < 8) { left = 8; }
+  if (top  < 8) { top  = 8; }
+  panel.style.left = left + 'px';
+  panel.style.top  = top  + 'px';
+}
+
+function cancelHide() {
+  if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+}
+
+function scheduleHide() {
+  if (hoverProjPinned) return;
+  cancelHide();
+  _hideTimer = setTimeout(function() {
+    var p = document.getElementById('hover-proj-panel');
+    if (p && !hoverProjPinned) { p.style.display = 'none'; }
+  }, 400);
+}
+
+function renderHoverPanel(idx, proj, pinned) {
+  var panel  = document.getElementById('hover-proj-panel');
+  var badge  = document.getElementById('hover-proj-mode-badge');
+  var infoEl = document.getElementById('hover-proj-candle-info');
+  var hint   = document.getElementById('hover-proj-pin-hint');
   if (!panel) return;
 
-  panel.setAttribute('data-sel-idx', String(idx));
+  badge.textContent = projectionMode === 'next' ? 'VELA SIGUIENTE' : 'VELA ACTUAL';
+  if (projectionMode === 'next') {
+    panel.classList.add('mode-next-active');
+    badge.style.color = '#00ffff';
+  } else {
+    panel.classList.remove('mode-next-active');
+    badge.style.color = '#ffd700';
+  }
+  if (pinned) { panel.classList.add('pinned'); } else { panel.classList.remove('pinned'); }
 
-  var proj   = (history.length >= 2) ? computeSelProjection(idx) : null;
   var col    = history[idx] === 'G' ? 'VERDE' : 'ROJA';
   var str    = getCandleStrength(idx) || 2;
   var slabel = (STRENGTH_CONFIG.LEVELS[str] || {}).name || 'MEDIA';
-  var info   = '#' + (idx + 1) + ' ' + col + ' · F' + str + ' ' + slabel;
-  if (projectionMode === 'next') {
-    if (idx + 1 < history.length) {
-      info += '  →  Sig. #' + (idx + 2) + ' ' + (history[idx + 1] === 'G' ? 'VERDE' : 'ROJA');
-    } else {
-      info += '  →  próxima vela';
-    }
+  var info   = 'Vela #' + (idx + 1) + ' ' + col + ' F' + str + ' ' + slabel;
+  if (projectionMode === 'next' && idx + 1 < history.length) {
+    info += '  ->  Sig. #' + (idx + 2) + ' ' + (history[idx + 1] === 'G' ? 'VERDE' : 'ROJA');
+  } else if (projectionMode === 'next') {
+    info += '  ->  Proxima vela';
   }
-  if (infoEl) infoEl.textContent = info;
-
-  var gSig = document.getElementById('sel-proj-g-sig');
-  var rSig = document.getElementById('sel-proj-r-sig');
+  infoEl.textContent = info;
 
   if (!proj) {
-    document.getElementById('sel-proj-g-seq').textContent  = '--';
-    if (gSig) { gSig.textContent = 'Sin datos'; gSig.style.color = '#ffd700'; }
-    document.getElementById('sel-proj-g-conf').textContent = 'Registra al menos 2 velas';
-    document.getElementById('sel-proj-r-seq').textContent  = '--';
-    if (rSig) { rSig.textContent = 'Sin datos'; rSig.style.color = '#ffd700'; }
-    document.getElementById('sel-proj-r-conf').textContent = 'Registra al menos 2 velas';
+    document.getElementById('hover-proj-g-seq').textContent  = '--';
+    document.getElementById('hover-proj-g-sig').textContent  = 'Sin datos';
+    document.getElementById('hover-proj-g-sig').className    = 'hover-proj-sig sig-wait';
+    document.getElementById('hover-proj-g-conf').textContent = 'Necesitas al menos 2 velas';
+    document.getElementById('hover-proj-r-seq').textContent  = '--';
+    document.getElementById('hover-proj-r-sig').textContent  = 'Sin datos';
+    document.getElementById('hover-proj-r-sig').className    = 'hover-proj-sig sig-wait';
+    document.getElementById('hover-proj-r-conf').textContent = 'Necesitas al menos 2 velas';
   } else {
-    document.getElementById('sel-proj-g-seq').textContent  = proj.ifG.pat;
-    if (gSig) {
-      gSig.textContent  = proj.ifG.sig;
-      gSig.style.color  = proj.ifG.sig === 'COMPRA' ? '#00ff88' : proj.ifG.sig === 'VENTA' ? '#ff4444' : '#ffd700';
-    }
-    document.getElementById('sel-proj-g-conf').textContent = Math.round(proj.ifG.conf * 100) + '% · ' + proj.ifG.desc;
-    document.getElementById('sel-proj-r-seq').textContent  = proj.ifR.pat;
-    if (rSig) {
-      rSig.textContent  = proj.ifR.sig;
-      rSig.style.color  = proj.ifR.sig === 'VENTA' ? '#ff4444' : proj.ifR.sig === 'COMPRA' ? '#00ff88' : '#ffd700';
-    }
-    document.getElementById('sel-proj-r-conf').textContent = Math.round(proj.ifR.conf * 100) + '% · ' + proj.ifR.desc;
+    document.getElementById('hover-proj-g-seq').textContent  = proj.ifG.pat;
+    var gSig = document.getElementById('hover-proj-g-sig');
+    gSig.textContent = proj.ifG.sig;
+    gSig.className   = 'hover-proj-sig ' + (proj.ifG.sig === 'COMPRA' ? 'sig-buy' : proj.ifG.sig === 'VENTA' ? 'sig-sell' : 'sig-wait');
+    document.getElementById('hover-proj-g-conf').textContent = Math.round(proj.ifG.conf * 100) + '%  ' + proj.ifG.desc;
+
+    document.getElementById('hover-proj-r-seq').textContent  = proj.ifR.pat;
+    var rSig = document.getElementById('hover-proj-r-sig');
+    rSig.textContent = proj.ifR.sig;
+    rSig.className   = 'hover-proj-sig ' + (proj.ifR.sig === 'VENTA' ? 'sig-sell' : proj.ifR.sig === 'COMPRA' ? 'sig-buy' : 'sig-wait');
+    document.getElementById('hover-proj-r-conf').textContent = Math.round(proj.ifR.conf * 100) + '%  ' + proj.ifR.desc;
   }
 
+  if (hint) {
+    hint.textContent = pinned
+      ? 'Fijado - Click en misma vela o X para cerrar'
+      : 'Click en vela para fijar';
+  }
+
+  panel.setAttribute('data-idx', String(idx));
+  // Posicionar con coordenadas actuales ANTES de mostrar
+  var vw = window.innerWidth, vh = window.innerHeight;
+  var W = 304, H = 200, gap = 16;
+  var left = _hoverMouseX + gap;
+  var top  = _hoverMouseY + gap;
+  if (left + W > vw - 8) { left = _hoverMouseX - W - gap; }
+  if (top  + H > vh - 8) { top  = _hoverMouseY - H - gap; }
+  if (left < 8) { left = 8; }
+  if (top  < 8) { top = 8; }
+  panel.style.left = left + 'px';
+  panel.style.top  = top  + 'px';
   panel.style.display = 'block';
 }
 
-// Exponer al scope global
-window.toggleProjectionMode = toggleProjectionMode;
+function showHoverProj(idx, pinned) {
+  var proj = (history.length >= 2) ? computeHoverProjection(idx) : null;
+  renderHoverPanel(idx, proj, pinned);
+}
 
-// Funciones de candle — onclick directo en cada vela del historial
-window._candleClick = function(idx, e) {
-  showSelProj(idx);
-  openEditPanel(idx);
-};
+function closeHoverProj() {
+  hoverProjPinned = false;
+  var panel = document.getElementById('hover-proj-panel');
+  if (panel) { panel.style.display = 'none'; }
+}
 
-// Hover: mostrar proyección al pasar el mouse (sin fijar)
+function patchHistoryCandles() {
+  // Los eventos de cada vela van directo via onmouseenter/onmouseleave/onclick inline.
+  // Aqui solo configuramos el panel y el cierre global.
+
+  // Cancelar hide cuando el mouse entra al panel flotante
+  document.addEventListener('mouseenter', function(e) {
+    var panel = document.getElementById('hover-proj-panel');
+    if (!panel || panel.style.display === 'none') return;
+    var t = e.target;
+    while (t) {
+      if (t === panel) { cancelHide(); return; }
+      t = t.parentElement;
+    }
+  }, true);
+
+  // Ocultar cuando mouse sale del panel
+  var panel = document.getElementById('hover-proj-panel');
+  if (panel) {
+    panel.addEventListener('mouseleave', function() { scheduleHide(); });
+  }
+}
+
+// Funciones inline para las velas — expuestas en window
 window._candleHoverEnter = function(idx) {
-  showSelProj(idx);
+  cancelHide();
+  if (hoverProjPinned) return;
+  showHoverProj(idx, false);
 };
+
+// Actualizar posición del panel mientras el mouse se mueve
+document.addEventListener('mousemove', function() {
+  if (hoverProjPinned) return;
+  var panel = document.getElementById('hover-proj-panel');
+  if (panel && panel.style.display !== 'none') {
+    positionHoverPanel(panel);
+  }
+});
 
 window._candleHoverLeave = function() {
-  // No ocultar — el panel permanece con la última vela vista
+  scheduleHide();
 };
+
+window._candleClick = function(idx, e) {
+  var panel  = document.getElementById('hover-proj-panel');
+  var curIdx = panel ? parseInt(panel.getAttribute('data-idx') || '-1') : -1;
+  if (hoverProjPinned && curIdx === idx) {
+    // Segundo click en la misma vela: cerrar panel Y abrir editor
+    closeHoverProj();
+    openEditPanel(idx);
+  } else {
+    // Primer click: fijar panel de proyeccion
+    hoverProjPinned = true;
+    showHoverProj(idx, true);
+  }
+};
+
+document.addEventListener('click', function(e) {
+  if (!hoverProjPinned) return;
+  var panel     = document.getElementById('hover-proj-panel');
+  var historyEl = document.getElementById('history');
+  if (!panel || !historyEl) return;
+  var t = e.target;
+  while (t) {
+    if (t === panel || t === historyEl) return;
+    t = t.parentElement;
+  }
+  closeHoverProj();
+});
+
+// ── PROYECCION DESDE EL PRICE PICKER ──
+// Se llama desde ppBarHover en el index.html cada vez que el mouse
+// se mueve sobre la barra de seleccion de fuerza.
+// color: 'G' o 'R'  |  strength: 1, 1.5, 2, 2.5, 3, 4
+// clientX/Y: posicion actual del mouse
+
+window.showPPProjection = function(color, strength, clientX, clientY) {
+  var panel  = document.getElementById('hover-proj-panel');
+  var badge  = document.getElementById('hover-proj-mode-badge');
+  var infoEl = document.getElementById('hover-proj-candle-info');
+  var hint   = document.getElementById('hover-proj-pin-hint');
+  if (!panel) return;
+
+  // Calcular la proyeccion simulando que se registra esta vela
+  // Usamos el historial actual + la vela hipotetica para proyectar
+  var proj = null;
+  var effHist = history;
+  if (manualTrapIndex !== null) {
+    effHist = history.filter(function(_, i) { return i !== manualTrapIndex; });
+  }
+
+  if (projectionMode === 'current') {
+    // Modo Actual: proyectar QUE PASARIA si esta vela cierra asi
+    // Contexto: ultimas 2 velas del historial + esta vela hipotetica
+    var simHist = effHist.concat([color]);
+    if (simHist.length >= 2) {
+      var lastTwo = simHist.slice(-2);
+      var cr = detectCrosses(false);
+      proj = analyzePattern(lastTwo, null, cr.extremeCondition);
+    }
+  } else {
+    // Modo Siguiente: proyectar la vela DESPUES de esta
+    // Contexto: historial actual + esta vela (para ver que sigue)
+    var simHist2 = effHist.concat([color]);
+    if (simHist2.length >= 2) {
+      var lastTwo2 = simHist2.slice(-2);
+      var cr2 = detectCrosses(false);
+      proj = analyzePattern(lastTwo2, null, cr2.extremeCondition);
+    }
+  }
+
+  // Badge segun modo
+  var modeLabel = projectionMode === 'next' ? 'VELA SIGUIENTE' : 'VELA ACTUAL';
+  badge.textContent = modeLabel;
+  badge.style.color = projectionMode === 'next' ? '#00ffff' : '#ffd700';
+  panel.classList.toggle('mode-next-active', projectionMode === 'next');
+  panel.classList.remove('pinned');
+
+  // Info de la vela seleccionada
+  var strLabel = (STRENGTH_CONFIG.LEVELS[strength] || {}).name || 'MEDIA';
+  var colorLabel = color === 'G' ? 'VERDE' : 'ROJA';
+  infoEl.textContent = colorLabel + ' F' + strength + ' ' + strLabel
+    + (projectionMode === 'next' ? '  ->  Que sigue?' : '  ->  Si cierra asi');
+
+  // Rellenar proyecciones
+  if (!proj) {
+    document.getElementById('hover-proj-g-seq').textContent  = '--';
+    document.getElementById('hover-proj-g-sig').textContent  = 'Sin datos';
+    document.getElementById('hover-proj-g-sig').className    = 'hover-proj-sig sig-wait';
+    document.getElementById('hover-proj-g-conf').textContent = 'Registra mas velas';
+    document.getElementById('hover-proj-r-seq').textContent  = '--';
+    document.getElementById('hover-proj-r-sig').textContent  = 'Sin datos';
+    document.getElementById('hover-proj-r-sig').className    = 'hover-proj-sig sig-wait';
+    document.getElementById('hover-proj-r-conf').textContent = 'Registra mas velas';
+  } else {
+    document.getElementById('hover-proj-g-seq').textContent  = proj.ifG.pat;
+    var gSig = document.getElementById('hover-proj-g-sig');
+    gSig.textContent = proj.ifG.sig;
+    gSig.className   = 'hover-proj-sig ' + (proj.ifG.sig === 'COMPRA' ? 'sig-buy' : proj.ifG.sig === 'VENTA' ? 'sig-sell' : 'sig-wait');
+    document.getElementById('hover-proj-g-conf').textContent = Math.round(proj.ifG.conf * 100) + '%  ' + proj.ifG.desc;
+
+    document.getElementById('hover-proj-r-seq').textContent  = proj.ifR.pat;
+    var rSig = document.getElementById('hover-proj-r-sig');
+    rSig.textContent = proj.ifR.sig;
+    rSig.className   = 'hover-proj-sig ' + (proj.ifR.sig === 'VENTA' ? 'sig-sell' : proj.ifR.sig === 'COMPRA' ? 'sig-buy' : 'sig-wait');
+    document.getElementById('hover-proj-r-conf').textContent = Math.round(proj.ifR.conf * 100) + '%  ' + proj.ifR.desc;
+  }
+
+  if (hint) hint.textContent = 'Hover para ver proyeccion  |  Click para registrar';
+
+  // Posicionar junto al cursor
+  var vw = window.innerWidth, vh = window.innerHeight;
+  var W = 304, H = 200, gap = 18;
+  var left = clientX + gap;
+  var top  = clientY - H / 2;
+  if (left + W > vw - 8) { left = clientX - W - gap; }
+  if (top + H > vh - 8)  { top = vh - H - 8; }
+  if (top < 8) { top = 8; }
+  panel.style.left = left + 'px';
+  panel.style.top  = top  + 'px';
+  panel.style.display = 'block';
+};
+
+window.hidePPProjection = function() {
+  // Solo ocultar si no esta fijado (pinned)
+  var panel = document.getElementById('hover-proj-panel');
+  if (panel && !hoverProjPinned) {
+    panel.style.display = 'none';
+  }
+};
+
+window.toggleProjectionMode = toggleProjectionMode;
+window.closeHoverProj = closeHoverProj;
