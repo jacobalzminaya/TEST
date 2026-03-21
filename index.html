@@ -436,6 +436,11 @@
       hl.style.display='block'; hl.style.top=yPx+'px'; hl.style.background=col;
       hp.textContent=price.toFixed(2); hp.style.color=col; hp.style.background=isGreen?'rgba(0,170,60,0.18)':'rgba(190,40,40,0.18)';
       hd.textContent=(isGreen?'▲ VERDE':'▼ ROJA')+' · '+z.label+' · F'+z.str; hd.style.color=col; hd.style.background=hp.style.background;
+
+      // ── PROYECCION HOVER ──
+      if (typeof window.showPPProjection === 'function') {
+        window.showPPProjection(isGreen ? 'G' : 'R', z.str, e.clientX, e.clientY);
+      }
     };
 
     window.ppBarLeave = function() {
@@ -443,6 +448,8 @@
         var el=document.getElementById('ppz'+i);
         if (el) { el.style.background=z.gBg; if(el.firstElementChild) el.firstElementChild.style.color='rgba(0,210,80,0.75)'; }
       });
+      // Ocultar panel de proyeccion
+      if (typeof window.hidePPProjection === 'function') { window.hidePPProjection(); }
       var hl=document.getElementById('pp-hline'); if(hl) hl.style.display='none';
     };
 
@@ -466,6 +473,8 @@
       document.getElementById('pp-ref-label').textContent='';
       centerRange(price);
       if (typeof quickAddCandle==='function') quickAddCandle(isGreen?'G':'R', z.str);
+      // Ocultar panel hover tras registrar la vela
+      if (typeof window.hidePPProjection === 'function') { window.hidePPProjection(); }
     };
 
     window.ppSetRef = function(val) {
