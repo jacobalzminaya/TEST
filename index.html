@@ -69,13 +69,13 @@
       <div style="display:flex;gap:6px;align-items:center;">
         <button class="boston-btn" id="boston-btn-main" onclick="toggleBoston()" title="Modo Decisión">⚡ DECISIÓN</button>
         <!-- SWITCH MODO PROYECCIÓN -->
-        <div class="proj-mode-switch" id="proj-mode-switch" onclick="toggleProjectionMode()" title="Modo de proyección: Vela Actual / Vela Siguiente">
-          <div class="proj-mode-track" id="proj-mode-track">
-            <div class="proj-mode-dot" id="proj-mode-dot"></div>
+        <div class="proj-mode-switch" id="proj-mode-switch" onclick="toggleProjectionMode()" title="Proyección: Vela Actual / Vela Siguiente">
+          <div class="proj-mode-track">
+            <div class="proj-mode-dot"></div>
           </div>
           <div class="proj-mode-labels">
-            <span class="proj-mode-label-off" id="proj-mode-label-off">Actual</span>
-            <span class="proj-mode-label-on" id="proj-mode-label-on">Siguiente</span>
+            <span class="proj-label-top">Actual</span>
+            <span class="proj-label-bot">Siguiente</span>
           </div>
         </div>
         <div class="focus-switch" id="focus-switch" onclick="toggleFocusMode()" title="Modo enfoque">
@@ -342,7 +342,7 @@
 
   </div><!-- /app-wrapper -->
 
-  <script src="logic.js?v=20260319b"></script>
+  <script src="logic.js?v=20260320c"></script>
   <script src="voice.js?v=20260319b"></script>
 
   <!-- CSS: alertas con transición suave, sin saltos de layout -->
@@ -505,29 +505,29 @@
   })();
   </script>
 
-  <!-- PANEL FLOTANTE DE PROYECCIÓN HOVER (position:fixed, encima de todo) -->
-  <div class="hover-proj-panel" id="hover-proj-panel" style="display:none;">
-    <div class="hover-proj-header">
-      <span class="hover-proj-mode-badge" id="hover-proj-mode-badge">📍 VELA ACTUAL</span>
-      <span class="hover-proj-candle-info" id="hover-proj-candle-info"></span>
-      <button class="hover-proj-close" onclick="closeHoverProj()">✕</button>
+  <!-- PANEL FLOTANTE DE PROYECCIÓN -->
+  <div id="hover-proj-panel" style="display:none;position:fixed;z-index:9999;width:300px;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:10px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.85);pointer-events:auto;">
+    <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid #1e1e1e;background:#111;">
+      <span id="hover-proj-mode-badge" style="font-size:0.62em;font-weight:bold;letter-spacing:0.04em;padding:2px 7px;border-radius:10px;background:#222;color:#ffd700;white-space:nowrap;">&#128205; VELA ACTUAL</span>
+      <span id="hover-proj-candle-info" style="flex:1;font-size:0.62em;color:#555;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+      <button onclick="closeHoverProj()" style="background:none;border:none;color:#555;cursor:pointer;font-size:0.8em;padding:2px 5px;border-radius:4px;line-height:1;">&#x2715;</button>
     </div>
-    <div class="hover-proj-body">
-      <div class="hover-proj-box hover-proj-green" id="hover-proj-g">
-        <div class="hover-proj-label">Si VERDE →</div>
-        <div class="hover-proj-seq" id="hover-proj-g-seq">--</div>
-        <div class="hover-proj-sig" id="hover-proj-g-sig">--</div>
-        <div class="hover-proj-conf" id="hover-proj-g-conf">--</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px;">
+      <div style="padding:7px 9px;border-radius:7px;border:1px solid #222;border-left:3px solid rgba(0,255,136,0.3);background:#0a0a0a;">
+        <div style="font-size:0.58em;color:#555;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em;">Si VERDE &rarr;</div>
+        <div id="hover-proj-g-seq" style="font-size:0.72em;font-weight:bold;color:#aaa;margin-bottom:3px;letter-spacing:0.1em;">--</div>
+        <div id="hover-proj-g-sig" class="hover-proj-sig sig-wait" style="font-size:0.8em;font-weight:bold;margin-bottom:2px;">--</div>
+        <div id="hover-proj-g-conf" style="font-size:0.62em;color:#555;">--</div>
       </div>
-      <div class="hover-proj-box hover-proj-red" id="hover-proj-r">
-        <div class="hover-proj-label">Si ROJO →</div>
-        <div class="hover-proj-seq" id="hover-proj-r-seq">--</div>
-        <div class="hover-proj-sig" id="hover-proj-r-sig">--</div>
-        <div class="hover-proj-conf" id="hover-proj-r-conf">--</div>
+      <div style="padding:7px 9px;border-radius:7px;border:1px solid #222;border-left:3px solid rgba(255,68,68,0.3);background:#0a0a0a;">
+        <div style="font-size:0.58em;color:#555;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em;">Si ROJO &rarr;</div>
+        <div id="hover-proj-r-seq" style="font-size:0.72em;font-weight:bold;color:#aaa;margin-bottom:3px;letter-spacing:0.1em;">--</div>
+        <div id="hover-proj-r-sig" class="hover-proj-sig sig-wait" style="font-size:0.8em;font-weight:bold;margin-bottom:2px;">--</div>
+        <div id="hover-proj-r-conf" style="font-size:0.62em;color:#555;">--</div>
       </div>
     </div>
-    <div class="hover-proj-footer">
-      <span class="hover-proj-pin-hint" id="hover-proj-pin-hint">Click en vela para fijar · Hover para previsualizar</span>
+    <div style="padding:4px 10px;border-top:1px solid #1a1a1a;text-align:center;">
+      <span id="hover-proj-pin-hint" style="font-size:0.58em;color:#444;">Hover para previsualizar &middot; Click para fijar</span>
     </div>
   </div>
 
