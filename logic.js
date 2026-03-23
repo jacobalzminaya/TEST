@@ -948,15 +948,44 @@ function getTrendLabel(currentValue, prevValue, extremeCondition = null) {
 
 function analyzePattern(lastTwo, originalTwo = null, extremeCondition = null) {
   if (lastTwo.length < 2) return null;
-  const [prev, curr] = lastTwo;
   const em = extremeCondition ? 0.3 : 1;
-  const scenarios = {
-    'GG': { ifG: { pat: 'GGG', sig: 'COMPRA', conf: 0.75 * em, desc: 'Continuación alcista' }, ifR: { pat: 'GGR', sig: 'VENTA', conf: 0.85, desc: 'Reversión bajista FUERTE' } },
-    'RR': { ifG: { pat: 'RRG', sig: 'COMPRA', conf: 0.85, desc: 'Reversión alcista FUERTE' }, ifR: { pat: 'RRR', sig: 'VENTA', conf: 0.75 * em, desc: 'Continuación bajista' } },
+
+  // Contexto extendido: usar hasta 3 velas para mayor precisión
+  // lastTwo puede tener 2 o 3 elementos
+  const hasThree = lastTwo.length >= 3;
+  const prev2 = hasThree ? lastTwo[lastTwo.length - 3] : null;
+  const prev  = lastTwo[lastTwo.length - 2];
+  const curr  = lastTwo[lastTwo.length - 1];
+  const key   = prev + curr;
+  const key3  = hasThree ? (prev2 + prev + curr) : null;
+
+  // Tabla de 3 velas (8 combinaciones) — más precisa que 2 velas
+  const scenarios3 = {
+    // Tres iguales — continuación o agotamiento
+    'GGG': { ifG: { pat: 'GGGG', sig: 'COMPRA', conf: 0.65 * em, desc: 'Continuación alcista (3 verdes)' }, ifR: { pat: 'GGGR', sig: 'VENTA', conf: 0.82, desc: 'Reversión tras 3 verdes — muy probable' } },
+    'RRR': { ifG: { pat: 'RRRG', sig: 'COMPRA', conf: 0.82, desc: 'Reversión tras 3 rojas — muy probable' }, ifR: { pat: 'RRRR', sig: 'VENTA', conf: 0.65 * em, desc: 'Continuación bajista (3 rojas)' } },
+    // Dos iguales + opuesta — indecisión o inicio de reversión
+    'GGR': { ifG: { pat: 'GGRG', sig: 'COMPRA', conf: 0.60 * em, desc: 'Rebote tras corrección' }, ifR: { pat: 'GGRR', sig: 'VENTA', conf: 0.78, desc: 'Confirmación bajista fuerte' } },
+    'RRG': { ifG: { pat: 'RRGG', sig: 'COMPRA', conf: 0.78, desc: 'Confirmación alcista fuerte' }, ifR: { pat: 'RRGR', sig: 'VENTA', conf: 0.60 * em, desc: 'Rebote fallido — continúa baja' } },
+    // Alternancia — conflicto o consolidación
+    'GRG': { ifG: { pat: 'GRGG', sig: 'COMPRA', conf: 0.68, desc: 'Doble suelo — impulso alcista' }, ifR: { pat: 'GRGR', sig: 'ESPERAR', conf: 0.50, desc: 'Alternancia — sin dirección clara' } },
+    'RGR': { ifG: { pat: 'RGRG', sig: 'ESPERAR', conf: 0.50, desc: 'Alternancia — sin dirección clara' }, ifR: { pat: 'RGRR', sig: 'VENTA', conf: 0.68, desc: 'Doble techo — impulso bajista' } },
+    // Opuesta + dos iguales — ruptura o trampa
+    'GRR': { ifG: { pat: 'GRRG', sig: 'COMPRA', conf: 0.72, desc: 'Rebote desde soporte' }, ifR: { pat: 'GRRR', sig: 'VENTA', conf: 0.70 * em, desc: 'Continuación bajista post-reversión' } },
+    'RGG': { ifG: { pat: 'RGGG', sig: 'COMPRA', conf: 0.70 * em, desc: 'Continuación alcista post-reversión' }, ifR: { pat: 'RGGR', sig: 'VENTA', conf: 0.72, desc: 'Trampa alcista — atención' } },
+  };
+
+  // Tabla de 2 velas (fallback si no hay 3)
+  const scenarios2 = {
+    'GG': { ifG: { pat: 'GGG', sig: 'COMPRA', conf: 0.70 * em, desc: 'Continuación alcista' }, ifR: { pat: 'GGR', sig: 'VENTA', conf: 0.85, desc: 'Reversión bajista FUERTE' } },
+    'RR': { ifG: { pat: 'RRG', sig: 'COMPRA', conf: 0.85, desc: 'Reversión alcista FUERTE' }, ifR: { pat: 'RRR', sig: 'VENTA', conf: 0.70 * em, desc: 'Continuación bajista' } },
     'GR': { ifG: { pat: 'GRG', sig: 'COMPRA', conf: 0.55 * em, desc: 'Reversión alcista' }, ifR: { pat: 'GRR', sig: 'VENTA', conf: 0.65, desc: 'Confirmación bajista' } },
     'RG': { ifG: { pat: 'RGG', sig: 'COMPRA', conf: 0.65, desc: 'Confirmación alcista' }, ifR: { pat: 'RGR', sig: 'VENTA', conf: 0.55 * em, desc: 'Reversión bajista' } }
   };
-  return scenarios[prev + curr] || null;
+
+  // Usar tabla de 3 velas si hay contexto suficiente
+  if (key3 && scenarios3[key3]) return scenarios3[key3];
+  return scenarios2[key] || null;
 }
 
 // ===== PANEL CMD =====
@@ -1289,7 +1318,7 @@ function update() {
 
   let effectiveHistory = history;
   if (manualTrapIndex !== null) effectiveHistory = history.filter((_, idx) => idx !== manualTrapIndex);
-  const lastTwo = effectiveHistory.slice(-2);
+  const lastTwo = effectiveHistory.slice(-3);
   const proj    = lastTwo.length >= 2 ? analyzePattern(lastTwo, null, extremeCondition) : null;
 
   let finalSignal = 'wait', signalClass = 'signal-wait', signalText = 'ESPERAR';
@@ -1445,27 +1474,64 @@ function update() {
         logicText = `⚠️ Death Cross ignorado: MA10 al ${trendMA != null ? trendMA.toFixed(0) : "?"}% (cerca de extremo).`;
       } else if (activeCross.crossType === 'death') {
         const tc = detectCandleTrap();
+        const _dcGConf = proj ? Math.round(proj.ifG.conf * 100) : 0;
+        const _dcRConf = proj ? Math.round(proj.ifR.conf * 100) : 0;
+        const _dcRevAlcista = proj && proj.ifG.sig === 'COMPRA' && proj.ifG.conf > proj.ifR.conf;
         if (tc && tc.type === 'bear-trap' && tc.probability >= 0.55) {
           finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = '⚠️ ESPERAR';
           logicText = `⚠️ Death Cross vs Bear Trap (${Math.round(tc.probability*100)}%). ${tc.action}`;
+        } else if (_dcRevAlcista) {
+          const diff = _dcGConf - _dcRConf;
+          finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = '⚠️ POSIBLE REVISIÓN ALCISTA';
+          logicText = `⚠️ Death Cross en ${activeCross.pair} pero proyección verde supera a roja (${_dcGConf}% vs ${_dcRConf}%, +${diff}%). Vigilando próxima vela...`;
+          if (!reversalWatch || reversalWatch.candleIndex !== history.length - 1) {
+            reversalWatch = { direction: 'bullish', confirmColor: 'G', cancelColor: 'R',
+              confirmConf: _dcGConf, cancelConf: _dcRConf,
+              candleIndex: history.length - 1, detectedAt: Date.now() };
+          }
         } else if (trendMA !== null && trendMA <= 30) {
           finalSignal = 'sell'; signalClass = 'signal-sell-weak'; signalText = '⬇️ VENDER DÉBIL';
           logicText = `⚠️ Death Cross en ${activeCross.pair} pero MA10 al ${trendMA != null ? trendMA.toFixed(0) : "?"}% — cerca de sobreventa.`;
         } else {
           finalSignal = 'sell'; signalClass = 'signal-sell'; signalText = '✅ VENDER';
-          logicText = `✅ Death Cross válido en ${activeCross.pair}. MA10: ${trendMA !== null ? trendMA.toFixed(0) : '?'}%.`;
+          logicText = `✅ Death Cross válido en ${activeCross.pair}. MA10: ${trendMA !== null ? trendMA.toFixed(0) : '?'}%. Verde ${_dcGConf}% vs Rojo ${_dcRConf}%.`;
         }
       } else if (activeCross.crossType === 'golden') {
         const tc = detectCandleTrap();
-        if (tc && tc.type === 'bull-trap' && tc.probability >= 0.55) {
+        // Verificar si la proyección roja supera a la verde → reversión probable a pesar del cruce
+        const _gcGConf = proj ? Math.round(proj.ifG.conf * 100) : 0;
+        const _gcRConf = proj ? Math.round(proj.ifR.conf * 100) : 0;
+        const _gcRevBajista = proj && proj.ifR.sig === 'VENTA' && proj.ifR.conf > proj.ifG.conf;
+        if (_gcRevBajista && !(tc && tc.type === 'bull-trap')) {
+          const diff = _gcRConf - _gcGConf;
+          finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = '⚠️ POSIBLE REVERSIÓN BAJISTA';
+          logicText = `⚠️ Golden Cross en ${activeCross.pair} pero proyección roja supera a verde (${_gcRConf}% vs ${_gcGConf}%, +${diff}%). Vigilando próxima vela...`;
+          if (!reversalWatch || reversalWatch.candleIndex !== history.length - 1) {
+            reversalWatch = {
+              direction: 'bearish', confirmColor: 'R', cancelColor: 'G',
+              confirmConf: _gcRConf, cancelConf: _gcGConf,
+              candleIndex: history.length - 1, detectedAt: Date.now()
+            };
+          }
+        } else if (tc && tc.type === 'bull-trap' && tc.probability >= 0.55) {
           finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = '⚠️ ESPERAR';
           logicText = `⚠️ Golden Cross vs Bull Trap (${Math.round(tc.probability*100)}%). ${tc.action}`;
         } else if (trendMA !== null && trendMA >= 70) {
           finalSignal = 'buy'; signalClass = 'signal-buy-weak'; signalText = '⬆️ COMPRAR DÉBIL';
           logicText = `⚠️ Golden Cross en ${activeCross.pair} pero MA10 al ${trendMA != null ? trendMA.toFixed(0) : "?"}% — cerca de sobrecompra.`;
         } else {
-          finalSignal = 'buy'; signalClass = 'signal-buy'; signalText = '✅ COMPRAR';
-          logicText = `✅ Golden Cross válido en ${activeCross.pair}. MA10: ${trendMA !== null ? trendMA.toFixed(0) : '?'}%.`;
+          const _gcConfG = proj ? Math.round(proj.ifG.conf * 100) : 0;
+          const _gcConfR = proj ? Math.round(proj.ifR.conf * 100) : 0;
+          if (proj && proj.ifR.sig === 'VENTA' && proj.ifR.conf > proj.ifG.conf) {
+            finalSignal = 'wait'; signalClass = 'signal-conflict'; signalText = '⚠️ POSIBLE REVERSIÓN BAJISTA';
+            logicText = `⚠️ Golden Cross en ${activeCross.pair} pero proyección roja ${_gcConfR}% > verde ${_gcConfG}%. Reversión probable — vigilando próxima vela.`;
+            if (!reversalWatch || reversalWatch.candleIndex !== history.length - 1) {
+              reversalWatch = { direction: 'bearish', confirmColor: 'R', cancelColor: 'G', confirmConf: _gcConfR, cancelConf: _gcConfG, candleIndex: history.length - 1, detectedAt: Date.now() };
+            }
+          } else {
+            finalSignal = 'buy'; signalClass = 'signal-buy'; signalText = '✅ COMPRAR';
+            logicText = `✅ Golden Cross válido en ${activeCross.pair}. MA10: ${trendMA !== null ? trendMA.toFixed(0) : '?'}%. Verde ${_gcConfG}% vs Rojo ${_gcConfR}%.`;
+          }
         }
       }
 
@@ -2169,7 +2235,7 @@ function computeHoverProjection(idx) {
     : Math.min(idx + 2, effHist.length);
   var slice = effHist.slice(0, windowEnd);
   if (slice.length < 2) return null;
-  var lastTwo = slice.slice(-2);
+  var lastTwo = slice.slice(-3);
   var cr = detectCrosses(false);
   return analyzePattern(lastTwo, null, cr.extremeCondition);
 }
@@ -2506,7 +2572,7 @@ window.showPPProjection = function(color, strength, clientX, clientY) {
     // Secuencia: [...historial, velaActual] -> proyectar lo que sigue
     var simH = effHist.concat([color]);
     if (simH.length >= 2) {
-      proj = analyzePattern(simH.slice(-2), null, cr.extremeCondition);
+      proj = analyzePattern(simH.slice(-3), null, cr.extremeCondition);
     }
   } else {
     // MODO SIGUIENTE: "si esta vela cierra asi, que vela viene DESPUES"
@@ -2514,7 +2580,7 @@ window.showPPProjection = function(color, strength, clientX, clientY) {
     // Mismo calculo pero la visualizacion deja claro que es la proxima vela
     var simH2 = effHist.concat([color]);
     if (simH2.length >= 2) {
-      proj = analyzePattern(simH2.slice(-2), null, cr.extremeCondition);
+      proj = analyzePattern(simH2.slice(-3), null, cr.extremeCondition);
     }
   }
 
