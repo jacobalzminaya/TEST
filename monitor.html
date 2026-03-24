@@ -550,6 +550,7 @@
   <div class="conf-bar">
     <div class="conf-fill low" id="conf-fill" style="width:0%"></div>
   </div>
+  <div id="sig-proj" style="display:none;padding:0 18px 10px;"></div>
 </div>
 
 <!-- ALERT STRIP -->
@@ -870,6 +871,12 @@ function handleData(data) {
   state.manualStrengths = data.manualStrengths || {};
   state.volumeProfile   = data.volumeProfile || null;
   state.cmdState        = data.cmdState || null;
+  // New fields from updated detector
+  state.signalClass     = data.signalClass  || null;
+  state.signalText      = data.signalText   || null;
+  state.logicText       = data.logicText    || null;
+  state.proj            = data.proj         || null;
+  state.candleTrap      = data.candleTrap   || null;
   state.connected       = true;
   fullUpdate();
 }
@@ -894,8 +901,8 @@ function fullUpdate() {
   // Trend
   const trend = getTrend(ma10, prevMA, mom);
 
-  // Signal
-  const sig = getSignal(vp, trend, ma10, mom, lastC, lastStr);
+  // Signal: prefer real data from detector, fallback to local calculation
+  const sig = buildSigFromDetector() || getSignal(vp, trend, ma10, mom, lastC, lastStr);
 
   // Render each section
   renderHeader(h, lastStr, ma10);
@@ -905,6 +912,55 @@ function fullUpdate() {
   renderConvergence(vp, trend, sig, lastC, lastStr);
   renderState(vp, trend, ma10, mom);
   renderHistory(h);
+}
+
+/* Construye sig usando datos reales del detector cuando están disponibles */
+function buildSigFromDetector() {
+  const sc = state.signalClass;
+  const st = state.signalText;
+  const lt = state.logicText;
+  const pr = state.proj;
+  if (!sc || !st) return null;
+
+  let type = 'wait', icon = '⏸️', conf = 50, alert = null, alertType = null;
+
+  if (sc.includes('signal-buy') || sc.includes('signal-strong-reversal') || sc.includes('signal-accumulation')) {
+    type = 'buy';
+    icon = sc.includes('accumulation') ? '📥' : sc.includes('strong') ? '🔄' : '⬆️';
+    conf = sc.includes('weak') ? 65 : 80;
+  } else if (sc.includes('signal-sell') || sc.includes('signal-distribution')) {
+    type = 'sell';
+    icon = sc.includes('distribution') ? '🏦' : sc.includes('strong') ? '🔄' : '⬇️';
+    conf = sc.includes('weak') ? 65 : 80;
+  } else if (sc.includes('signal-extreme')) {
+    type = 'extreme'; icon = '🔥'; conf = 95;
+    alert = st;
+    alertType = (st.includes('COMPRA') || st.includes('REBOTE') || st.includes('SOBREVENTA')) ? 'buy' : 'sell';
+  } else if (sc.includes('signal-trap')) {
+    type = 'trap'; icon = '🪤'; conf = 30;
+    alert = lt || st; alertType = 'trap';
+  } else if (sc.includes('signal-conflict') || sc.includes('signal-manipulation')) {
+    type = 'wait'; icon = '⚠️'; conf = 35;
+    if (sc.includes('manipulation')) { type = 'trap'; icon = '🎭'; }
+  }
+
+  // Usar confianza real de proyecciones si disponible
+  if (pr) {
+    const gc = Math.round((pr.ifG?.conf || 0) * 100);
+    const rc = Math.round((pr.ifR?.conf || 0) * 100);
+    if (type === 'buy')  conf = Math.max(gc, conf);
+    if (type === 'sell') conf = Math.max(rc, conf);
+    if (type === 'wait') conf = Math.max(gc, rc, 35);
+  }
+
+  // Trampa de vela activa → alertar
+  const ct = state.candleTrap;
+  if (ct && ct.detected && ct.probability >= 0.55 && !alert) {
+    alert = '🪤 ' + ct.typeLabel + ' (' + Math.round(ct.probability * 100) + '%) — ' + ct.action;
+    alertType = 'trap';
+  }
+
+  return { type, icon, text: st, reason: lt || '', conf, alert, alertType, proj: pr };
 }
 
 /* ════════════════════════════════════════════════════
@@ -1142,6 +1198,37 @@ function renderSignal(sig) {
     strip.textContent = sig.alert;
   } else {
     strip.className = 'alert-strip';
+  }
+
+  // ── Proyecciones ifG / ifR del detector ──────────────────────────
+  const pr = sig.proj;
+  const projEl = document.getElementById('sig-proj');
+  if (pr && projEl) {
+    const gc = Math.round((pr.ifG?.conf || 0) * 100);
+    const rc = Math.round((pr.ifR?.conf || 0) * 100);
+    const gSig = pr.ifG?.sig || '--';
+    const rSig = pr.ifR?.sig || '--';
+    const gCol = gSig === 'COMPRA' ? 'var(--green)' : gSig === 'VENTA' ? 'var(--red)' : 'var(--gold)';
+    const rCol = rSig === 'VENTA'  ? 'var(--red)'   : rSig === 'COMPRA'? 'var(--green)': 'var(--gold)';
+    const gWins = gc > rc;
+    projEl.innerHTML =
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;">' +
+        '<div style="background:rgba(0,255,136,0.06);border:1px solid rgba(0,255,136,' + (gWins?'0.4':'0.15') + ');border-radius:7px;padding:7px 10px;' + (gWins?'transform:scale(1.03);':'opacity:0.6;') + '">' +
+          '<div style="font-size:8px;color:var(--green);font-weight:700;letter-spacing:.06em;margin-bottom:4px;">▲ SI VERDE</div>' +
+          '<div style="font-size:14px;font-weight:800;color:' + gCol + ';">' + gSig + '</div>' +
+          '<div style="font-size:10px;color:' + gCol + ';margin-top:2px;">' + gc + '%</div>' +
+          '<div style="font-size:8px;color:#555;margin-top:2px;">' + (pr.ifG?.desc || '') + '</div>' +
+        '</div>' +
+        '<div style="background:rgba(255,51,85,0.06);border:1px solid rgba(255,51,85,' + (!gWins?'0.4':'0.15') + ');border-radius:7px;padding:7px 10px;' + (!gWins?'transform:scale(1.03);':'opacity:0.6;') + '">' +
+          '<div style="font-size:8px;color:var(--red);font-weight:700;letter-spacing:.06em;margin-bottom:4px;">▼ SI ROJA</div>' +
+          '<div style="font-size:14px;font-weight:800;color:' + rCol + ';">' + rSig + '</div>' +
+          '<div style="font-size:10px;color:' + rCol + ';margin-top:2px;">' + rc + '%</div>' +
+          '<div style="font-size:8px;color:#555;margin-top:2px;">' + (pr.ifR?.desc || '') + '</div>' +
+        '</div>' +
+      '</div>';
+    projEl.style.display = 'block';
+  } else if (projEl) {
+    projEl.style.display = 'none';
   }
 }
 
