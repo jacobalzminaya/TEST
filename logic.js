@@ -1,3 +1,618 @@
+// ===== CONFIGURACIÓN DE PATRONES DINÁMICOS =====
+// Cada patrón tiene: detector de condiciones + proyecciones G/R con confianza base
+
+const PATTERN_LIBRARY = {
+  // ═══════════════════════════════════════════════════════════
+  // PATRONES DE 2 VELAS (Más frecuentes, confianza media)
+  // ═══════════════════════════════════════════════════════════
+  
+  'engulfing-bullish': {
+    name: 'Engulfing Alcista',
+    priority: 1,
+    minVelas: 2,
+    detect: (hist, idx) => {
+      if (hist.length < 2 || idx < 1) return null;
+      const prev = hist[idx-1], curr = hist[idx];
+      const prevS = getCandleStrength(idx-1) || 2;
+      const currS = getCandleStrength(idx) || 2;
+      // R seguida de G fuerte que "engloba" (fuerza 4 o mucho mayor que anterior)
+      if (prev !== 'R' || curr !== 'G') return null;
+      const isEngulfing = currS === 4 || (currS >= 3 && prevS <= 2);
+      if (!isEngulfing) return null;
+      return {
+        strength: (currS === 4 ? 1.0 : 0.85),
+        context: `R(${prevS})→G(${currS})`
+      };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'COMPRA', conf: Math.min(conf * 1.05, 0.95), desc: 'Engulfing confirmado - Continuación alcista' },
+      ifR: { sig: 'VENTA', conf: conf * 0.75, desc: 'Engulfing fallido - Reversión bajista' }
+    })
+  },
+
+  'engulfing-bearish': {
+    name: 'Engulfing Bajista',
+    priority: 1,
+    minVelas: 2,
+    detect: (hist, idx) => {
+      if (hist.length < 2 || idx < 1) return null;
+      const prev = hist[idx-1], curr = hist[idx];
+      const prevS = getCandleStrength(idx-1) || 2;
+      const currS = getCandleStrength(idx) || 2;
+      if (prev !== 'G' || curr !== 'R') return null;
+      const isEngulfing = currS === 4 || (currS >= 3 && prevS <= 2);
+      if (!isEngulfing) return null;
+      return {
+        strength: (currS === 4 ? 1.0 : 0.85),
+        context: `G(${prevS})→R(${currS})`
+      };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'COMPRA', conf: conf * 0.75, desc: 'Engulfing fallido - Reversión alcista' },
+      ifR: { sig: 'VENTA', conf: Math.min(conf * 1.05, 0.95), desc: 'Engulfing confirmado - Continuación bajista' }
+    })
+  },
+
+  'harami-bullish': {
+    name: 'Harami Alcista',
+    priority: 2,
+    minVelas: 2,
+    detect: (hist, idx) => {
+      if (hist.length < 2 || idx < 1) return null;
+      const prev = hist[idx-1], curr = hist[idx];
+      const prevS = getCandleStrength(idx-1) || 2;
+      const currS = getCandleStrength(idx) || 2;
+      // R fuerte seguida de G pequeño (doji/spinning) dentro del rango
+      if (prev !== 'R' || curr !== 'G') return null;
+      if (!(prevS >= 2.5 && currS <= 1.5)) return null;
+      return { strength: 0.70, context: `R(${prevS})→G(${currS})` };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'COMPRA', conf: Math.min(conf * 1.15, 0.95), desc: 'Harami confirmado - Giro alcista' },
+      ifR: { sig: 'ESPERAR', conf: conf * 0.60, desc: 'Harami no confirmado' }
+    })
+  },
+
+  'harami-bearish': {
+    name: 'Harami Bajista',
+    priority: 2,
+    minVelas: 2,
+    detect: (hist, idx) => {
+      if (hist.length < 2 || idx < 1) return null;
+      const prev = hist[idx-1], curr = hist[idx];
+      const prevS = getCandleStrength(idx-1) || 2;
+      const currS = getCandleStrength(idx) || 2;
+      if (prev !== 'G' || curr !== 'R') return null;
+      if (!(prevS >= 2.5 && currS <= 1.5)) return null;
+      return { strength: 0.70, context: `G(${prevS})→R(${currS})` };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'ESPERAR', conf: conf * 0.60, desc: 'Harami no confirmado' },
+      ifR: { sig: 'VENTA', conf: Math.min(conf * 1.15, 0.95), desc: 'Harami confirmado - Giro bajista' }
+    })
+  },
+
+  'piercing-pattern': {
+    name: 'Patrón de Penetración',
+    priority: 2,
+    minVelas: 2,
+    detect: (hist, idx) => {
+      if (hist.length < 2 || idx < 1) return null;
+      const prev = hist[idx-1], curr = hist[idx];
+      const prevS = getCandleStrength(idx-1) || 2;
+      const currS = getCandleStrength(idx) || 2;
+      // R fuerte seguida de G que penetra (>50% implicado por fuerza similar o mayor)
+      if (prev !== 'R' || curr !== 'G') return null;
+      if (!(prevS >= 2.5 && currS >= prevS)) return null;
+      return { strength: 0.72, context: `R(${prevS})→G(${currS})` };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'COMPRA', conf: conf * 1.10, desc: 'Penetración alcista confirmada' },
+      ifR: { sig: 'VENTA', conf: conf * 0.80, desc: 'Penetración fallida' }
+    })
+  },
+
+  'dark-cloud': {
+    name: 'Nube Oscura',
+    priority: 2,
+    minVelas: 2,
+    detect: (hist, idx) => {
+      if (hist.length < 2 || idx < 1) return null;
+      const prev = hist[idx-1], curr = hist[idx];
+      const prevS = getCandleStrength(idx-1) || 2;
+      const currS = getCandleStrength(idx) || 2;
+      if (prev !== 'G' || curr !== 'R') return null;
+      if (!(prevS >= 2.5 && currS >= prevS)) return null;
+      return { strength: 0.72, context: `G(${prevS})→R(${currS})` };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'COMPRA', conf: conf * 0.80, desc: 'Nube oscura fallida' },
+      ifR: { sig: 'VENTA', conf: conf * 1.10, desc: 'Nube oscura confirmada' }
+    })
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // PATRONES DE 3 VELAS (Reversión clásica, alta confianza)
+  // ═══════════════════════════════════════════════════════════
+
+  'morning-star': {
+    name: 'Estrella de la Mañana',
+    priority: 3,
+    minVelas: 3,
+    detect: (hist, idx) => {
+      if (hist.length < 3 || idx < 2) return null;
+      const v0 = hist[idx-2], /* v1 = hist[idx-1] (doji middle, not needed directly) */ v2 = hist[idx];
+      const s0 = getCandleStrength(idx-2) || 2;
+      const s1 = getCandleStrength(idx-1) || 2;
+      const s2 = getCandleStrength(idx) || 2;
+      // R + Doji/Spinning + G fuerte
+      if (!(v0 === 'R' && v2 === 'G')) return null;
+      if (!(s0 >= 2 && s1 <= 1.5 && s2 >= 2.5)) return null;
+      // La del medio debe ser débil (doji)
+      const isMiddleWeak = s1 <= 1.5;
+      if (!isMiddleWeak) return null;
+      return { 
+        strength: 0.85 + (s2 === 4 ? 0.08 : 0), 
+        context: `R(${s0})→D(${s1})→G(${s2})` 
+      };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'COMPRA', conf: Math.min(conf * 1.05, 0.95), desc: 'Morning Star confirmada - Reversión alcista fuerte' },
+      ifR: { sig: 'ESPERAR', conf: conf * 0.50, desc: 'Morning Star fallida - No confirmó' }
+    })
+  },
+
+  'evening-star': {
+    name: 'Estrella de la Tarde',
+    priority: 3,
+    minVelas: 3,
+    detect: (hist, idx) => {
+      if (hist.length < 3 || idx < 2) return null;
+      const v0 = hist[idx-2], /* v1 = hist[idx-1] (doji middle, not needed directly) */ v2 = hist[idx];
+      const s0 = getCandleStrength(idx-2) || 2;
+      const s1 = getCandleStrength(idx-1) || 2;
+      const s2 = getCandleStrength(idx) || 2;
+      // G + Doji/Spinning + R fuerte
+      if (!(v0 === 'G' && v2 === 'R')) return null;
+      if (!(s0 >= 2 && s1 <= 1.5 && s2 >= 2.5)) return null;
+      return { 
+        strength: 0.85 + (s2 === 4 ? 0.08 : 0), 
+        context: `G(${s0})→D(${s1})→R(${s2})` 
+      };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'ESPERAR', conf: conf * 0.50, desc: 'Evening Star fallida - No confirmó' },
+      ifR: { sig: 'VENTA', conf: Math.min(conf * 1.05, 0.95), desc: 'Evening Star confirmada - Reversión bajista fuerte' }
+    })
+  },
+
+  'three-soldiers': {
+    name: 'Tres Soldados Blancos',
+    priority: 3,
+    minVelas: 3,
+    detect: (hist, idx) => {
+      if (hist.length < 3 || idx < 2) return null;
+      const v0 = hist[idx-2], v1 = hist[idx-1], v2 = hist[idx];
+      const s0 = getCandleStrength(idx-2) || 2;
+      const s1 = getCandleStrength(idx-1) || 2;
+      const s2 = getCandleStrength(idx) || 2;
+      // GGG con cuerpos crecientes o estables, todos fuertes
+      if (!(v0 === 'G' && v1 === 'G' && v2 === 'G')) return null;
+      if (!(s0 >= 2.5 && s1 >= 2.5 && s2 >= 2.5)) return null;
+      // Momentum creciente o estable
+      const progression = s2 >= s1;
+      return { 
+        strength: 0.75 + (progression ? 0.05 : 0), 
+        context: `G(${s0})→G(${s1})→G(${s2})` 
+      };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'COMPRA', conf: conf * 1.05, desc: '3 Soldados - Continuación alcista' },
+      ifR: { sig: 'VENTA', conf: conf * 1.10, desc: '3 Soldados anulados - Reversión inmediata' }
+    })
+  },
+
+  'three-crows': {
+    name: 'Tres Cuervos Negros',
+    priority: 3,
+    minVelas: 3,
+    detect: (hist, idx) => {
+      if (hist.length < 3 || idx < 2) return null;
+      const v0 = hist[idx-2], v1 = hist[idx-1], v2 = hist[idx];
+      const s0 = getCandleStrength(idx-2) || 2;
+      const s1 = getCandleStrength(idx-1) || 2;
+      const s2 = getCandleStrength(idx) || 2;
+      // RRR con cuerpos fuertes
+      if (!(v0 === 'R' && v1 === 'R' && v2 === 'R')) return null;
+      if (!(s0 >= 2.5 && s1 >= 2.5 && s2 >= 2.5)) return null;
+      return { 
+        strength: 0.75 + (s2 > s1 ? 0.05 : 0), 
+        context: `R(${s0})→R(${s1})→R(${s2})` 
+      };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'COMPRA', conf: conf * 1.10, desc: '3 Cuervos anulados - Reversión inmediata' },
+      ifR: { sig: 'VENTA', conf: conf * 1.05, desc: '3 Cuervos - Continuación bajista' }
+    })
+  },
+
+  'three-outside-up': {
+    name: 'Tres Afuera Alcista',
+    priority: 3,
+    minVelas: 3,
+    detect: (hist, idx) => {
+      if (hist.length < 3 || idx < 2) return null;
+      const v0 = hist[idx-2], v1 = hist[idx-1], v2 = hist[idx];
+      const s0 = getCandleStrength(idx-2) || 2;
+      const s1 = getCandleStrength(idx-1) || 2;
+      const s2 = getCandleStrength(idx) || 2;
+      // R + G engulfing + G confirmando
+      if (!(v0 === 'R' && v1 === 'G' && v2 === 'G')) return null;
+      // Segunda G debe ser engulfing de la R (fuerza alta)
+      if (!(s1 >= 3 && s0 <= 2.5 && s2 >= 2)) return null;
+      return { strength: 0.80, context: `R(${s0})→G(${s1})→G(${s2})` };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'COMPRA', conf: conf * 1.08, desc: '3 Outside Up confirmado' },
+      ifR: { sig: 'ESPERAR', conf: conf * 0.55, desc: 'Confirmación fallida' }
+    })
+  },
+
+  'three-outside-down': {
+    name: 'Tres Afuera Bajista',
+    priority: 3,
+    minVelas: 3,
+    detect: (hist, idx) => {
+      if (hist.length < 3 || idx < 2) return null;
+      const v0 = hist[idx-2], v1 = hist[idx-1], v2 = hist[idx];
+      const s0 = getCandleStrength(idx-2) || 2;
+      const s1 = getCandleStrength(idx-1) || 2;
+      const s2 = getCandleStrength(idx) || 2;
+      // G + R engulfing + R confirmando
+      if (!(v0 === 'G' && v1 === 'R' && v2 === 'R')) return null;
+      if (!(s1 >= 3 && s0 <= 2.5 && s2 >= 2)) return null;
+      return { strength: 0.80, context: `G(${s0})→R(${s1})→R(${s2})` };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'ESPERAR', conf: conf * 0.55, desc: 'Confirmación fallida' },
+      ifR: { sig: 'VENTA', conf: conf * 1.08, desc: '3 Outside Down confirmado' }
+    })
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // PATRONES DE DOJI ESPECIALIZADOS (3 velas)
+  // ═══════════════════════════════════════════════════════════
+
+  'doji-star-bullish': {
+    name: 'Estrella Doji Alcista',
+    priority: 3,
+    minVelas: 3,
+    detect: (hist, idx) => {
+      if (hist.length < 3 || idx < 2) return null;
+      const v0 = hist[idx-2], /* v1 = hist[idx-1] (doji, checked via s1) */ v2 = hist[idx];
+      const s0 = getCandleStrength(idx-2) || 2;
+      const s1 = getCandleStrength(idx-1) || 2; // Doji = 1
+      const s2 = getCandleStrength(idx) || 2;
+      // R + Doji puro + G
+      if (!(v0 === 'R' && v2 === 'G')) return null;
+      if (!(s1 === 1 && s0 >= 2 && s2 >= 2.5)) return null;
+      return { strength: 0.82, context: `R(${s0})→DOJI→G(${s2})` };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'COMPRA', conf: conf * 1.05, desc: 'Doji Star alcista confirmada' },
+      ifR: { sig: 'ESPERAR', conf: conf * 0.50, desc: 'Doji Star fallida' }
+    })
+  },
+
+  'doji-star-bearish': {
+    name: 'Estrella Doji Bajista',
+    priority: 3,
+    minVelas: 3,
+    detect: (hist, idx) => {
+      if (hist.length < 3 || idx < 2) return null;
+      const v0 = hist[idx-2], /* v1 = hist[idx-1] (doji, checked via s1) */ v2 = hist[idx];
+      const s0 = getCandleStrength(idx-2) || 2;
+      const s1 = getCandleStrength(idx-1) || 2;
+      const s2 = getCandleStrength(idx) || 2;
+      // G + Doji puro + R
+      if (!(v0 === 'G' && v2 === 'R')) return null;
+      if (!(s1 === 1 && s0 >= 2 && s2 >= 2.5)) return null;
+      return { strength: 0.82, context: `G(${s0})→DOJI→R(${s2})` };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'ESPERAR', conf: conf * 0.50, desc: 'Doji Star fallida' },
+      ifR: { sig: 'VENTA', conf: conf * 1.05, desc: 'Doji Star bajista confirmada' }
+    })
+  },
+
+  'abandoned-baby-bullish': {
+    name: 'Bebé Abandonado Alcista',
+    priority: 4, // Máxima prioridad, raro pero muy confiable
+    minVelas: 3,
+    detect: (hist, idx) => {
+      if (hist.length < 3 || idx < 2) return null;
+      const v0 = hist[idx-2], /* v1 = hist[idx-1] (doji, checked via s1) */ v2 = hist[idx];
+      const s0 = getCandleStrength(idx-2) || 2;
+      const s1 = getCandleStrength(idx-1) || 2;
+      const s2 = getCandleStrength(idx) || 2;
+      // R fuerte + Doji 4-precios aislado + G fuerte (gap implícito por fuerza)
+      if (!(v0 === 'R' && v2 === 'G')) return null;
+      // Doji perfecto (1) rodeado de fuerza
+      if (!(s0 >= 3 && s1 === 1 && s2 >= 3)) return null;
+      return { strength: 0.90, context: `R(${s0})→DOJI-PERFECTO→G(${s2})` };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'COMPRA', conf: 0.95, desc: 'Abandoned Baby - Reversión alcista EXTREMA' },
+      ifR: { sig: 'ESPERAR', conf: 0.45, desc: 'Patrón raro fallido' }
+    })
+  },
+
+  'abandoned-baby-bearish': {
+    name: 'Bebé Abandonado Bajista',
+    priority: 4,
+    minVelas: 3,
+    detect: (hist, idx) => {
+      if (hist.length < 3 || idx < 2) return null;
+      const v0 = hist[idx-2], /* v1 = hist[idx-1] (doji, checked via s1) */ v2 = hist[idx];
+      const s0 = getCandleStrength(idx-2) || 2;
+      const s1 = getCandleStrength(idx-1) || 2;
+      const s2 = getCandleStrength(idx) || 2;
+      if (!(v0 === 'G' && v2 === 'R')) return null;
+      if (!(s0 >= 3 && s1 === 1 && s2 >= 3)) return null;
+      return { strength: 0.90, context: `G(${s0})→DOJI-PERFECTO→R(${s2})` };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'ESPERAR', conf: 0.45, desc: 'Patrón raro fallido' },
+      ifR: { sig: 'VENTA', conf: 0.95, desc: 'Abandoned Baby - Reversión bajista EXTREMA' }
+    })
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // PATRONES DE 4 VELAS (Continuación, alta confianza)
+  // ═══════════════════════════════════════════════════════════
+
+  'rising-three': {
+    name: 'Tres Métodos Alcistas',
+    priority: 3,
+    minVelas: 4,
+    detect: (hist, idx) => {
+      if (hist.length < 4 || idx < 3) return null;
+      const v = [hist[idx-3], hist[idx-2], hist[idx-1], hist[idx]];
+      const s = [
+        getCandleStrength(idx-3) || 2,
+        getCandleStrength(idx-2) || 2,
+        getCandleStrength(idx-1) || 2,
+        getCandleStrength(idx) || 2
+      ];
+      // G fuerte + R débil + R débil + R débil + G fuerte (5 velas, simplificado a 4)
+      // Patrón: G + [R/G mix débiles] + G fuerte
+      if (!(v[0] === 'G' && v[3] === 'G')) return null;
+      if (!(s[0] >= 3 && s[3] >= 3)) return null;
+      // Las del medio deben ser débiles (consolidación)
+      const middleWeak = s[1] <= 2 && s[2] <= 2;
+      if (!middleWeak) return null;
+      return { strength: 0.78, context: `G(${s[0]})→débil→débil→G(${s[3]})` };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'COMPRA', conf: conf * 1.08, desc: 'Rising Three - Continuación poderosa' },
+      ifR: { sig: 'ESPERAR', conf: conf * 0.60, desc: 'Patrón de continuación fallido' }
+    })
+  },
+
+  'falling-three': {
+    name: 'Tres Métodos Bajistas',
+    priority: 3,
+    minVelas: 4,
+    detect: (hist, idx) => {
+      if (hist.length < 4 || idx < 3) return null;
+      const v = [hist[idx-3], hist[idx-2], hist[idx-1], hist[idx]];
+      const s = [
+        getCandleStrength(idx-3) || 2,
+        getCandleStrength(idx-2) || 2,
+        getCandleStrength(idx-1) || 2,
+        getCandleStrength(idx) || 2
+      ];
+      // R fuerte + débiles + R fuerte
+      if (!(v[0] === 'R' && v[3] === 'R')) return null;
+      if (!(s[0] >= 3 && s[3] >= 3)) return null;
+      const middleWeak = s[1] <= 2 && s[2] <= 2;
+      if (!middleWeak) return null;
+      return { strength: 0.78, context: `R(${s[0]})→débil→débil→R(${s[3]})` };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'ESPERAR', conf: conf * 0.60, desc: 'Patrón de continuación fallido' },
+      ifR: { sig: 'VENTA', conf: conf * 1.08, desc: 'Falling Three - Continuación poderosa' }
+    })
+  },
+
+  'mat-hold-bullish': {
+    name: 'Mat Hold Alcista',
+    priority: 3,
+    minVelas: 4,
+    detect: (hist, idx) => {
+      if (hist.length < 4 || idx < 3) return null;
+      const v = [hist[idx-3], hist[idx-2], hist[idx-1], hist[idx]];
+      const s = [
+        getCandleStrength(idx-3) || 2,
+        getCandleStrength(idx-2) || 2,
+        getCandleStrength(idx-1) || 2,
+        getCandleStrength(idx) || 2
+      ];
+      // G fuerte + R pequeña + R pequeña + G fuerte
+      if (!(v[0] === 'G' && v[1] === 'R' && v[2] === 'R' && v[3] === 'G')) return null;
+      if (!(s[0] >= 3 && s[1] <= 2 && s[2] <= 2 && s[3] >= 3)) return null;
+      return { strength: 0.75, context: `G(${s[0]})→R(${s[1]})→R(${s[2]})→G(${s[3]})` };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'COMPRA', conf: conf * 1.05, desc: 'Mat Hold - Continuación alcista' },
+      ifR: { sig: 'ESPERAR', conf: conf * 0.55, desc: 'Mat Hold fallido' }
+    })
+  },
+
+  'mat-hold-bearish': {
+    name: 'Mat Hold Bajista',
+    priority: 3,
+    minVelas: 4,
+    detect: (hist, idx) => {
+      if (hist.length < 4 || idx < 3) return null;
+      const v = [hist[idx-3], hist[idx-2], hist[idx-1], hist[idx]];
+      const s = [
+        getCandleStrength(idx-3) || 2,
+        getCandleStrength(idx-2) || 2,
+        getCandleStrength(idx-1) || 2,
+        getCandleStrength(idx) || 2
+      ];
+      // R fuerte + G pequeña + G pequeña + R fuerte
+      if (!(v[0] === 'R' && v[1] === 'G' && v[2] === 'G' && v[3] === 'R')) return null;
+      if (!(s[0] >= 3 && s[1] <= 2 && s[2] <= 2 && s[3] >= 3)) return null;
+      return { strength: 0.75, context: `R(${s[0]})→G(${s[1]})→G(${s[2]})→R(${s[3]})` };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'ESPERAR', conf: conf * 0.55, desc: 'Mat Hold fallido' },
+      ifR: { sig: 'VENTA', conf: conf * 1.05, desc: 'Mat Hold - Continuación bajista' }
+    })
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // PATRONES DE DOBLE TECHO/SUELO (4 velas)
+  // ═══════════════════════════════════════════════════════════
+
+  'double-bottom': {
+    name: 'Doble Suelo',
+    priority: 4,
+    minVelas: 4,
+    detect: (hist, idx) => {
+      if (hist.length < 4 || idx < 3) return null;
+      const v = [hist[idx-3], hist[idx-2], hist[idx-1], hist[idx]];
+      const s = [
+        getCandleStrength(idx-3) || 2,
+        getCandleStrength(idx-2) || 2,
+        getCandleStrength(idx-1) || 2,
+        getCandleStrength(idx) || 2
+      ];
+      // R + G + R (similar fuerza a primera) + G fuerte (ruptura)
+      if (!(v[0] === 'R' && v[1] === 'G' && v[2] === 'R' && v[3] === 'G')) return null;
+      // Dos mínimos similares (fuerzas similares en R)
+      const similarLows = Math.abs(s[0] - s[2]) <= 0.5;
+      const strongBounce = s[1] >= 2;
+      const strongBreak = s[3] >= 3;
+      if (!(similarLows && strongBounce && strongBreak)) return null;
+      return { strength: 0.82, context: `R(${s[0]})→G(${s[1]})→R(${s[2]})→G(${s[3]})` };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'COMPRA', conf: conf * 1.05, desc: 'Doble suelo confirmado - Ruptura alcista' },
+      ifR: { sig: 'ESPERAR', conf: conf * 0.50, desc: 'Doble suelo fallido' }
+    })
+  },
+
+  'double-top': {
+    name: 'Doble Techo',
+    priority: 4,
+    minVelas: 4,
+    detect: (hist, idx) => {
+      if (hist.length < 4 || idx < 3) return null;
+      const v = [hist[idx-3], hist[idx-2], hist[idx-1], hist[idx]];
+      const s = [
+        getCandleStrength(idx-3) || 2,
+        getCandleStrength(idx-2) || 2,
+        getCandleStrength(idx-1) || 2,
+        getCandleStrength(idx) || 2
+      ];
+      // G + R + G (similar) + R fuerte
+      if (!(v[0] === 'G' && v[1] === 'R' && v[2] === 'G' && v[3] === 'R')) return null;
+      const similarHighs = Math.abs(s[0] - s[2]) <= 0.5;
+      const strongDrop = s[1] >= 2;
+      const strongBreak = s[3] >= 3;
+      if (!(similarHighs && strongDrop && strongBreak)) return null;
+      return { strength: 0.82, context: `G(${s[0]})→R(${s[1]})→G(${s[2]})→R(${s[3]})` };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'ESPERAR', conf: conf * 0.50, desc: 'Doble techo fallido' },
+      ifR: { sig: 'VENTA', conf: conf * 1.05, desc: 'Doble techo confirmado - Ruptura bajista' }
+    })
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // PATRONES DE VENTANA (GAP) - Simulado con fuerza
+  // ═══════════════════════════════════════════════════════════
+
+  'window-up': {
+    name: 'Ventana Alcista',
+    priority: 2,
+    minVelas: 2,
+    detect: (hist, idx) => {
+      if (hist.length < 2 || idx < 1) return null;
+      const prev = hist[idx-1], curr = hist[idx];
+      const prevS = getCandleStrength(idx-1) || 2;
+      const currS = getCandleStrength(idx) || 2;
+      // Dos velas verdes fuertes consecutivas, segunda más fuerte (simula gap)
+      if (!(prev === 'G' && curr === 'G')) return null;
+      if (!(prevS >= 3 && currS >= 3 && currS > prevS)) return null;
+      return { strength: 0.70, context: `G(${prevS})→G+(${currS})` };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'COMPRA', conf: conf * 1.05, desc: 'Ventana alcista - Momentum explosivo' },
+      ifR: { sig: 'ESPERAR', conf: conf * 0.65, desc: 'Ventana cerrada - Precaución' }
+    })
+  },
+
+  'window-down': {
+    name: 'Ventana Bajista',
+    priority: 2,
+    minVelas: 2,
+    detect: (hist, idx) => {
+      if (hist.length < 2 || idx < 1) return null;
+      const prev = hist[idx-1], curr = hist[idx];
+      const prevS = getCandleStrength(idx-1) || 2;
+      const currS = getCandleStrength(idx) || 2;
+      if (!(prev === 'R' && curr === 'R')) return null;
+      if (!(prevS >= 3 && currS >= 3 && currS > prevS)) return null;
+      return { strength: 0.70, context: `R(${prevS})→R+(${currS})` };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'ESPERAR', conf: conf * 0.65, desc: 'Ventana cerrada - Precaución' },
+      ifR: { sig: 'VENTA', conf: conf * 1.05, desc: 'Ventana bajista - Momentum explosivo' }
+    })
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // PATRONES CLÁSICOS ORIGINALES (mantenidos para compatibilidad)
+  // ═══════════════════════════════════════════════════════════
+
+  'simple-continuation': {
+    name: 'Continuación Simple',
+    priority: 0, // Baja prioridad, fallback
+    minVelas: 2,
+    detect: (hist, idx) => {
+      if (hist.length < 2 || idx < 1) return null;
+      const prev = hist[idx-1], curr = hist[idx];
+      // Dos iguales seguidas, sin fuerza especial
+      if (prev !== curr) return null;
+      return { strength: 0.55, context: `${prev}→${curr}` };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'COMPRA', conf: 0.60, desc: 'Continuación alcista simple' },
+      ifR: { sig: 'VENTA', conf: 0.60, desc: 'Continuación bajista simple' }
+    })
+  },
+
+  'simple-reversal': {
+    name: 'Reversión Simple',
+    priority: 0,
+    minVelas: 2,
+    detect: (hist, idx) => {
+      if (hist.length < 2 || idx < 1) return null;
+      const prev = hist[idx-1], curr = hist[idx];
+      if (prev === curr) return null;
+      // Dos diferentes, sin fuerza especial
+      return { strength: 0.50, context: `${prev}→${curr}` };
+    },
+    project: (conf) => ({
+      ifG: { sig: 'COMPRA', conf: 0.55, desc: 'Reversión alcista simple' },
+      ifR: { sig: 'VENTA', conf: 0.55, desc: 'Reversión bajista simple' }
+    })
+  }
+};
 // ===== CONFIGURACIÓN =====
 const MA_CONFIG = {
   crosses: [
@@ -435,6 +1050,7 @@ function _detectExhaustion() {
   if (sameDirCount < 2 || !toleratedAR) return { detected: false };
 
   const capDirStr = postSlice.map((c, i) => c === capDir ? postStr[i] : 0).filter(s => s > 0);
+  if (capDirStr.length === 0) return { detected: false }; // FIX: guard against division by zero
   const avgPost = capDirStr.reduce((a, b) => a + b, 0) / capDirStr.length;
   const capStr  = getCandleStrength(capIdx) || 4;
   if (!(avgPost < 2.5 && capStr >= 4 && sameDirCount >= 2)) return { detected: false };
@@ -946,46 +1562,162 @@ function getTrendLabel(currentValue, prevValue, extremeCondition = null) {
   return { text: 'NEUTRAL →', class: 'neutral', color: 'var(--gold)', isExtreme: false, note: diff !== 0 ? `Cambiando: ${diff > 0 ? '+' : ''}${diff.toFixed(1)}%` : 'Sin dirección clara' };
 }
 
+// ===== ANÁLISIS DE PATRONES DINÁMICO CON PRIORIDAD =====
+// Evalúa TODOS los patrones y selecciona el mejor según confianza
+
 function analyzePattern(lastTwo, originalTwo = null, extremeCondition = null) {
-  if (lastTwo.length < 2) return null;
+  if (history.length < 2) return null;
+  
+  const idx = history.length - 1;
+  const em = extremeCondition ? 0.3 : 1; // Penalizador si hay condición extrema
+  
+  // Evaluar todos los patrones del library
+  const candidates = [];
+  
+  Object.entries(PATTERN_LIBRARY).forEach(([key, pattern]) => {
+    // Verificar si tenemos suficientes velas
+    if (history.length < pattern.minVelas) return;
+    
+    // Ejecutar detector
+    const detection = pattern.detect(history, idx);
+    if (!detection) return; // Patrón no detectado en contexto actual
+    
+    // Calcular confianza ajustada
+    const baseConfidence = detection.strength * em;
+    
+    // Obtener proyecciones
+    const projections = pattern.project(baseConfidence);
+    
+    candidates.push({
+      key,
+      name: pattern.name,
+      priority: pattern.priority,
+      confidence: baseConfidence,
+      context: detection.context,
+      projections,
+      // Score combinado: prioridad + confianza
+      score: (pattern.priority * 0.2) + baseConfidence
+    });
+  });
+  
+  // Si no hay candidatos, usar fallback clásico
+  if (candidates.length === 0) {
+    return analyzePatternClassic(lastTwo, extremeCondition);
+  }
+  
+  // ORDENAR POR SCORE (prioridad + confianza)
+  candidates.sort((a, b) => b.score - a.score);
+  
+  // Seleccionar el MEJOR patrón
+  const winner = candidates[0];
+  
+  // Log de competencia (para debugging, opcional)
+  console.log('🏆 Patrón ganador:', winner.name, '| Confianza:', (winner.confidence*100).toFixed(1)+'%');
+  if (candidates.length > 1) {
+    console.log('   Competidores:', candidates.slice(1,3).map(c => `${c.name}(${(c.confidence*100).toFixed(0)}%)`).join(', '));
+  }
+  
+  // Retornar en formato compatible con tu sistema actual
+  return {
+    // Información del patrón detectado
+    patternName: winner.name,
+    patternKey: winner.key,
+    confidence: winner.confidence,
+    context: winner.context,
+    allCandidates: candidates, // Para mostrar alternativas si quieres
+    
+    // Proyecciones estándar
+    ifG: {
+      ...winner.projections.ifG,
+      pat: winner.context + 'G',
+      originalConf: winner.projections.ifG.conf
+    },
+    ifR: {
+      ...winner.projections.ifR,
+      pat: winner.context + 'R',
+      originalConf: winner.projections.ifR.conf
+    }
+  };
+}
+
+// ===== Fallback: Tablas clásicas originales (cuando no hay patrón especial) =====
+function analyzePatternClassic(lastTwo, extremeCondition) {
   const em = extremeCondition ? 0.3 : 1;
-
-  // Contexto extendido: usar hasta 3 velas para mayor precisión
-  // lastTwo puede tener 2 o 3 elementos
   const hasThree = lastTwo.length >= 3;
-  const prev2 = hasThree ? lastTwo[lastTwo.length - 3] : null;
-  const prev  = lastTwo[lastTwo.length - 2];
-  const curr  = lastTwo[lastTwo.length - 1];
-  const key   = prev + curr;
-  const key3  = hasThree ? (prev2 + prev + curr) : null;
-
-  // Tabla de 3 velas (8 combinaciones) — más precisa que 2 velas
+  
+  // Tus tablas originales de 3 velas
   const scenarios3 = {
-    // Tres iguales — continuación o agotamiento
-    'GGG': { ifG: { pat: 'GGGG', sig: 'COMPRA', conf: 0.65 * em, desc: 'Continuación alcista (3 verdes)' }, ifR: { pat: 'GGGR', sig: 'VENTA', conf: 0.82, desc: 'Reversión tras 3 verdes — muy probable' } },
-    'RRR': { ifG: { pat: 'RRRG', sig: 'COMPRA', conf: 0.82, desc: 'Reversión tras 3 rojas — muy probable' }, ifR: { pat: 'RRRR', sig: 'VENTA', conf: 0.65 * em, desc: 'Continuación bajista (3 rojas)' } },
-    // Dos iguales + opuesta — indecisión o inicio de reversión
-    'GGR': { ifG: { pat: 'GGRG', sig: 'COMPRA', conf: 0.60 * em, desc: 'Rebote tras corrección' }, ifR: { pat: 'GGRR', sig: 'VENTA', conf: 0.78, desc: 'Confirmación bajista fuerte' } },
-    'RRG': { ifG: { pat: 'RRGG', sig: 'COMPRA', conf: 0.78, desc: 'Confirmación alcista fuerte' }, ifR: { pat: 'RRGR', sig: 'VENTA', conf: 0.60 * em, desc: 'Rebote fallido — continúa baja' } },
-    // Alternancia — conflicto o consolidación
-    'GRG': { ifG: { pat: 'GRGG', sig: 'COMPRA', conf: 0.68, desc: 'Doble suelo — impulso alcista' }, ifR: { pat: 'GRGR', sig: 'ESPERAR', conf: 0.50, desc: 'Alternancia — sin dirección clara' } },
-    'RGR': { ifG: { pat: 'RGRG', sig: 'ESPERAR', conf: 0.50, desc: 'Alternancia — sin dirección clara' }, ifR: { pat: 'RGRR', sig: 'VENTA', conf: 0.68, desc: 'Doble techo — impulso bajista' } },
-    // Opuesta + dos iguales — ruptura o trampa
-    'GRR': { ifG: { pat: 'GRRG', sig: 'COMPRA', conf: 0.72, desc: 'Rebote desde soporte' }, ifR: { pat: 'GRRR', sig: 'VENTA', conf: 0.70 * em, desc: 'Continuación bajista post-reversión' } },
-    'RGG': { ifG: { pat: 'RGGG', sig: 'COMPRA', conf: 0.70 * em, desc: 'Continuación alcista post-reversión' }, ifR: { pat: 'RGGR', sig: 'VENTA', conf: 0.72, desc: 'Trampa alcista — atención' } },
+    'GGG': { 
+      ifG: { pat: 'GGGG', sig: 'COMPRA', conf: 0.65 * em, desc: 'Continuación alcista (3 verdes)' }, 
+      ifR: { pat: 'GGGR', sig: 'VENTA', conf: 0.82, desc: 'Reversión tras 3 verdes — muy probable' } 
+    },
+    'RRR': { 
+      ifG: { pat: 'RRRG', sig: 'COMPRA', conf: 0.82, desc: 'Reversión tras 3 rojas — muy probable' }, 
+      ifR: { pat: 'RRRR', sig: 'VENTA', conf: 0.65 * em, desc: 'Continuación bajista (3 rojas)' } 
+    },
+    'GGR': { 
+      ifG: { pat: 'GGRG', sig: 'COMPRA', conf: 0.60 * em, desc: 'Rebote tras corrección' }, 
+      ifR: { pat: 'GGRR', sig: 'VENTA', conf: 0.78, desc: 'Confirmación bajista fuerte' } 
+    },
+    'RRG': { 
+      ifG: { pat: 'RRGG', sig: 'COMPRA', conf: 0.78, desc: 'Confirmación alcista fuerte' }, 
+      ifR: { pat: 'RRGR', sig: 'VENTA', conf: 0.60 * em, desc: 'Rebote fallido — continúa baja' } 
+    },
+    'GRG': { 
+      ifG: { pat: 'GRGG', sig: 'COMPRA', conf: 0.68, desc: 'Doble suelo — impulso alcista' }, 
+      ifR: { pat: 'GRGR', sig: 'ESPERAR', conf: 0.50, desc: 'Alternancia — sin dirección clara' } 
+    },
+    'RGR': { 
+      ifG: { pat: 'RGRG', sig: 'ESPERAR', conf: 0.50, desc: 'Alternancia — sin dirección clara' }, 
+      ifR: { pat: 'RGRR', sig: 'VENTA', conf: 0.68, desc: 'Doble techo — impulso bajista' } 
+    },
+    'GRR': { 
+      ifG: { pat: 'GRRG', sig: 'COMPRA', conf: 0.72, desc: 'Rebote desde soporte' }, 
+      ifR: { pat: 'GRRR', sig: 'VENTA', conf: 0.70 * em, desc: 'Continuación bajista post-reversión' } 
+    },
+    'RGG': { 
+      ifG: { pat: 'RGGG', sig: 'COMPRA', conf: 0.70 * em, desc: 'Continuación alcista post-reversión' }, 
+      ifR: { pat: 'RGGR', sig: 'VENTA', conf: 0.72, desc: 'Trampa alcista — atención' } 
+    },
   };
 
-  // Tabla de 2 velas (fallback si no hay 3)
+  // Tus tablas originales de 2 velas
   const scenarios2 = {
-    'GG': { ifG: { pat: 'GGG', sig: 'COMPRA', conf: 0.70 * em, desc: 'Continuación alcista' }, ifR: { pat: 'GGR', sig: 'VENTA', conf: 0.85, desc: 'Reversión bajista FUERTE' } },
-    'RR': { ifG: { pat: 'RRG', sig: 'COMPRA', conf: 0.85, desc: 'Reversión alcista FUERTE' }, ifR: { pat: 'RRR', sig: 'VENTA', conf: 0.70 * em, desc: 'Continuación bajista' } },
-    'GR': { ifG: { pat: 'GRG', sig: 'COMPRA', conf: 0.55 * em, desc: 'Reversión alcista' }, ifR: { pat: 'GRR', sig: 'VENTA', conf: 0.65, desc: 'Confirmación bajista' } },
-    'RG': { ifG: { pat: 'RGG', sig: 'COMPRA', conf: 0.65, desc: 'Confirmación alcista' }, ifR: { pat: 'RGR', sig: 'VENTA', conf: 0.55 * em, desc: 'Reversión bajista' } }
+    'GG': { 
+      ifG: { pat: 'GGG', sig: 'COMPRA', conf: 0.70 * em, desc: 'Continuación alcista' }, 
+      ifR: { pat: 'GGR', sig: 'VENTA', conf: 0.85, desc: 'Reversión bajista FUERTE' } 
+    },
+    'RR': { 
+      ifG: { pat: 'RRG', sig: 'COMPRA', conf: 0.85, desc: 'Reversión alcista FUERTE' }, 
+      ifR: { pat: 'RRR', sig: 'VENTA', conf: 0.70 * em, desc: 'Continuación bajista' } 
+    },
+    'GR': { 
+      ifG: { pat: 'GRG', sig: 'COMPRA', conf: 0.55 * em, desc: 'Reversión alcista' }, 
+      ifR: { pat: 'GRR', sig: 'VENTA', conf: 0.65, desc: 'Confirmación bajista' } 
+    },
+    'RG': { 
+      ifG: { pat: 'RGG', sig: 'COMPRA', conf: 0.65, desc: 'Confirmación alcista' }, 
+      ifR: { pat: 'RGR', sig: 'VENTA', conf: 0.55 * em, desc: 'Reversión bajista' } 
+    }
   };
 
-  // Usar tabla de 3 velas si hay contexto suficiente
-  if (key3 && scenarios3[key3]) return scenarios3[key3];
-  return scenarios2[key] || null;
+  const prev2 = hasThree ? lastTwo[lastTwo.length - 3] : null;
+  const prev = lastTwo[lastTwo.length - 2];
+  const curr = lastTwo[lastTwo.length - 1];
+  const key3 = hasThree ? (prev2 + prev + curr) : null;
+  const key2 = prev + curr;
+
+  const result = scenarios3[key3] || scenarios2[key2] || null;
+  
+  if (!result) return null;
+  
+  return {
+    patternName: 'Patrón Clásico',
+    patternKey: 'classic',
+    confidence: 0.60,
+    context: key3 || key2,
+    ...result
+  };
 }
 
 // ===== PANEL CMD =====
@@ -1792,22 +2524,46 @@ function update() {
   updateProjections(trendMA, prevTrendMA, activeCross, recentTrend, currentCandle, extremeCondition, proj);
 
   // Historial de velas
+  // Determinar clase de señal para la última vela (para el anillo visual)
+  var _lastSignalClass = '';
+  if (finalSignal === 'buy')  _lastSignalClass = 'candle-signal-buy';
+  if (finalSignal === 'sell') _lastSignalClass = 'candle-signal-sell';
+
   document.getElementById('history').innerHTML = history.map((h, i) => {
-    const isTrap = i === manualTrapIndex;
-    const isNew  = i === history.length - 1;
-    const s      = getCandleStrength(i) || 2;
-    const origin = manualStrengths[i]?.origin || 'auto';
+    const isTrap  = i === manualTrapIndex;
+    const isNew   = i === history.length - 1;
+    const s       = getCandleStrength(i) || 2;
+    const origin  = manualStrengths[i]?.origin || 'auto';
     let indicator = '', extraClass = '';
-    if (s >= 4)      { indicator = '<span class="candle-strength strength-4-ind">4🔥</span>'; extraClass = 'candle-extreme'; }
-    else if (s >= 3) { indicator = '<span class="candle-strength strength-3-ind">3</span>'; }
+    if (s >= 4)       { indicator = '<span class="candle-strength strength-4-ind">4🔥</span>'; extraClass = 'candle-extreme'; }
+    else if (s >= 3)  { indicator = '<span class="candle-strength strength-3-ind">3</span>'; }
     else if (s >= 2.5){ indicator = '<span class="candle-strength strength-2-ind">2+</span>'; extraClass = 'candle-accelerated'; }
-    else if (s >= 2) { indicator = '<span class="candle-strength strength-2-ind">2</span>'; }
+    else if (s >= 2)  { indicator = '<span class="candle-strength strength-2-ind">2</span>'; }
     else if (s >= 1.5){ indicator = '<span class="candle-strength strength-1-ind">1+</span>'; }
     else              { indicator = '<span class="candle-strength strength-1-ind">1</span>'; }
-    const manualMark = origin==='corrected'?'<span style="position:absolute;top:-3px;right:-3px;width:6px;height:6px;background:var(--orange);border-radius:50%;"></span>':origin==='confirmed'?'<span style="position:absolute;top:-3px;right:-3px;width:6px;height:6px;background:var(--green);border-radius:50%;"></span>':'';
+    const manualMark = origin==='corrected'
+      ? '<span style="position:absolute;top:-3px;right:-3px;width:6px;height:6px;background:var(--orange);border-radius:50%;"></span>'
+      : origin==='confirmed'
+        ? '<span style="position:absolute;top:-3px;right:-3px;width:6px;height:6px;background:var(--green);border-radius:50%;"></span>'
+        : '';
+    // Ícono de señal encima de la vela actual (solo última vela con señal activa)
+    var signalBadge = '';
+    if (isNew && !isTrap && _lastSignalClass) {
+      const isBuy = _lastSignalClass === 'candle-signal-buy';
+      signalBadge = '<span class="candle-signal-badge ' + _lastSignalClass + '-badge">' + (isBuy ? '▲' : '▼') + '</span>';
+    }
     const strengthLabel = STRENGTH_CONFIG.LEVELS[s]?.name || 'MEDIA';
-    return `<div class="candle candle-${h.toLowerCase()} ${isTrap?'candle-trap':''} ${isNew&&!isTrap?'candle-new':''} ${extraClass}" data-hover-idx="${i}" onmouseenter="window._candleHoverEnter(${i})" onmouseleave="window._candleHoverLeave()" onclick="window._candleClick(${i}, event)" title="Vela #${i+1}: ${h}, Fuerza: ${s}/4 (${strengthLabel}), Origen: ${origin}">${h}${indicator}${manualMark}</div>`;
+    const signalRingClass = isNew && !isTrap ? _lastSignalClass : '';
+    return `<div class="candle candle-${h.toLowerCase()} ${isTrap?'candle-trap':''} ${isNew&&!isTrap?'candle-new':''} ${extraClass} ${signalRingClass}" data-hover-idx="${i}" onmouseenter="window._candleHoverEnter(${i})" onmouseleave="window._candleHoverLeave()" onclick="window._candleClick(${i}, event)" title="Vela #${i+1}: ${h}, Fuerza: ${s}/4 (${strengthLabel}), Origen: ${origin}">${h}${indicator}${manualMark}${signalBadge}</div>`;
   }).join('');
+
+  // Sincronizar monitor — throttled para no saturar el canal
+  if (!update._syncTimer) {
+    update._syncTimer = setTimeout(function() {
+      update._syncTimer = null;
+      broadcastEdit();
+    }, 250);
+  }
 }
 
 function updateProjections(trendMA, prevTrendMA, activeCross, recentTrend, currentCandle, extremeCondition, proj) {
@@ -2000,16 +2756,46 @@ function buildPickerBadge(type, color) {
 // ===== BROADCAST — solo emisor =====
 
 function broadcastEdit() {
+  // Recopilar datos de señal actual para el monitor
+  const _mainSig  = document.getElementById('main-signal');
+  const _logicEl  = document.getElementById('logic-text');
+  const _sigClass = _mainSig ? (_mainSig.className || '').replace('main-signal','').trim() : '';
+  const _sigText  = _mainSig ? _mainSig.cloneNode(true) : null;
+  if (_sigText) _sigText.querySelectorAll('div').forEach(d => d.remove());
+  const _sigTextStr = _sigText ? _sigText.textContent.trim() : '';
+  const _logicStr  = _logicEl ? _logicEl.textContent : '';
+
+  // Proyección actual (última calculada en update)
+  const _projGSig  = document.getElementById('proj-g-sig')?.textContent || '';
+  const _projRSig  = document.getElementById('proj-r-sig')?.textContent || '';
+  const _projGConf = parseFloat(document.getElementById('proj-g-conf')?.textContent || '0') / 100;
+  const _projRConf = parseFloat(document.getElementById('proj-r-conf')?.textContent || '0') / 100;
+  const _projGDesc = document.getElementById('proj-g-reason')?.textContent || '';
+  const _projRDesc = document.getElementById('proj-r-reason')?.textContent || '';
+  const _projData = {
+    ifG: { sig: _projGSig, conf: Math.min(_projGConf, 0.95), desc: _projGDesc },
+    ifR: { sig: _projRSig, conf: Math.min(_projRConf, 0.95), desc: _projRDesc }
+  };
+
+  // Trampa de vela actual
+  const _ct = _detectCandleTrap();
+
+  const payload = {
+    history, manualStrengths, cmdState,
+    signalClass: _sigClass,
+    signalText:  _sigTextStr,
+    logicText:   _logicStr,
+    proj:        _projData,
+    candleTrap:  _ct ? { detected: true, typeLabel: _ct.typeLabel, probability: _ct.probability, action: _ct.action } : { detected: false },
+    timestamp:   Date.now()
+  };
+
   if (bc) {
-    try {
-      bc.postMessage({ type: 'strength-edited', payload: { manualStrengths, history, cmdState, timestamp: Date.now() } });
-    } catch (e) { console.error('BroadcastChannel error:', e); }
+    try { bc.postMessage({ type: 'strength-edited', payload }); } catch (e) { console.error('BroadcastChannel error:', e); }
   }
-  try {
-    localStorage.setItem('cmd-vp-data', JSON.stringify({ history, manualStrengths, cmdState, timestamp: Date.now() }));
-  } catch (e) {}
+  try { localStorage.setItem('cmd-vp-data', JSON.stringify(payload)); } catch (e) {}
   if (typeof monitorWindow !== 'undefined' && monitorWindow && !monitorWindow.closed) {
-    try { monitorWindow.postMessage({ type: 'vp-update', payload: { history, manualStrengths, timestamp: Date.now() } }, '*'); } catch (e) {}
+    try { monitorWindow.postMessage({ type: 'vp-update', payload }, '*'); } catch (e) {}
   }
 }
 
