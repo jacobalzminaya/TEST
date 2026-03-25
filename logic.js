@@ -2753,6 +2753,43 @@ function buildPickerBadge(type, color) {
   return '';
 }
 
+// ===== SINCRONIZACIÓN AUTOMÁTICA CON BACKTESTING =====
+
+function syncToBacktesting() {
+  // Convertir historial a formato G2 R3 G1.5 etc.
+  const sequence = history.map((color, idx) => {
+    const str = getCandleStrength(idx) || 2;
+    const strFormatted = str === 1.5 ? '1.5' : 
+                        str === 2.5 ? '2.5' : 
+                        String(parseInt(str));
+    return color + strFormatted;
+  }).join(' ');
+  
+  // Guardar en localStorage (disparará evento storage en otras pestañas)
+  localStorage.setItem('cmd-backtest-sequence', sequence);
+  localStorage.setItem('cmd-backtest-timestamp', Date.now());
+  localStorage.setItem('cmd-backtest-count', history.length);
+  
+  // También enviar por BroadcastChannel (más rápido que storage events)
+  if (bc) {
+    try {
+      bc.postMessage({
+        type: 'candle-added',
+        sequence: sequence,
+        count: history.length,
+        lastCandle: history.length > 0 ? {
+          color: history[history.length - 1],
+          strength: getCandleStrength(history.length - 1),
+          index: history.length - 1
+        } : null,
+        timestamp: Date.now()
+      });
+    } catch (e) {}
+  }
+  
+  console.log('📊 Sincronizado con backtesting:', sequence);
+}
+
 // ===== BROADCAST — solo emisor =====
 
 function broadcastEdit() {
@@ -2797,7 +2834,11 @@ function broadcastEdit() {
   if (typeof monitorWindow !== 'undefined' && monitorWindow && !monitorWindow.closed) {
     try { monitorWindow.postMessage({ type: 'vp-update', payload }, '*'); } catch (e) {}
   }
+  
+  // ← AGREGAR ESTA LÍNEA: Sincronizar con backtesting automáticamente
+  syncToBacktesting();
 }
+
 
 // Escuchar ediciones desde el monitor
 function setupEditListener() {
