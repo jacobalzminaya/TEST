@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CMD · Detector</title>
+  <link rel="stylesheet" href="animations.css">
+  <link rel="stylesheet" href="style.css">
+  <style>
+/* ─────────────────────────────────────────
+   BASE
+───────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#070707;color:#b0b0b0;font-family:'Segoe UI',system-ui,sans-serif;font-size:12px;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:#1e1e1e;border-radius:2px}
+
+/* ─────────────────────────────────────────
+   TOPBAR
+───────────────────────────────────────── */
+.tb{height:34px;display:flex;align-items:center;gap:5px;padding:0 10px;background:#050505;border-bottom:1px solid #111;flex-shrink:0}
+.tb-logo{font-size:.72em;font-weight:700;color:#00ffff;letter-spacing:.12em;margin-right:4px}
+.tb-sep{width:1px;height:14px;background:#1a1a1a;margin:0 2px}
+.tb-trap{display:none;font-size:.6em;font-weight:700;color:#ff8800;background:rgba(255,136,0,.08);border:1px solid rgba(255,136,0,.2);padding:2px 7px;border-radius:8px}
+.tb-trap.show{display:block}
+.tb-gap{flex:1}
+.btn{background:transparent;color:#555;border:1px solid #1c1c1c;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:.64em;font-weight:600;transition:all .15s;white-space:nowrap;letter-spacing:.03em}
+.btn:hover{border-color:#383838;color:#999}
+.btn.cyan{border-color:#00ffff22;color:#00ffff88}
+.btn.cyan:hover{border-color:#00ffff;color:#00ffff}
+
+/* ─────────────────────────────────────────
+   MAIN 3-COL LAYOUT
+───────────────────────────────────────── */
+.app{display:flex;flex:1;overflow:hidden;min-height:0}
+
+/* ─────────────────────────────────────────
+   LEFT COLUMN — input + history
+───────────────────────────────────────── */
+.lc{display:none}
+
+/* section wrapper */
+.lc-sec{padding:10px 9px 7px;border-bottom:1px solid #0e0e0e}
+.sec-label{font-size:.53em;color:#2a2a2a;text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:7px}
+
+/* ── WiFi Triangle ── */
+.tri-wrap{display:flex;justify-content:center;align-items:flex-end;gap:3px;padding-bottom:2px}
+.tri-side{display:flex;align-items:flex-end;gap:3px}
+.tri-side.red{flex-direction:row-reverse}
+.wbr{width:14px;border-radius:3px 3px 0 0;cursor:pointer;transition:transform .1s,box-shadow .1s,background .08s}
+.wbr.g{background:rgba(0,180,65,.12);border:1px solid rgba(0,180,65,.2)}
+.wbr.r{background:rgba(180,45,45,.12);border:1px solid rgba(180,45,45,.2)}
+.wbr.g.hov{background:rgba(0,215,85,.72);border-color:#00ee77;box-shadow:0 0 7px rgba(0,255,136,.45);transform:scaleY(1.06);transform-origin:bottom}
+.wbr.r.hov{background:rgba(205,48,48,.72);border-color:#ee3333;box-shadow:0 0 7px rgba(255,68,68,.45);transform:scaleY(1.06);transform-origin:bottom}
+.wbr.g.sel{background:#00dd66;border-color:#00ff88;box-shadow:0 0 10px rgba(0,255,136,.55)}
+.wbr.r.sel{background:#cc2a2a;border-color:#ff3333;box-shadow:0 0 10px rgba(255,68,68,.55)}
+
+.tri-tags{display:flex;justify-content:space-between;margin-top:4px}
+.tri-tags span{font-size:.56em;font-weight:700;letter-spacing:.04em}
+.tag-g{color:rgba(0,255,136,.45)}
+.tag-r{color:rgba(255,68,68,.45)}
+.wifi-lbl{text-align:center;font-size:.58em;font-weight:700;min-height:12px;margin-top:3px;color:#333;transition:color .1s}
+
+/* ── Feedback pill ── */
+.fb{margin:5px 9px;padding:4px 8px;border-radius:5px;font-size:.62em;font-weight:700;border:1px solid #111;background:#080808;color:#2a2a2a;text-align:center;min-height:24px;transition:all .2s;line-height:1.3}
+
+/* ── History ── */
+.hist-row{display:flex;flex-wrap:wrap;gap:2px;max-height:46px;overflow:hidden}
+.hc{font-size:.55em;padding:2px 3px;border-radius:3px;font-weight:700;cursor:pointer;border:1px solid transparent;line-height:1}
+.hc.g{background:rgba(0,150,55,.18);color:#00aa44;border-color:rgba(0,150,55,.25)}
+.hc.r{background:rgba(170,38,38,.18);color:#cc2222;border-color:rgba(170,38,38,.25)}
+.hc.trap-c{outline:1px solid #ff880066}
+.hist-count{font-size:.53em;color:#252525;margin-top:4px}
+
+/* ── Price controls ── */
+.lc-foot{padding:7px 9px;margin-top:auto;border-top:1px solid #0e0e0e;display:flex;flex-direction:column;gap:4px}
+.price-row{display:flex;align-items:center;gap:4px}
+.price-row label{font-size:.56em;color:#2a2a2a;min-width:26px}
+.pinput{flex:1;background:#0a0a0a;border:1px solid #181818;color:#666;padding:3px 5px;border-radius:3px;font-size:.62em;text-align:right;min-width:0}
+.pinput:focus{outline:none;border-color:#2e2e2e;color:#999}
+.reset-btn{background:transparent;border:1px solid #1a1a1a;color:#404040;padding:4px;border-radius:4px;cursor:pointer;font-size:.6em;text-align:center;transition:all .15s;margin-top:2px}
+.reset-btn:hover{border-color:#cc2222;color:#cc2222}
+
+/* ─────────────────────────────────────────
+   CENTER COLUMN — signal + projections + log
+───────────────────────────────────────── */
+.cc{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+
+/* ── Signal hero ── */
+.sig-hero{flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 12px 8px;border-bottom:1px solid #0e0e0e;position:relative;min-height:0;max-height:110px;overflow:hidden;transition:background .35s}
+.sig-hero.sw{background:rgba(255,215,0,.02)}
+.sig-hero.sb{background:rgba(0,255,136,.025)}
+.sig-hero.ss{background:rgba(255,68,68,.025)}
+.sig-hero.se{background:rgba(0,212,255,.025)}
+.sig-hero.st{background:rgba(255,136,0,.025)}
+
+/* accent line at top */
+.sig-hero::before{content:'';position:absolute;top:0;left:10%;right:10%;height:2px;border-radius:0 0 2px 2px;transition:background .35s}
+.sig-hero.sw::before{background:linear-gradient(90deg,transparent,#ffd70044,transparent)}
+.sig-hero.sb::before{background:linear-gradient(90deg,transparent,#00ff8866,transparent)}
+.sig-hero.ss::before{background:linear-gradient(90deg,transparent,#ff444466,transparent)}
+.sig-hero.se::before{background:linear-gradient(90deg,transparent,#00d4ff66,transparent)}
+.sig-hero.st::before{background:linear-gradient(90deg,transparent,#ff880066,transparent)}
+
+.sig-word{font-size:1.55em;font-weight:900;letter-spacing:.04em;line-height:1;transition:color .25s;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.sw .sig-word{color:#ffd700}
+.sb .sig-word{color:#00ff88;text-shadow:0 0 20px rgba(0,255,136,.3)}
+.ss .sig-word{color:#ff4444;text-shadow:0 0 20px rgba(255,68,68,.3)}
+.se .sig-word{color:#00d4ff;text-shadow:0 0 20px rgba(0,212,255,.35)}
+.st .sig-word{color:#ff8800}
+
+.sig-reason{font-size:.6em;color:#3a3a3a;margin-top:3px;text-align:center;max-width:100%;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.sig-conf{display:flex;align-items:center;gap:6px;margin-top:4px}
+.sig-conf-bar{width:90px;height:2px;background:#141414;border-radius:1px;overflow:hidden}
+.sig-conf-fill{height:100%;border-radius:1px;transition:width .4s,background .3s}
+.sw .sig-conf-fill{background:#ffd700}.sb .sig-conf-fill{background:#00ff88}
+.ss .sig-conf-fill{background:#ff4444}.se .sig-conf-fill{background:#00d4ff}
+.st .sig-conf-fill{background:#ff8800}
+.sig-conf-pct{font-size:.58em;color:#333}
+
+/* ── Projection pair ── */
+.proj-pair{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:6px 8px;border-bottom:1px solid #0e0e0e;flex-shrink:0}
+.pbox{background:#080808;border:1px solid #111;border-radius:6px;padding:6px 8px;transition:transform .2s,opacity .2s}
+.pbox.dom{transform:scale(1.025)}
+.pbox.dim{opacity:.4}
+.pbox.green{border-top:2px solid rgba(0,255,136,.4)}
+.pbox.red  {border-top:2px solid rgba(255,68,68,.4)}
+.pbox-lbl{font-size:.54em;font-weight:700;letter-spacing:.04em;margin-bottom:3px}
+.pbox.green .pbox-lbl{color:#008844}.pbox.red .pbox-lbl{color:#882222}
+.pbox-sig{font-size:.92em;font-weight:800;color:#555}
+.pbox-sig.buy{color:#00ff88}.pbox-sig.sell{color:#ff4444}.pbox-sig.wait{color:#ffd700}
+.pbox-conf{font-size:.66em;color:#444;margin-top:1px}
+.pbox-desc{font-size:.56em;color:#2e2e2e;line-height:1.3;margin-top:2px}
+
+/* ── Log section ── */
+.log-bar{display:flex;align-items:center;gap:6px;padding:5px 9px;border-bottom:1px solid #0e0e0e;cursor:pointer;transition:background .15s;flex-shrink:0;user-select:none}
+.log-bar:hover{background:#0b0b0b}
+.log-lbl{font-size:.56em;color:#2a2a2a;text-transform:uppercase;letter-spacing:.06em;flex:1}
+.log-arr{font-size:.62em;color:#1e1e1e;transition:transform .2s}
+.log-arr.open{transform:rotate(180deg)}
+.log-drawer{display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0}
+.log-drawer.open{display:flex}
+.log-body{flex:1;overflow-y:auto;padding:7px 9px;font-size:.6em;line-height:1.65;color:#3a3a3a;font-family:'Courier New',monospace;white-space:pre-wrap;word-break:break-word}
+.log-foot{display:flex;padding:4px 8px;border-top:1px solid #0e0e0e;flex-shrink:0;gap:5px}
+.log-copy{flex:1;background:transparent;border:1px solid #181818;color:#444;padding:4px;border-radius:4px;cursor:pointer;font-size:.6em;transition:all .15s}
+.log-copy:hover{border-color:#00ffff55;color:#00ffff99}
+.log-copy.ok{border-color:#00ff8855;color:#00ff8899}
+
+/* ─────────────────────────────────────────
+   RIGHT COLUMN — priority monitor
+───────────────────────────────────────── */
+.rc{display:none}
+.rc-hdr{padding:7px 9px 5px;border-bottom:1px solid #0e0e0e;font-size:.54em;color:#222;text-transform:uppercase;letter-spacing:.08em;font-weight:700;flex-shrink:0}
+
+/* priority rows */
+.pri{padding:5px 9px;border-bottom:1px solid #090909;display:flex;flex-direction:column;gap:2px;transition:background .2s}
+.pri.on{background:#080808}
+.pri.off{opacity:.28}
+.pri-h{display:flex;align-items:center;gap:4px}
+.pri-n{font-size:.5em;color:#1e1e1e;font-weight:700;min-width:14px;flex-shrink:0}
+.pri-name{font-size:.6em;font-weight:700;flex:1}
+.pri-bdg{font-size:.5em;padding:1px 5px;border-radius:6px;font-weight:700;white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis}
+.pri-det{font-size:.56em;color:#333;line-height:1.3;padding-left:18px}
+.pri-bar{height:2px;background:#0d0d0d;border-radius:1px;margin:2px 0 0 18px;overflow:hidden}
+.pri-fill{height:100%;border-radius:1px;transition:width .45s}
+
+.p0{color:#00d4ff}.p0 .pri-fill{background:#00d4ff}.p0 .pri-bdg{background:rgba(0,212,255,.1);color:#00d4ff}
+.p1{color:#bb44ff}.p1 .pri-fill{background:#bb44ff}.p1 .pri-bdg{background:rgba(187,68,255,.1);color:#bb44ff}
+.p2{color:#ff8800}.p2 .pri-fill{background:#ff8800}.p2 .pri-bdg{background:rgba(255,136,0,.1);color:#ff8800}
+.p3{color:#ffd700}.p3 .pri-fill{background:#ffd700}.p3 .pri-bdg{background:rgba(255,215,0,.1);color:#ffd700}
+.p4{color:#00ff88}.p4 .pri-fill{background:#00ff88}.p4 .pri-bdg{background:rgba(0,255,136,.1);color:#00ff88}
+.p5{color:#777}  .p5 .pri-fill{background:#777}  .p5 .pri-bdg{background:rgba(120,120,120,.1);color:#777}
+
+.rc-div{padding:4px 9px 3px;font-size:.5em;color:#1a1a1a;text-transform:uppercase;letter-spacing:.07em;font-weight:700;border-bottom:1px solid #090909;flex-shrink:0}
+
+/* MA mini */
+.ma-mini{padding:5px 9px;border-bottom:1px solid #090909;flex-shrink:0}
+.ma-mini-row{display:flex;justify-content:space-between;font-size:.54em;color:#2e2e2e;margin-bottom:3px}
+.ma-track{height:4px;background:#0f0f0f;border-radius:2px;position:relative;overflow:hidden}
+.ma-fill{height:100%;border-radius:2px;transition:width .5s,background .3s}
+.ma-mid{position:absolute;top:0;bottom:0;left:50%;width:1px;background:#191919}
+
+/* CMD mini */
+.cmd-mini{padding:5px 9px;display:flex;flex-direction:column;gap:3px;flex-shrink:0}
+.cmd-r{display:flex;align-items:center;gap:4px}
+.cmd-name{font-size:.53em;color:#2e2e2e;min-width:46px}
+.cmd-bar{flex:1;height:3px;background:#0f0f0f;border-radius:2px;overflow:hidden}
+.cmd-f{height:100%;border-radius:2px;transition:width .4s}
+.cmd-pct{font-size:.5em;color:#1e1e1e;min-width:20px;text-align:right}
+
+/* ─────────────────────────────────────────
+   HOVER PROJECTION PANEL (visible)
+   — shows both CURRENT and NEXT tabs
+───────────────────────────────────────── */
+#hpanel{display:none;position:fixed;z-index:9999;width:294px;background:#080808;border:1px solid #1e1e1e;border-radius:9px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.95),0 0 0 1px rgba(255,255,255,.02)}
+
+/* tab row */
+.hpanel-tabs{display:flex;border-bottom:1px solid #141414;background:#060606}
+.hpanel-tab{flex:1;padding:5px 0;font-size:.56em;font-weight:700;text-align:center;cursor:pointer;letter-spacing:.04em;color:#333;transition:all .15s;border-bottom:2px solid transparent}
+.hpanel-tab:hover{color:#666}
+.hpanel-tab.active-cur{color:#ffd700;border-bottom-color:#ffd700}
+.hpanel-tab.active-nxt{color:#00ffff;border-bottom-color:#00ffff}
+
+/* strength/color label */
+.hpanel-info{padding:4px 10px;font-size:.56em;color:#333;border-bottom:1px solid #111;background:#070707;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* proj grid */
+.hpanel-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:6px}
+.hpb{background:#050505;border:1px solid #111;border-radius:6px;padding:6px 8px}
+.hpb.green{border-top:2px solid rgba(0,255,136,.35)}
+.hpb.red  {border-top:2px solid rgba(255,68,68,.35)}
+.hpb-lbl{font-size:.54em;font-weight:700;margin-bottom:3px}
+.hpb.green .hpb-lbl{color:#007733}.hpb.red .hpb-lbl{color:#771111}
+.hpb-sig{font-size:.86em;font-weight:800;color:#555;margin-bottom:2px}
+.hpb-sig.buy{color:#00ff88}.hpb-sig.sell{color:#ff4444}.hpb-sig.wait{color:#ffd700}
+.hpb-bar{height:2px;background:#141414;border-radius:1px;overflow:hidden;margin:2px 0}
+.hpb-fill{height:100%;border-radius:1px;transition:width .3s}
+.hpb.green .hpb-fill{background:#00ff88}.hpb.red .hpb-fill{background:#ff4444}
+.hpb-pct{font-size:.55em;color:#3a3a3a}
+.hpb-desc{font-size:.52em;color:#2a2a2a;line-height:1.3;margin-top:2px}
+
+.hpanel-foot{padding:3px 9px 5px;text-align:center;font-size:.5em;color:#1e1e1e;border-top:1px solid #111}
+
+/* ─────────────────────────────────────────
+   MODALS & LEGACY
+───────────────────────────────────────── */
+.legacy{display:none!important}
+.trap-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9000;align-items:center;justify-content:center}
+.trap-modal.active{display:flex}
+.tmc{background:#0e0e0e;border:1px solid #222;border-radius:10px;padding:20px;max-width:320px;width:90%}
+.tmt{color:#ff8800;font-weight:700;margin-bottom:7px;font-size:.85em}
+.tmb{color:#666;font-size:.78em;line-height:1.5;margin-bottom:12px}
+.tmbtns{display:flex;gap:6px;justify-content:flex-end}
+.trap-btn{padding:5px 14px;border-radius:4px;cursor:pointer;font-size:.78em;font-weight:700;border:none}
+.trap-btn-confirm{background:#ff8800;color:#000}
+.trap-btn-cancel{background:#1a1a1a;color:#555}
+
+.edit-panel{display:none;position:fixed;bottom:0;left:50%;transform:translateX(-50%);background:#0e0e0e;border:1px solid #222;border-bottom:none;border-radius:8px 8px 0 0;padding:12px;z-index:8500;width:min(380px,95vw);box-shadow:0 -5px 24px rgba(0,0,0,.9)}
+.edit-btn{background:#111;border:1px solid #1e1e1e;color:#777;padding:6px 8px;border-radius:4px;cursor:pointer;font-size:.72em;text-align:center;transition:all .14s}
+.edit-btn:hover{border-color:#00ffff44;color:#00ffff}
+
+#boston-overlay{display:none;position:fixed;inset:0;background:#040404;z-index:9500;flex-direction:column;align-items:center;padding:16px;overflow-y:auto}
+#view-panel{display:none;position:fixed;top:0;right:0;height:100vh;width:200px;background:#0a0a0a;border-left:1px solid #141414;z-index:8000;overflow-y:auto;box-shadow:-5px 0 24px rgba(0,0,0,.9)}
+  </style>
+</head>
+<body>
+
+<!-- ═══ LEGACY DOM (hidden, required by logic.js) ═══ -->
+<div class="legacy">
+  <div id="main-signal" class="main-signal signal-wait">ESPERAR<div class="manual-trap-badge">TRAMPA ACTIVA</div><div class="conflict-badge">⚠️ CONFLICTO</div><div class="reversal-badge">🔄 REVERSIÓN FUERTE</div><div class="extreme-signal-badge">🚨 EXTREMO</div><div class="cmd-signal-badge">🎯 FASE CMD</div><div class="candle-trap-badge">🪤 POSIBLE TRAMPA</div><div class="pattern-badge" id="pattern-active-badge"></div></div>
+  <div id="pattern-active-panel"><span id="pattern-name"></span><span id="pattern-priority"></span><div id="pattern-context"></div><div id="sync-indicator"><div class="sync-box pattern"><div class="sync-label"></div><div class="sync-value" id="sync-pattern-value"></div></div><div class="sync-arrow"></div><div class="sync-box action" id="sync-action-box"><div class="sync-label"></div><div class="sync-value" id="sync-action-value"></div></div></div><div id="pattern-action"><div id="pattern-action-icon"></div><div class="pattern-action-text"><div id="pattern-action-main"></div><div id="pattern-action-desc"></div></div><div class="pattern-confidence"><div id="pattern-confidence"></div></div></div><div id="patterns-list"></div></div>
+  <div id="pp-bar" onclick="ppBarClick(event)" onmousemove="ppBarHover(event)" onmouseleave="ppBarLeave()"></div>
+  <input id="pp-spread" type="number" value="1" step="0.01" min="0.01"/>
+  <input id="pp-ref-manual" type="number" step="0.01"/>
+  <span id="pp-ref-label"></span>
+  <div id="pp-result"></div>
+  <div id="suggestion-box"><div id="suggestion-text"></div><div id="suggestion-reason"></div><div id="suggestion-bars"></div><div id="suggested-candle-svg-g"></div><div id="suggested-candle-svg-r"></div><div id="correction-notice"></div></div>
+  <div id="correction-options"></div><div id="color-buttons"></div><div id="step-confirm"></div><div id="status-bar"></div>
+  <div id="extreme-alert"><div id="extreme-text"></div></div>
+  <div id="candle-trap-alert"><div id="trap-alert-icon"></div><div id="trap-alert-title"></div><div id="trap-alert-subtitle"></div><div id="trap-type-value"></div><div id="trap-conf-value"></div><div id="trap-sequence-display"></div><div id="trap-alert-reason"></div><div id="trap-confidence-fill"></div></div>
+  <div id="logic-explanation"><div id="logic-text"></div></div>
+  <div class="history-container"><div class="history" id="history"></div></div>
+  <div id="projections"><div id="proj-g-box"><div id="proj-g-seq"></div><div id="proj-g-sig"></div><div id="proj-g-conf"></div><div id="proj-g-reason"></div><div id="proj-g-conflict"></div><div id="proj-g-reversal"></div><div id="proj-g-extreme"></div><div id="proj-g-cmd"></div></div><div id="proj-r-box"><div id="proj-r-seq"></div><div id="proj-r-sig"></div><div id="proj-r-conf"></div><div id="proj-r-reason"></div><div id="proj-r-conflict"></div><div id="proj-r-reversal"></div><div id="proj-r-extreme"></div><div id="proj-r-cmd"></div></div></div>
+  <div id="trend-box" class="trend-box neutral"><div class="trend-badge"></div><div class="extreme-badge"></div><div class="trend-label"></div><div class="trend-value" id="trend-value">NEUTRAL</div><div class="trend-original" id="trend-original"></div><div class="momentum-note" id="momentum-note"></div></div>
+  <div id="short-trend-box" class="trend-box neutral"><div class="trend-label"></div><div class="trend-value" id="short-trend-value">NEUTRAL</div><div class="momentum-note" id="short-momentum-note"></div></div>
+  <div id="momentum-box" class="momentum-indicator"><div class="momentum-fill" id="momentum-fill"></div><div id="momentum-detail"></div></div>
+  <div id="fibonacci-panel" class="fibonacci-panel"><div class="fib-header"><div class="fib-title"></div><div class="fib-direction" id="fib-direction"></div></div><div class="fib-swings"><span><strong id="fib-high">--</strong></span><span><strong id="fib-low">--</strong></span><span><strong id="fib-range">--</strong></span></div><div class="fib-levels" id="fib-levels"></div><div class="fib-confluence-box" id="fib-confluence"><div id="fib-confluence-list"></div></div></div>
+  <div id="fib-priority-item"></div>
+  <div id="cmd-panel"><div id="cmd-phase-indicator"></div><div id="cmd-consolidation"><div class="cmd-value" id="consolidation-val">--</div><div class="cmd-probability" id="consolidation-prob">0%</div></div><div id="cmd-manipulation"><div class="cmd-value" id="manipulation-val">--</div><div class="cmd-probability" id="manipulation-prob">0%</div></div><div id="cmd-distribution"><div class="cmd-value" id="distribution-val">--</div><div class="cmd-probability" id="distribution-prob">0%</div></div><div id="cmd-accumulation"><div class="cmd-value" id="accumulation-val">--</div><div class="cmd-probability" id="accumulation-prob">0%</div></div><div id="cmd-alert"><div id="cmd-alert-title"></div><div id="cmd-alert-text"></div></div><div id="whale-activity"><div id="whale-bar"><div id="whale-retail"></div><div id="whale-smart"></div><div id="whale-whale"></div></div></div></div>
+  <div class="cross-detector"><div id="cross-alert"><span id="cross-pair"></span><span id="cross-type"></span></div><div id="ma-grid"></div></div>
+  <div id="current-analysis"><div id="current-strength"></div><div id="current-origin"></div><div id="current-verdict"></div></div>
+  <div id="recent-box"><div id="recent-sequence"></div><div id="recent-analysis"></div></div>
+  <div id="priority-explanation"></div>
+  <div id="view-items-left"></div><div id="view-items-right"></div>
+  <div id="trap-banner"><span id="trap-info"></span></div>
+  <button id="btn-clear-trap" onclick="clearTrap()"></button>
+  <!-- Legacy hover proj elements (used by logic.js renderHoverPanel) -->
+  <div id="hover-proj-panel" style="display:none;position:fixed;z-index:1;">
+    <div id="hover-proj-mode-badge"></div><div id="hover-proj-candle-info"></div><div id="hover-proj-pin-hint"></div>
+    <div id="hover-proj-current-row"><div id="hover-proj-current-label-title"></div><div id="hover-proj-current-candles"></div><div id="hover-proj-current-label"></div></div>
+    <div id="hover-proj-g-box"><div id="hover-proj-g-seq"></div><div id="hover-proj-g-sig" class="hover-proj-sig sig-wait"></div><div id="hover-proj-g-fill" style="width:0%"></div><div id="hover-proj-g-pct"></div><div id="hover-proj-g-conf"></div></div>
+    <div id="hover-proj-r-box"><div id="hover-proj-r-seq"></div><div id="hover-proj-r-sig" class="hover-proj-sig sig-wait"></div><div id="hover-proj-r-fill" style="width:0%"></div><div id="hover-proj-r-pct"></div><div id="hover-proj-r-conf"></div></div>
+  </div>
+  <!-- Boston -->
+  <div id="boston-overlay">
+    <div class="boston-bar"><span class="boston-title">⚡ DECISIÓN</span><button class="boston-close" onclick="toggleBoston()">✕</button></div>
+    <div id="boston-signal" class="signal-wait">ESPERAR</div><div id="boston-context"></div>
+    <div id="boston-projections"><div id="boston-proj-g"><div class="boston-proj-label">Si VERDE →</div><div id="boston-proj-g-sig"></div><div id="boston-proj-g-conf"></div></div><div id="boston-proj-r"><div class="boston-proj-label">Si ROJO →</div><div id="boston-proj-r-sig"></div><div id="boston-proj-r-conf"></div></div></div>
+    <div id="boston-color-toggle"><button id="boston-btn-green" onclick="bostonSetColor('G')">🟢 VERDE</button><button id="boston-btn-red" onclick="bostonSetColor('R')">🔴 ROJO</button></div>
+    <div id="boston-candle-grid"></div><button id="boston-add-btn" onclick="bostonAdd()">← Selecciona</button><div id="boston-history"></div>
+  </div>
+  <!-- proj-mode-switch (used by toggleProjectionMode) -->
+  <div id="proj-mode-switch"><div class="proj-mode-track"><div class="proj-mode-dot"></div></div><div class="proj-mode-labels"><span class="proj-label-top">Actual</span><span class="proj-label-bot">Siguiente</span></div></div>
+</div>
+<!-- /LEGACY DOM -->
+
+<!-- TRAP MODAL -->
+<div class="trap-modal" id="trap-modal">
+  <div class="tmc">
+    <div class="tmt">🎭 MARCAR COMO TRAMPA</div>
+    <div class="tmb">¿La vela <strong id="trap-candle-color">--</strong> en posición <strong id="trap-candle-pos">--</strong> fue una trampa?<br><br>Recalculará <strong>TODAS</strong> las MA.</div>
+    <div class="tmbtns"><button class="trap-btn trap-btn-confirm" onclick="confirmTrap()">Sí, recalcular</button><button class="trap-btn trap-btn-cancel" onclick="closeModal()">Cancelar</button></div>
+  </div>
+</div>
+
+<!-- EDIT PANEL -->
+<div class="edit-panel" id="edit-panel">
+  <div style="color:#00ffff;font-weight:700;margin-bottom:8px;text-align:center;font-size:.8em;">✏️ EDITAR VELA #<span id="edit-index">--</span><div style="font-size:.75em;color:#333;margin-top:2px;">Actual: <span id="edit-current">--</span></div></div>
+  <div style="display:flex;gap:5px;justify-content:center;flex-wrap:wrap;">
+    <button class="edit-btn" onclick="confirmEditFromIndex(1)"><div>▰</div><div style="font-weight:700">F1</div></button>
+    <button class="edit-btn" onclick="confirmEditFromIndex(1.5)"><div>▰+</div><div style="font-weight:700">F1.5</div></button>
+    <button class="edit-btn" onclick="confirmEditFromIndex(2)"><div>▰▰</div><div style="font-weight:700">F2</div></button>
+    <button class="edit-btn" onclick="confirmEditFromIndex(2.5)"><div>▰▰+</div><div style="font-weight:700">F2.5</div></button>
+    <button class="edit-btn" onclick="confirmEditFromIndex(3)"><div>▰▰▰</div><div style="font-weight:700">F3</div></button>
+    <button class="edit-btn" onclick="confirmEditFromIndex(4)"><div>▰▰▰🔥</div><div style="font-weight:700">F4</div></button>
+  </div>
+  <div style="text-align:center;margin-top:8px;"><button onclick="closeEditPanel()" style="background:#111;color:#444;border:1px solid #222;padding:5px 14px;border-radius:4px;cursor:pointer;font-size:.75em;">Cancelar</button></div>
+</div>
+
+<!-- VIEW PANEL (legacy) -->
+<div id="view-panel">
+  <div style="padding:7px 10px;border-bottom:1px solid #141414;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:.65em;font-weight:700;color:#444;">👁 VISTA</span><button onclick="toggleViewPanel()" style="background:none;border:none;color:#333;cursor:pointer;">✕</button></div>
+  <div style="padding:7px 10px 4px;"><div style="font-size:.54em;color:#252525;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Izquierda</div><div id="view-items-left-vis"></div><div style="font-size:.54em;color:#252525;text-transform:uppercase;letter-spacing:.05em;margin:7px 0 4px;">Derecha</div><div id="view-items-right-vis"></div></div>
+</div>
+<div id="view-overlay" onclick="toggleViewPanel()" style="display:none;position:fixed;inset:0;z-index:7999;background:rgba(0,0,0,.4);"></div>
+
+<!-- ═══════════════════════════════════════
+     HOVER PROJECTION PANEL (new visible UI)
+     — with current / next TABS
+═══════════════════════════════════════ -->
+<div id="hpanel">
+  <!-- Tab switcher -->
+  <div class="hpanel-tabs">
+    <div class="hpanel-tab active-cur" id="hptab-cur" onclick="hpSetMode('current')">Vela actual</div>
+    <div class="hpanel-tab" id="hptab-nxt" onclick="hpSetMode('next')">Vela siguiente</div>
+  </div>
+  <!-- Candle info -->
+  <div class="hpanel-info" id="hpanel-info">–</div>
+  <!-- Projections -->
+  <div class="hpanel-grid">
+    <div class="hpb green">
+      <div class="hpb-lbl">▲ SI VERDE</div>
+      <div class="hpb-sig wait" id="hp-g-sig">--</div>
+      <div class="hpb-bar"><div class="hpb-fill" id="hp-g-fill" style="width:0%"></div></div>
+      <div class="hpb-pct" id="hp-g-pct">0%</div>
+      <div class="hpb-desc" id="hp-g-desc">–</div>
+    </div>
+    <div class="hpb red">
+      <div class="hpb-lbl">▼ SI ROJA</div>
+      <div class="hpb-sig wait" id="hp-r-sig">--</div>
+      <div class="hpb-bar"><div class="hpb-fill" id="hp-r-fill" style="width:0%"></div></div>
+      <div class="hpb-pct" id="hp-r-pct">0%</div>
+      <div class="hpb-desc" id="hp-r-desc">–</div>
+    </div>
+  </div>
+  <div class="hpanel-foot">Click barra → registrar · X cerrar</div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     TOPBAR
+═══════════════════════════════════════ -->
+<div class="tb">
+  <span class="tb-logo">CMD</span>
+  <div class="tb-sep"></div>
+  <span class="tb-trap" id="tb-trap">🎭 <span id="tb-trap-info">–</span></span>
+  <div class="tb-sep"></div>
+  <label style="font-size:.6em;color:#333;">Ref</label>
+  <input id="ref-vis" type="number" step="0.01" placeholder="precio base"
+    style="width:72px;background:#0e0e0e;border:1px solid #1e1e1e;color:#777;padding:3px 5px;border-radius:4px;font-size:.65em;text-align:right;"
+    oninput="syncRef(this.value)">
+  <label style="font-size:.6em;color:#333;">±</label>
+  <input id="spr-vis" type="number" step="0.01" value="1" min="0.01"
+    style="width:48px;background:#0e0e0e;border:1px solid #1e1e1e;color:#777;padding:3px 5px;border-radius:4px;font-size:.65em;text-align:right;"
+    oninput="syncSpread(this.value)">
+  <button class="btn" onclick="reset()" title="Reiniciar">↺ Reset</button>
+  <div class="tb-gap"></div>
+
+  <button class="btn" id="voice-btn" onclick="Voice.toggle()">🔇</button>
+  <div class="tb-sep"></div>
+  <button class="btn cyan" onclick="window.open('monitor.html','_blank','width=520,height=860,resizable=yes')">Monitor</button>
+  <button class="btn cyan" onclick="window.open('backtesting.html','_blank','width=980,height=780,resizable=yes')">Backtest</button>
+</div>
+
+<!-- ═══════════════════════════════════════
+     MAIN LAYOUT
+═══════════════════════════════════════ -->
+<div class="app">
+
+  <!-- ── LEFT: INPUT ── -->
+  <div class="lc">
+
+    <!-- (WiFi selector moved to center column, above log) -->
+
+    <div style="flex:1"></div>
+
+    <!-- Controls -->
+    <div class="lc-foot">
+      <div class="price-row">
+        <label>Ref</label>
+        <input class="pinput" id="ref-vis" type="number" step="0.01" placeholder="precio" oninput="syncRef(this.value)">
+      </div>
+      <div class="price-row">
+        <label>Spread ±</label>
+        <input class="pinput" id="spr-vis" type="number" step="0.01" value="1" min="0.01" oninput="syncSpread(this.value)">
+      </div>
+      <button class="reset-btn" onclick="reset()">↺ Reiniciar todo</button>
+    </div>
+
+  </div><!-- /lc -->
+
+  <!-- ── CENTER: SIGNAL + LOG ── -->
+  <div class="cc">
+
+    <!-- Signal hero -->
+    <div class="sig-hero sw" id="vsig">
+      <div class="sig-word" id="vsig-word">ESPERAR</div>
+      <div class="sig-reason" id="vsig-reason">Registra velas para comenzar</div>
+      <div class="sig-conf">
+        <div class="sig-conf-bar"><div class="sig-conf-fill" id="vcfill" style="width:0%"></div></div>
+        <span class="sig-conf-pct" id="vcpct">–</span>
+      </div>
+    </div>
+
+    <!-- Projections -->
+    <div class="proj-pair">
+      <div class="pbox green" id="vpbg">
+        <div class="pbox-lbl">▲ SI VERDE</div>
+        <div class="pbox-sig wait" id="vpg-sig">--</div>
+        <div class="pbox-conf" id="vpg-conf">--%</div>
+        <div class="pbox-desc" id="vpg-desc"></div>
+      </div>
+      <div class="pbox red" id="vpbr">
+        <div class="pbox-lbl">▼ SI ROJA</div>
+        <div class="pbox-sig wait" id="vpr-sig">--</div>
+        <div class="pbox-conf" id="vpr-conf">--%</div>
+        <div class="pbox-desc" id="vpr-desc"></div>
+      </div>
+    </div>
+
+    <!-- WiFi selector above log -->
+    <div style="border-bottom:1px solid #0e0e0e;padding:8px 10px 6px;flex-shrink:0">
+      <div style="font-size:.52em;color:#252525;text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:6px;">⚡ Registrar vela · hover = proyección · click = registrar</div>
+      <div style="display:flex;align-items:flex-end;justify-content:center;gap:3px;padding-bottom:2px;">
+        <!-- GREEN ascending -->
+        <div class="tri-side green" id="wg" data-side="G">
+          <div class="wbr g" data-str="1"   style="height:18px"></div>
+          <div class="wbr g" data-str="1.5" style="height:29px"></div>
+          <div class="wbr g" data-str="2"   style="height:42px"></div>
+          <div class="wbr g" data-str="2.5" style="height:56px"></div>
+          <div class="wbr g" data-str="3"   style="height:70px"></div>
+          <div class="wbr g" data-str="4"   style="height:86px"></div>
+        </div>
+        <!-- RED descending (row-reverse) -->
+        <div class="tri-side red" id="wr" data-side="R">
+          <div class="wbr r" data-str="1"   style="height:18px"></div>
+          <div class="wbr r" data-str="1.5" style="height:29px"></div>
+          <div class="wbr r" data-str="2"   style="height:42px"></div>
+          <div class="wbr r" data-str="2.5" style="height:56px"></div>
+          <div class="wbr r" data-str="3"   style="height:70px"></div>
+          <div class="wbr r" data-str="4"   style="height:86px"></div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:3px;padding:0 2px;">
+        <span style="font-size:.56em;font-weight:700;color:rgba(0,255,136,.45);">▲ Verde</span>
+        <span class="wifi-lbl" id="wlbl" style="font-size:.58em;font-weight:700;color:#333;text-align:center;">–</span>
+        <span style="font-size:.56em;font-weight:700;color:rgba(255,68,68,.45);">Roja ▼</span>
+      </div>
+      <div class="fb" id="fb" style="margin:4px 0 0;">Hover = proyección · Click = registrar</div>
+    </div>
+
+    <!-- History below wifi selector -->
+    <div style="padding:5px 10px 6px;border-bottom:1px solid #0e0e0e;flex-shrink:0;">
+      <div style="font-size:.52em;color:#252525;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:4px;">Historial · <span id="hcnt">0</span> velas</div>
+      <div class="hist-row" id="hrow"></div>
+    </div>
+
+    <!-- Log toggle -->
+    <div class="log-bar" onclick="toggleLog()">
+      <span class="log-lbl" id="loglbl">📋 Log diagnóstico — click para abrir</span>
+      <span class="log-arr" id="logarr">▼</span>
+    </div>
+
+    <!-- Log drawer -->
+    <div class="log-drawer" id="logdrawer">
+      <div class="log-body" id="logbody">Esperando datos...</div>
+      <div class="log-foot">
+        <button class="log-copy" id="logcopy" onclick="copyLog()">📋 Copiar para IA</button>
+      </div>
+    </div>
+
+  </div><!-- /cc -->
+
+  <!-- ── RIGHT: PRIORITY MONITOR ── -->
+  <div class="rc">
+    <div class="rc-hdr">⚡ Por prioridad</div>
+
+    <div class="pri p0 off" id="pri0">
+      <div class="pri-h"><span class="pri-n">P0</span><span class="pri-name">Extremo</span><span class="pri-bdg" id="p0b">–</span></div>
+      <div class="pri-det" id="p0d">MA10 &gt;90% o &lt;10%</div>
+      <div class="pri-bar"><div class="pri-fill" id="p0f" style="width:0%"></div></div>
+    </div>
+    <div class="pri p1 off" id="pri1">
+      <div class="pri-h"><span class="pri-n">P1</span><span class="pri-name">Fase CMD</span><span class="pri-bdg" id="p1b">–</span></div>
+      <div class="pri-det" id="p1d">Consol · Manip · Distrib</div>
+      <div class="pri-bar"><div class="pri-fill" id="p1f" style="width:0%"></div></div>
+    </div>
+    <div class="pri p2 off" id="pri2">
+      <div class="pri-h"><span class="pri-n">P2</span><span class="pri-name">Reversión F≥3</span><span class="pri-bdg" id="p2b">–</span></div>
+      <div class="pri-det" id="p2d">Vela fuerte contra tendencia</div>
+      <div class="pri-bar"><div class="pri-fill" id="p2f" style="width:0%"></div></div>
+    </div>
+    <div class="pri p3 off" id="pri3">
+      <div class="pri-h"><span class="pri-n">P3</span><span class="pri-name">Cruce MA</span><span class="pri-bdg" id="p3b">–</span></div>
+      <div class="pri-det" id="p3d">Golden / Death cross</div>
+      <div class="pri-bar"><div class="pri-fill" id="p3f" style="width:0%"></div></div>
+    </div>
+    <div class="pri p4 off" id="pri4">
+      <div class="pri-h"><span class="pri-n">P4</span><span class="pri-name">Patrón</span><span class="pri-bdg" id="p4b">–</span></div>
+      <div class="pri-det" id="p4d">Patrón velas ≥60%</div>
+      <div class="pri-bar"><div class="pri-fill" id="p4f" style="width:0%"></div></div>
+    </div>
+    <div class="pri p5 off" id="pri5">
+      <div class="pri-h"><span class="pri-n">P5</span><span class="pri-name">Fibonacci</span><span class="pri-bdg" id="p5b">–</span></div>
+      <div class="pri-det" id="p5d">Retroceso / extensión</div>
+      <div class="pri-bar"><div class="pri-fill" id="p5f" style="width:0%"></div></div>
+    </div>
+
+    <div class="rc-div">Tendencia</div>
+    <div class="ma-mini">
+      <div class="ma-mini-row"><span>MA10</span><span id="ma10v" style="color:#444">–</span></div>
+      <div class="ma-track"><div class="ma-fill" id="ma10f" style="width:50%;background:#2a2a2a"></div><div class="ma-mid"></div></div>
+    </div>
+
+    <div class="rc-div">Fases CMD</div>
+    <div class="cmd-mini">
+      <div class="cmd-r"><span class="cmd-name">Consol.</span><div class="cmd-bar"><div class="cmd-f" id="cmdc" style="width:0%;background:#bb44ff"></div></div><span class="cmd-pct" id="cpcnt">0%</span></div>
+      <div class="cmd-r"><span class="cmd-name">Manip.</span><div class="cmd-bar"><div class="cmd-f" id="cmdm" style="width:0%;background:#ff4444"></div></div><span class="cmd-pct" id="cpmnt">0%</span></div>
+      <div class="cmd-r"><span class="cmd-name">Distrib.</span><div class="cmd-bar"><div class="cmd-f" id="cmdd" style="width:0%;background:#ff8800"></div></div><span class="cmd-pct" id="cpdnt">0%</span></div>
+      <div class="cmd-r"><span class="cmd-name">Acumul.</span><div class="cmd-bar"><div class="cmd-f" id="cmda" style="width:0%;background:#00ff88"></div></div><span class="cmd-pct" id="cpant">0%</span></div>
+    </div>
+
+  </div><!-- /rc -->
+
+</div><!-- /app -->
+
+<!-- ═══════════════════════════════════════
+     SCRIPTS
+═══════════════════════════════════════ -->
+<script src="patterns.js"></script>
+<script src="logic.js"></script>
+<script src="voice.js"></script>
+<script src="picker.js"></script>
+<script src="pattern_sync.js"></script>
+
+<script>
+/* ═══════════════════════════════════════════════
+   HOVER PROJECTION PANEL — new UI with tabs
+   Intercepts showPPProjection from logic.js
+   and renders into #hpanel with current/next tabs
+═══════════════════════════════════════════════ */
+(function(){
+'use strict';
+
+var panel = document.getElementById('hpanel');
+var _lastSide, _lastStr, _lastX, _lastY;
+
+// Tab switching — calls logic.js toggleProjectionMode()
+window.hpSetMode = function(mode) {
+  var cur = document.getElementById('hptab-cur');
+  var nxt = document.getElementById('hptab-nxt');
+  if (!cur || !nxt) return;
+  // Current mode in logic.js
+  var curMode = (typeof projectionMode !== 'undefined') ? projectionMode : 'current';
+  if (mode !== curMode) {
+    if (typeof toggleProjectionMode === 'function') toggleProjectionMode();
+  }
+  var isNext = (mode === 'next');
+  cur.className = 'hpanel-tab ' + (!isNext ? 'active-cur' : '');
+  nxt.className = 'hpanel-tab ' + (isNext  ? 'active-nxt' : '');
+  // Re-show with current side/str
+  if (_lastSide !== undefined && typeof window.showPPProjection === 'function') {
+    window.showPPProjection(_lastSide, _lastStr, _lastX||0, _lastY||0);
+  }
+};
+
+// Mirror legacy hover-proj elements → new panel
+function mirror() {
+  var gSig = document.getElementById('hover-proj-g-sig');
+  var rSig = document.getElementById('hover-proj-r-sig');
+  var gFil = document.getElementById('hover-proj-g-fill');
+  var rFil = document.getElementById('hover-proj-r-fill');
+  var gPct = document.getElementById('hover-proj-g-pct');
+  var rPct = document.getElementById('hover-proj-r-pct');
+  var gDes = document.getElementById('hover-proj-g-conf');
+  var rDes = document.getElementById('hover-proj-r-conf');
+  var info = document.getElementById('hover-proj-candle-info');
+  var badge= document.getElementById('hover-proj-mode-badge');
+  if (!gSig) return;
+
+  // Info line
+  var infoEl = document.getElementById('hpanel-info');
+  if (infoEl && info) infoEl.textContent = info.textContent || '–';
+
+  // Mode badge → update tabs
+  var isNext = badge && badge.textContent && badge.textContent.indexOf('SIGUIENTE') >= 0;
+  var tc = document.getElementById('hptab-cur'), tn = document.getElementById('hptab-nxt');
+  if (tc) tc.className = 'hpanel-tab ' + (!isNext ? 'active-cur' : '');
+  if (tn) tn.className = 'hpanel-tab ' + (isNext  ? 'active-nxt' : '');
+
+  // Green box
+  var gs = gSig.textContent||'--';
+  var gf = parseFloat(gFil&&gFil.style.width)||0;
+  var gpn= gPct&&gPct.textContent||'0%';
+  var gd = gDes&&gDes.textContent||'';
+  var hgS= document.getElementById('hp-g-sig');
+  var hgF= document.getElementById('hp-g-fill');
+  var hgP= document.getElementById('hp-g-pct');
+  var hgD= document.getElementById('hp-g-desc');
+  if (hgS){ hgS.textContent=gs; hgS.className='hpb-sig '+(gs==='COMPRA'?'buy':gs==='VENTA'?'sell':'wait'); }
+  if (hgF) hgF.style.width = gf+'%';
+  if (hgP) hgP.textContent = gpn;
+  if (hgD) hgD.textContent = gd;
+
+  // Red box
+  var rs = rSig.textContent||'--';
+  var rf = parseFloat(rFil&&rFil.style.width)||0;
+  var rpn= rPct&&rPct.textContent||'0%';
+  var rd = rDes&&rDes.textContent||'';
+  var hrS= document.getElementById('hp-r-sig');
+  var hrF= document.getElementById('hp-r-fill');
+  var hrP= document.getElementById('hp-r-pct');
+  var hrD= document.getElementById('hp-r-desc');
+  if (hrS){ hrS.textContent=rs; hrS.className='hpb-sig '+(rs==='VENTA'?'sell':rs==='COMPRA'?'buy':'wait'); }
+  if (hrF) hrF.style.width = rf+'%';
+  if (hrP) hrP.textContent = rpn;
+  if (hrD) hrD.textContent = rd;
+}
+
+// Poll: when legacy panel visible, show new panel and mirror data
+(function tick(){
+  var lp = document.getElementById('hover-proj-panel');
+  if (lp && lp.style.display !== 'none') {
+    mirror();
+    // Show and position new panel near cursor
+    if (panel) {
+      panel.style.display = 'block';
+      var x = _lastX||0, y = _lastY||0;
+      var W = panel.offsetWidth||294, H = panel.offsetHeight||200;
+      var vw = window.innerWidth, vh = window.innerHeight, gap = 10;
+      // Aparecer DEBAJO de la barra hover (y = posicion del mouse)
+      var top  = y + gap;
+      // Si no cabe abajo, aparecer arriba
+      if (top + H > vh - 8) top = y - H - gap;
+      if (top < 8) top = 8;
+      // Horizontal: centrar respecto al cursor, ajustar si sale de pantalla
+      var left = x - W/2;
+      if (left < 8) left = 8;
+      if (left + W > vw - 8) left = vw - W - 8;
+      panel.style.left = left+'px'; panel.style.top = top+'px';
+    }
+  } else {
+    if (panel) panel.style.display = 'none';
+  }
+  requestAnimationFrame(tick);
+})();
+
+// Intercept showPPProjection once it's defined
+var iv = setInterval(function(){
+  if (typeof window.showPPProjection === 'function' && !window.showPPProjection._wired) {
+    var orig = window.showPPProjection;
+    window.showPPProjection = function(side, str, x, y) {
+      _lastSide=side; _lastStr=str; _lastX=x; _lastY=y;
+      orig.apply(this, arguments);
+      setTimeout(mirror, 20);
+    };
+    window.showPPProjection._wired = true;
+    clearInterval(iv);
+  }
+}, 150);
+
+// Close on outside click
+document.addEventListener('click', function(e) {
+  if (panel && panel.style.display !== 'none' && !panel.contains(e.target)) {
+    if (typeof window.hidePPProjection === 'function') window.hidePPProjection();
+  }
+});
+
+})();
+
+/* ═══════════════════════════════════════════════
+   WIFI TRIANGLE SETUP
+═══════════════════════════════════════════════ */
+(function(){
+'use strict';
+var SL={'1':'Doji','1.5':'Pequeña','2':'Normal','2.5':'Grande','3':'Muy grande','4':'Engulfing'};
+var sG=null, sR=null;
+
+function setup(gid, side) {
+  var g = document.getElementById(gid); if (!g) return;
+  var bars = Array.from(g.querySelectorAll('.wbr'));
+  var lbl  = document.getElementById('wlbl');
+
+  bars.forEach(function(bar, idx) {
+    bar.addEventListener('mouseenter', function(e) {
+      bars.forEach(function(b,i){ b.classList.toggle('hov', i<=idx); b.classList.remove('sel'); });
+      var str = parseFloat(bar.getAttribute('data-str'));
+      if (lbl){ lbl.textContent=(side==='G'?'▲ ':'▼ ')+'F'+str+' '+( SL[String(str)]||''); lbl.style.color=side==='G'?'rgba(0,255,136,.75)':'rgba(255,68,68,.75)'; }
+      if (typeof window.showPPProjection==='function') window.showPPProjection(side,str,e.clientX,e.clientY);
+    });
+    bar.addEventListener('mousemove', function(e) {
+      var str = parseFloat(bar.getAttribute('data-str'));
+      if (typeof window.showPPProjection==='function') window.showPPProjection(side,str,e.clientX,e.clientY);
+    });
+    bar.addEventListener('click', function(e) {
+      var str = parseFloat(bar.getAttribute('data-str'));
+      // Clear other side
+      var oId = side==='G'?'wr':'wg';
+      var og = document.getElementById(oId);
+      if (og) og.querySelectorAll('.wbr').forEach(function(b){ b.classList.remove('sel','hov'); });
+      if (side==='G'){ sG=idx; sR=null; } else { sR=idx; sG=null; }
+      bars.forEach(function(b,i){ b.classList.remove('hov'); b.classList.toggle('sel', i<=idx); });
+      if (lbl){ lbl.textContent=(side==='G'?'▲ ':'▼ ')+'F'+str+' '+(SL[String(str)]||''); lbl.style.color=side==='G'?'#00ff88':'#ff4444'; }
+      // Register
+      if (typeof quickAddCandle==='function') quickAddCandle(side,str);
+      else if (typeof addCandle==='function') addCandle(side,str);
+      // Feedback
+      var col=side==='G'?'#00cc55':'#cc2222';
+      var fbEl=document.getElementById('fb');
+      if (fbEl){ fbEl.style.color=col; fbEl.style.borderColor=col+'33'; fbEl.style.background=side==='G'?'rgba(0,140,50,.07)':'rgba(160,35,35,.07)'; fbEl.textContent=(side==='G'?'▲ VERDE':'▼ ROJA')+' · F'+str+' '+(SL[String(str)]||''); }
+      if (typeof window.hidePPProjection==='function') window.hidePPProjection();
+      e.stopPropagation();
+    });
+  });
+
+  g.addEventListener('mouseleave', function(){
+    var sel = side==='G'?sG:sR;
+    bars.forEach(function(b,i){ b.classList.remove('hov'); b.classList.toggle('sel', sel!==null&&i<=sel); });
+    if (lbl && sel===null){ lbl.textContent='–'; lbl.style.color='#333'; }
+    if (typeof window.hidePPProjection==='function') window.hidePPProjection();
+  });
+}
+
+function init(){ setup('wg','G'); setup('wr','R'); }
+if (document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
+window.wifiResetSelection=function(){ sG=null;sR=null; ['wg','wr'].forEach(function(id){ var g=document.getElementById(id); if(g) g.querySelectorAll('.wbr').forEach(function(b){ b.classList.remove('sel','hov'); }); }); var l=document.getElementById('wlbl'); if(l){l.textContent='–';l.style.color='#333';} };
+})();
+
+/* ═══════════════════════════════════════════════
+   UI BRIDGE — logic.js DOM → visible new UI
+═══════════════════════════════════════════════ */
+(function(){
+'use strict';
+var SMAP={
+  'signal-buy':{c:'sb',l:'COMPRAR'},'signal-buy-weak':{c:'sb',l:'COMPRAR DÉBIL'},
+  'signal-sell':{c:'ss',l:'VENDER'},'signal-sell-weak':{c:'ss',l:'VENDER DÉBIL'},
+  'signal-extreme':{c:'se',l:'EXTREMO'},'signal-strong-reversal':{c:'sb',l:'REVERSIÓN'},
+  'signal-accumulation':{c:'sb',l:'ACUMULACIÓN'},'signal-distribution':{c:'ss',l:'DISTRIBUCIÓN'},
+  'signal-manipulation':{c:'st',l:'MANIPULACIÓN'},'signal-trap':{c:'st',l:'TRAMPA'},
+  'signal-conflict':{c:'sw',l:'ESPERAR'},'signal-wait':{c:'sw',l:'ESPERAR'}
+};
+function si(cls){ for(var k in SMAP) if(cls.indexOf(k)>=0) return SMAP[k]; return{c:'sw',l:'ESPERAR'}; }
+var $=function(id){ return document.getElementById(id); };
+
+function upSig(){
+  var leg=$('main-signal'); if(!leg) return;
+  var cls=leg.className||'', inf=si(cls);
+  var cl=leg.cloneNode(true); cl.querySelectorAll('div').forEach(function(d){d.remove();});
+  var raw=cl.textContent.trim();
+  var blk=$('vsig'),tw=$('vsig-word'),rs=$('vsig-reason'),cf=$('vcfill'),cp=$('vcpct');
+  if(!blk) return;
+  blk.className='sig-hero '+inf.c;
+  tw.textContent=raw||inf.l;
+  var lt=$('logic-text'); if(lt){ var s=lt.textContent||''; rs.textContent=s.slice(0,105)+(s.length>105?'…':''); }
+  var gn=parseFloat($('proj-g-conf')?.textContent)||0, rn=parseFloat($('proj-r-conf')?.textContent)||0;
+  var conf=Math.max(gn,rn);
+  cf.style.width=conf+'%'; cp.textContent=conf>0?conf.toFixed(0)+'%':'–';
+}
+
+function upProj(){
+  var gS=$('proj-g-sig')?.textContent||'--', rS=$('proj-r-sig')?.textContent||'--';
+  var gC=$('proj-g-conf')?.textContent||'--%', rC=$('proj-r-conf')?.textContent||'--%';
+  var gD=$('proj-g-reason')?.textContent||'', rD=$('proj-r-reason')?.textContent||'';
+  var vgS=$('vpg-sig'),vrS=$('vpr-sig');
+  if(vgS){vgS.textContent=gS;vgS.className='pbox-sig '+(gS==='COMPRA'?'buy':gS==='VENTA'?'sell':'wait');}
+  if(vrS){vrS.textContent=rS;vrS.className='pbox-sig '+(rS==='VENTA'?'sell':rS==='COMPRA'?'buy':'wait');}
+  if($('vpg-conf'))$('vpg-conf').textContent=gC; if($('vpr-conf'))$('vpr-conf').textContent=rC;
+  if($('vpg-desc'))$('vpg-desc').textContent=gD; if($('vpr-desc'))$('vpr-desc').textContent=rD;
+  var gN=parseFloat(gC)||0,rN=parseFloat(rC)||0,gb=$('vpbg'),rb=$('vpbr');
+  if(gb&&rb){
+    if(gN>rN){gb.classList.add('dom');gb.classList.remove('dim');rb.classList.add('dim');rb.classList.remove('dom');}
+    else if(rN>gN){rb.classList.add('dom');rb.classList.remove('dim');gb.classList.add('dim');gb.classList.remove('dom');}
+    else{gb.classList.remove('dom','dim');rb.classList.remove('dom','dim');}
+  }
+}
+
+function upMA10(){
+  var d=$('momentum-detail'); if(!d) return;
+  var m=d.textContent.match(/MA10:\s*([\d.]+)%/); if(!m) return;
+  var v=parseFloat(m[1]);
+  var f=$('ma10f'),l=$('ma10v');
+  if(f){f.style.width=v+'%';f.style.background=v>55?'#00bb44':v<45?'#bb1111':'#555';}
+  if(l){l.textContent=v.toFixed(1)+'%';l.style.color=v>55?'#00aa33':v<45?'#aa1111':'#555';}
+}
+
+function upCMD(){
+  [['c','consolidation','cpcnt'],['m','manipulation','cpmnt'],['d','distribution','cpdnt'],['a','accumulation','cpant']].forEach(function(t){
+    var p=parseFloat($(t[1]+'-prob')?.textContent)||0;
+    var f=$('cmd'+t[0]),pe=$(t[2]);
+    if(f)f.style.width=p+'%'; if(pe)pe.textContent=p.toFixed(0)+'%';
+  });
+}
+
+function upPri(){
+  var leg=$('main-signal'); if(!leg) return;
+  var cls=leg.className||'', lt=($('logic-text')?.textContent||'');
+
+  var isE=cls.indexOf('signal-extreme')>=0;
+  setPri(0,isE,isE?(cls.indexOf('sell')>=0||lt.indexOf('SOBRECOMPRA')>=0?'🔻 Vender':'🔥 Comprar'):'–',isE?95:0);
+
+  var isD=cls.indexOf('signal-distribution')>=0, isA=cls.indexOf('signal-accumulation')>=0;
+  var isM=cls.indexOf('signal-manipulation')>=0, isCons=cls.indexOf('signal-conflict')>=0&&lt.indexOf('CONSOLIDACIÓN')>=0;
+  var isCMD=isD||isA||isM||isCons;
+  var cp=Math.max(parseFloat($('consolidation-prob')?.textContent)||0,parseFloat($('manipulation-prob')?.textContent)||0,parseFloat($('distribution-prob')?.textContent)||0,parseFloat($('accumulation-prob')?.textContent)||0);
+  setPri(1,isCMD,isD?'🏦 Dist.':isA?'📥 Acum.':isM?'🎭 Manip.':isCons?'📦 Consol.':'–',isCMD?cp:0);
+
+  var isR=cls.indexOf('signal-strong-reversal')>=0;
+  setPri(2,isR,isR?(lt.indexOf('alcista')>=0||lt.indexOf('COMPRAR')>=0?'⬆️ Compra':'⬇️ Venta'):'–',isR?85:0);
+
+  var cEl=$('cross-alert'), isCross=cEl&&cEl.classList.contains('show');
+  var ct=$('cross-type')?.textContent||'';
+  setPri(3,isCross,isCross?(ct.indexOf('GOLDEN')>=0?'⬆️ Golden':'⬇️ Death'):'–',isCross?80:0);
+
+  var pat=window.currentPatternResult;
+  var hasPat=pat&&pat.patternName&&!isE&&!isCMD&&!isR&&!isCross;
+  var pc=hasPat?Math.round((pat.confidence||0)*100):0;
+  setPri(4,hasPat,hasPat?pat.patternName.split(' ').slice(0,2).join(' '):'–',pc);
+
+  var fibEl=$('fibonacci-panel'), fibV=fibEl&&fibEl.style.visibility==='visible';
+  setPri(5,fibV,fibV?'📐 '+($('fib-direction')?.textContent||''):'–',fibV?70:0);
+}
+
+function setPri(n,on,badge,fill){
+  var it=$('pri'+n),bd=$('p'+n+'b'),fi=$('p'+n+'f');
+  if(!it)return;
+  it.classList.toggle('on',!!on); it.classList.toggle('off',!on);
+  if(bd)bd.textContent=badge||'–';
+  if(fi)fi.style.width=(fill!=null?Math.min(fill,100):on?100:0)+'%';
+}
+
+function upHist(){
+  var row=$('hrow'),cnt=$('hcnt'); if(!row)return;
+  var h=typeof history!=='undefined'?history:[];
+  cnt.textContent=h.length;
+  var show=h.slice(-24);
+  row.innerHTML=show.map(function(c,i){
+    var idx=h.length-show.length+i;
+    var str=typeof getCandleStrength==='function'?(getCandleStrength(idx)||2):2;
+    var isTrap=typeof manualTrapIndex!=='undefined'&&manualTrapIndex===idx;
+    return '<div class="hc '+c.toLowerCase()+(isTrap?' trap-c':'')+'" onclick="openEditPanel('+idx+')" title="Vela '+(idx+1)+'·'+c+'·F'+str+'">'+c+str+'</div>';
+  }).join('');
+  // Trap tag
+  var tag=$('tb-trap'),ti=$('tb-trap-info');
+  var hasT=typeof manualTrapIndex!=='undefined'&&manualTrapIndex!==null;
+  if(tag)tag.classList.toggle('show',hasT);
+  if(ti&&hasT)ti.textContent='#'+(manualTrapIndex+1);
+}
+
+function buildLog(){
+  var el=$('logbody'); if(!el)return;
+  var L=[],ts=new Date().toLocaleTimeString();
+  L.push('=== CMD DETECTOR · '+ts+' ===\n');
+  var leg=$('main-signal');
+  if(leg){var cl=leg.cloneNode(true);cl.querySelectorAll('div').forEach(function(d){d.remove();});L.push('SEÑAL: '+cl.textContent.trim());L.push('CLASE: '+(leg.className||'').replace('main-signal','').trim());}
+  var lt=$('logic-text')?.textContent||''; if(lt)L.push('\nLÓGICA:\n'+lt);
+  L.push('\nMA10: '+($('momentum-detail')?.textContent||'–'));
+  L.push('\nFASES CMD:');
+  ['consolidation','manipulation','distribution','accumulation'].forEach(function(ph){L.push('  '+ph+': '+($(ph+'-prob')?.textContent||'0%')+' · '+($(ph+'-val')?.textContent||'–'));});
+  var pat=window.currentPatternResult;
+  if(pat&&pat.patternName){L.push('\nPATRÓN:');L.push('  '+pat.patternName+' · '+( pat.context||'–'));L.push('  Conf: '+Math.round((pat.confidence||0)*100)+'%');L.push('  Verde: '+(pat.ifG?.sig||'–')+' '+Math.round((pat.ifG?.conf||0)*100)+'%  |  Roja: '+(pat.ifR?.sig||'–')+' '+Math.round((pat.ifR?.conf||0)*100)+'%');}
+  L.push('\nPROYECCIONES:');
+  L.push('  Verde → '+($('proj-g-sig')?.textContent||'–')+' '+($('proj-g-conf')?.textContent||'–')+' — '+($('proj-g-reason')?.textContent||''));
+  L.push('  Roja  → '+($('proj-r-sig')?.textContent||'–')+' '+($('proj-r-conf')?.textContent||'–')+' — '+($('proj-r-reason')?.textContent||''));
+  var fibEl=$('fibonacci-panel');
+  if(fibEl&&fibEl.style.visibility==='visible'){L.push('\nFIBONACCI: Dir '+($('fib-direction')?.textContent||'–')+' H'+($('fib-high')?.textContent||'–')+' L'+($('fib-low')?.textContent||'–'));}
+  L.push('\nTEND: '+($('trend-value')?.textContent||'–')+' | MA3: '+($('short-trend-value')?.textContent||'–'));
+  var cEl=$('cross-alert'); if(cEl&&cEl.classList.contains('show'))L.push('\nCRUCE: '+($('cross-pair')?.textContent||'–')+' · '+($('cross-type')?.textContent||'–'));
+  if(typeof history!=='undefined'&&history.length){var seq=history.map(function(c,i){return c+(typeof getCandleStrength==='function'?(getCandleStrength(i)||2):2);}).join(' ');L.push('\nSECUENCIA ('+history.length+'):\n'+seq);}
+  L.push('\n=== FIN ===');
+  el.textContent=L.join('\n');
+}
+
+function upAll(){upSig();upProj();upMA10();upCMD();upPri();upHist();if($('logdrawer')?.classList.contains('open'))buildLog();}
+
+function hook(){
+  if(typeof update!=='function'){setTimeout(hook,80);return;}
+  var orig=update;
+  window.update=function(){orig.apply(this,arguments);requestAnimationFrame(upAll);};
+  requestAnimationFrame(upAll);
+}
+hook();
+
+window.toggleLog=function(){
+  var dr=$('logdrawer'),ic=$('logarr'),lb=$('loglbl');
+  var open=dr.classList.toggle('open');
+  ic.classList.toggle('open',open);
+  lb.textContent=open?'📋 Log diagnóstico — click para cerrar':'📋 Log diagnóstico — click para abrir';
+  if(open)buildLog();
+};
+window.copyLog=function(){
+  var txt=$('logbody')?.textContent||'';
+  var btn=$('logcopy');
+  function ok(){if(btn){btn.textContent='✓ Copiado';btn.classList.add('ok');setTimeout(function(){btn.textContent='📋 Copiar para IA';btn.classList.remove('ok');},2200);}}
+  if(navigator.clipboard)navigator.clipboard.writeText(txt).then(ok).catch(function(){});else{var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);ok();}
+};
+window.syncRef=function(v){var e=$('pp-ref-manual');if(e)e.value=v;if(typeof window.ppSetRef==='function')window.ppSetRef(v);};
+window.syncSpread=function(v){var e=$('pp-spread');if(e)e.value=v;if(typeof window.ppUpdateSpread==='function')window.ppUpdateSpread();};
+
+})();
+</script>
+
+</body>
+</html>
